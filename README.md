@@ -1,2 +1,2 @@
-# HEAT-Pizzaria
-Projeto de pizzaria esquematizada para sem feito inteiramente durante o período de aulas de Desenvolvimento de Sistemas.
+# Yummi
+O Yummi é uma plataforma de pedidos de comida que conecta clientes a restaurantes parceiros
