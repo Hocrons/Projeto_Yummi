@@ -10,3 +10,4 @@ python-dotenv==1.2.3
 pytest==9.1.1
 # Usado pelos testes para validar a spec OpenAPI gerada das docstrings.
 openapi-spec-validator==0.9.0
+Flask-Cors==4.0.0

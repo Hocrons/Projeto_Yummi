@@ -13,6 +13,7 @@ from app.config import Config
 from app.docs import init_swagger
 from app.extensions import db
 from app.utils.errors import ErroDeConflito, ErroDeValidacao, NaoEncontrado
+from flask_cors import CORS
 
 
 def create_app(config_class=Config):
@@ -20,7 +21,7 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     db.init_app(app)
-
+    CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", "http://127.0.0.1:5173"]}})
     # Importado aqui (e nao no topo) para registrar as tabelas no metadata
     # somente depois que o db existe.
     from app import models  # noqa: F401
