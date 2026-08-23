@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import FormField from "../components/FormField";
 import PasswordField from "../components/PasswordField";
 import PrimaryButton from "../components/PrimaryButton";
 import TermsCheckbox from "../components/TermsCheckbox";
 import AlertBanner from "../components/AlertBanner";
+import { cadastrarUsuario } from "../api/usuarios";
+import { extrairErroApi } from "../api/client";
 import {
   aplicarMascaraCelular,
   aplicarMascaraCpf,
@@ -17,7 +19,18 @@ import {
   senhaValida,
 } from "../utils/validators";
 
+const CAMPO_PARA_LABEL = {
+  nome_completo: "nomeCompleto",
+  email: "email",
+  celular: "celular",
+  cpf: "cpf",
+  data_nascimento: "dataNascimento",
+  senha: "senha",
+};
+
 export default function Cadastro() {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({
     nomeCompleto: "",
     email: "",
@@ -28,6 +41,8 @@ export default function Cadastro() {
   });
   const [aceitaTermos, setAceitaTermos] = useState(false);
   const [tocado, setTocado] = useState({});
+  const [enviando, setEnviando] = useState(false);
+  const [erroApi, setErroApi] = useState(null);
   const [sucesso, setSucesso] = useState(false);
 
   function atualizar(campo, valor) {
@@ -73,7 +88,7 @@ export default function Cadastro() {
     senhaValida(form.senha) &&
     aceitaTermos;
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setTocado({
       nomeCompleto: true,
@@ -84,16 +99,33 @@ export default function Cadastro() {
       senha: true,
       termos: true,
     });
+    setErroApi(null);
 
     if (!formularioValido) return;
-    setSucesso(true);
+
+    setEnviando(true);
+    try {
+      await cadastrarUsuario(form);
+      setSucesso(true);
+      setTimeout(() => navigate("/login"), 1800);
+    } catch (err) {
+      const { campo, mensagem } = extrairErroApi(err);
+      setErroApi(mensagem);
+      if (campo && CAMPO_PARA_LABEL[campo]) {
+        setTocado((atual) => ({ ...atual, [CAMPO_PARA_LABEL[campo]]: true }));
+      }
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
     <AuthLayout title="Criar conta">
+      <AlertBanner>{erroApi}</AlertBanner>
       {sucesso ? (
         <AlertBanner tone="success">
-          Formulário validado. A integração com a API de cadastro ainda vai ser conectada aqui.
+          Conta criada! Falta confirmar o código enviado para validar seu contato. Redirecionando
+          para o login...
         </AlertBanner>
       ) : null}
 
@@ -167,7 +199,9 @@ export default function Cadastro() {
           error={erros.termos}
         />
 
-        <PrimaryButton type="submit">Criar minha conta</PrimaryButton>
+        <PrimaryButton type="submit" loading={enviando}>
+          Criar minha conta
+        </PrimaryButton>
       </form>
 
       <p className="auth-footer">
