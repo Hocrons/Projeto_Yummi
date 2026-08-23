@@ -25,18 +25,25 @@ npm run preview   # serve o build de produção localmente
 src/
   api/            client axios + chamadas (client.js, auth.js)
   components/     AuthLayout, FormField, PasswordField, PrimaryButton,
-                   AlertBanner, Logo
-  pages/          Login.jsx
-  utils/          validators.js — validação de e-mail
+                   AlertBanner, TermsCheckbox, Logo
+  pages/          Login.jsx, Cadastro.jsx
+  utils/          validators.js — CPF (módulo 11), e-mail, máscara de
+                   celular, idade mínima, senha
 ```
 
 ## Onde estamos
 
-Primeira entrega: tela de **Entrar**, com validação de e-mail em tempo real
-e campo de senha com opção de mostrar/ocultar. A chamada de login já está
-escrita (`POST /api/auth/login`), mas essa rota ainda não existe no
-backend — por enquanto a tela trata o erro e avisa quem estiver testando,
-em vez de travar.
+Tela de **Entrar** com validação de e-mail em tempo real e senha com
+mostrar/ocultar.
 
-Próximo passo: tela de cadastro, integrada com o CRUD de usuário que já
-está pronto no backend.
+Tela de **Criar conta** com o formulário completo (nome, e-mail, telefone,
+CPF, data de nascimento, senha) e todas as validações client-side: CPF por
+módulo 11, máscara de celular, idade mínima de 18 anos, senha com letra e
+número, aceite obrigatório dos Termos de Uso. Por enquanto o envio só
+valida os dados localmente — a chamada pra API de cadastro ainda não foi
+conectada.
+
+## Próximo passo
+
+Ligar o formulário de cadastro em `POST /api/usuarios` e tratar os erros
+que a API devolve (campo inválido, e-mail/CPF já cadastrado).
