@@ -1,0 +1,19 @@
+.alert-banner {
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+  border: 1px solid transparent;
+}
+
+.alert-banner--error {
+  background: rgba(239, 83, 80, 0.1);
+  border-color: rgba(239, 83, 80, 0.35);
+  color: #ff8a85;
+}
+
+.alert-banner--success {
+  background: rgba(76, 175, 125, 0.1);
+  border-color: rgba(76, 175, 125, 0.35);
+  color: #7ddcaf;
+}
