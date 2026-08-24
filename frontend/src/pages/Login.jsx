@@ -1,22 +1,29 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import FormField from "../components/FormField";
 import PasswordField from "../components/PasswordField";
 import PrimaryButton from "../components/PrimaryButton";
 import AlertBanner from "../components/AlertBanner";
 import { entrar } from "../api/auth";
+import { extrairErroApi } from "../api/client";
+import { limparSessao, salvarSessao } from "../auth/sessao";
 import { emailValido } from "../utils/validators";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [identificador, setIdentificador] = useState("");
   const [senha, setSenha] = useState("");
   const [tocado, setTocado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erroApi, setErroApi] = useState(null);
+  // Guarda o usuario autenticado. Enquanto nao existe uma home para onde
+  // redirecionar, a confirmacao do login e a propria tela.
+  const [autenticado, setAutenticado] = useState(null);
 
   const emailInvalido = tocado && !emailValido(identificador);
+  const contaExcluida = location.state?.contaExcluida;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -27,24 +34,60 @@ export default function Login() {
 
     setEnviando(true);
     try {
-      await entrar({ identificador, senha });
-      navigate("/");
+      const usuario = await entrar({ identificador, senha });
+      setAutenticado(usuario);
+      salvarSessao(usuario);
+      setSenha("");
     } catch (err) {
-      if (err?.response?.status === 404) {
-        setErroApi("O login ainda não está disponível: essa rota faz parte do próximo módulo do back-end.");
-      } else if (err?.response?.status === 401) {
-        setErroApi("E-mail ou senha incorretos.");
-      } else {
-        setErroApi("Não foi possível entrar agora. Tente novamente em instantes.");
-      }
+      // 401 e 403 trazem mensagem propria da API: a de credencial e generica de
+      // proposito, e a de conta pendente/bloqueada diz o que fazer em seguida.
+      setErroApi(extrairErroApi(err).mensagem);
     } finally {
       setEnviando(false);
     }
   }
 
+  if (autenticado) {
+    return (
+      <AuthLayout title="Entrar" subtitle="Acesse sua conta para continuar">
+        <AlertBanner tone="success">
+          Login realizado com sucesso! Bem-vindo(a), {autenticado.nome_completo}.
+        </AlertBanner>
+
+        <p className="auth-footer">
+          Ainda não existe uma página inicial — ela chega no próximo módulo.
+        </p>
+
+        <PrimaryButton type="button" onClick={() => navigate("/perfil")}>
+          Ver e alterar meus dados
+        </PrimaryButton>
+
+        <p className="auth-footer">
+          <button
+            type="button"
+            className="auth-footer__link"
+            onClick={() => {
+              limparSessao();
+              setAutenticado(null);
+              setIdentificador("");
+              setTocado(false);
+            }}
+          >
+            Sair
+          </button>
+        </p>
+      </AuthLayout>
+    );
+  }
+
   return (
     <AuthLayout title="Entrar" subtitle="Acesse sua conta para continuar">
       <AlertBanner>{erroApi}</AlertBanner>
+      {contaExcluida ? (
+        <AlertBanner tone="success">
+          Sua conta foi excluída. Obrigado por usar o Yummi!
+        </AlertBanner>
+      ) : null}
 
       <form onSubmit={handleSubmit} noValidate>
         <FormField

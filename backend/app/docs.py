@@ -52,6 +52,10 @@ TEMPLATE = {
     "servers": [{"url": "http://127.0.0.1:5000", "description": "Desenvolvimento local"}],
     "tags": [
         {
+            "name": "Autenticacao",
+            "description": "Login por e-mail ou celular.",
+        },
+        {
             "name": "Usuarios",
             "description": "Cadastro, consulta, atualizacao e exclusao de usuarios.",
         },

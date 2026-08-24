@@ -21,3 +21,29 @@ export async function cadastrarUsuario({
   const { data } = await api.post("/usuarios", payload);
   return data.dados;
 }
+
+export async function buscarUsuario(idUsuario) {
+  const { data } = await api.get(`/usuarios/${idUsuario}`);
+  return data.dados;
+}
+
+/**
+ * Atualização parcial: manda só os campos que mudaram.
+ *
+ * A API recusa campo fora da lista de atualizáveis (o `cpf`, por exemplo),
+ * então `campos` precisa conter apenas nome_completo, email, celular, rg,
+ * data_nascimento ou senha.
+ */
+export async function atualizarUsuario(idUsuario, campos) {
+  const { data } = await api.patch(`/usuarios/${idUsuario}`, campos);
+  return data.dados;
+}
+
+/**
+ * Exclusão lógica: a API marca `status_conta = 'excluido'` e mantém a linha,
+ * para não quebrar o histórico de pedidos que a referencia.
+ */
+export async function excluirUsuario(idUsuario) {
+  const { data } = await api.delete(`/usuarios/${idUsuario}`);
+  return data;
+}

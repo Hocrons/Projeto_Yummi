@@ -1,0 +1,68 @@
+.perfil-perigo {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.perfil-perigo__titulo {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-error);
+  margin: 0 0 10px;
+}
+
+.perfil-perigo__texto {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.perfil-perigo__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.perfil-perigo__botao {
+  border: 1px solid rgba(239, 83, 80, 0.45);
+  background: rgba(239, 83, 80, 0.08);
+  color: #ff8a85;
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.perfil-perigo__botao:hover:not(:disabled) {
+  background: rgba(239, 83, 80, 0.16);
+  border-color: rgba(239, 83, 80, 0.7);
+}
+
+.perfil-perigo__botao:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.perfil-perigo__cancelar {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.perfil-perigo__cancelar:hover:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--color-text-faint);
+}
+

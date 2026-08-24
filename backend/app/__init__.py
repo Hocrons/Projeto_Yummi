@@ -12,7 +12,13 @@ from sqlalchemy.exc import IntegrityError
 from app.config import Config
 from app.docs import init_swagger
 from app.extensions import db
-from app.utils.errors import ErroDeConflito, ErroDeValidacao, NaoEncontrado
+from app.utils.errors import (
+    ContaIndisponivel,
+    ErroDeAutenticacao,
+    ErroDeConflito,
+    ErroDeValidacao,
+    NaoEncontrado,
+)
 from flask_cors import CORS
 
 
@@ -25,9 +31,11 @@ def create_app(config_class=Config):
     # Importado aqui (e nao no topo) para registrar as tabelas no metadata
     # somente depois que o db existe.
     from app import models  # noqa: F401
+    from app.routes.auth_routes import auth_bp
     from app.routes.usuario_routes import usuario_bp
 
     app.register_blueprint(usuario_bp)
+    app.register_blueprint(auth_bp)
 
     init_swagger(app)
     _registrar_logs(app)
@@ -81,6 +89,20 @@ def _registrar_tratadores_de_erro(app):
     @app.errorhandler(NaoEncontrado)
     def _nao_encontrado(erro):
         return jsonify({"erro": {"mensagem": str(erro)}}), 404
+
+    @app.errorhandler(ErroDeAutenticacao)
+    def _autenticacao(erro):
+        # Nao registra qual e-mail tentou entrar: RNF04 mantem dado pessoal
+        # fora do log.
+        app.logger.info("Tentativa de login com credencial invalida.")
+        return jsonify({"erro": {"mensagem": erro.mensagem}}), 401
+
+    @app.errorhandler(ContaIndisponivel)
+    def _conta_indisponivel(erro):
+        app.logger.info("Login barrado: conta %s.", erro.status_conta)
+        return jsonify({
+            "erro": {"mensagem": erro.mensagem, "status_conta": erro.status_conta}
+        }), 403
 
     @app.errorhandler(IntegrityError)
     def _integridade(erro):

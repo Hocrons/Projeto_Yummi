@@ -14,6 +14,7 @@ ROTAS_ESPERADAS = {
     ("/api/usuarios/{id_usuario}", "patch"),
     ("/api/usuarios/{id_usuario}/status", "patch"),
     ("/api/usuarios/{id_usuario}", "delete"),
+    ("/api/auth/login", "post"),
     ("/api/saude", "get"),
 }
 
