@@ -105,9 +105,18 @@ export default function Cadastro() {
 
     setEnviando(true);
     try {
-      await cadastrarUsuario(form);
+      const { usuario, codigoEnviado } = await cadastrarUsuario(form);
       setSucesso(true);
-      setTimeout(() => navigate("/login"), 1800);
+      // Leva o id e o e-mail adiante: a tela de verificação precisa dos dois
+      // para validar o código e para dizer para onde ele foi.
+      setTimeout(
+        () =>
+          navigate("/verificacao", {
+            replace: true,
+            state: { idUsuario: usuario.id_usuario, email: usuario.email, codigoEnviado },
+          }),
+        1500,
+      );
     } catch (err) {
       const { campo, mensagem } = extrairErroApi(err);
       setErroApi(mensagem);
@@ -124,8 +133,7 @@ export default function Cadastro() {
       <AlertBanner>{erroApi}</AlertBanner>
       {sucesso ? (
         <AlertBanner tone="success">
-          Conta criada! Falta confirmar o código enviado para validar seu contato. Redirecionando
-          para o login...
+          Conta criada! Enviamos um código de verificação para o seu e-mail.
         </AlertBanner>
       ) : null}
 

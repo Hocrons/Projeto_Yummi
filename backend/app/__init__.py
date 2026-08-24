@@ -32,10 +32,12 @@ def create_app(config_class=Config):
     # somente depois que o db existe.
     from app import models  # noqa: F401
     from app.routes.auth_routes import auth_bp
+    from app.routes.otp_routes import otp_bp
     from app.routes.usuario_routes import usuario_bp
 
     app.register_blueprint(usuario_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(otp_bp)
 
     init_swagger(app)
     _registrar_logs(app)

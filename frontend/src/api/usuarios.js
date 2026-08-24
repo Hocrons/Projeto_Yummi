@@ -19,7 +19,12 @@ export async function cadastrarUsuario({
   if (celular) payload.celular = celular.replace(/\D/g, "");
 
   const { data } = await api.post("/usuarios", payload);
-  return data.dados;
+  // `codigoEnviado` vem false quando o back-end não tem SMTP configurado —
+  // o código existe, mas saiu no log em vez do e-mail.
+  return {
+    usuario: data.dados,
+    codigoEnviado: Boolean(data.verificacao?.codigo_enviado),
+  };
 }
 
 export async function buscarUsuario(idUsuario) {

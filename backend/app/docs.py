@@ -59,6 +59,10 @@ TEMPLATE = {
             "name": "Usuarios",
             "description": "Cadastro, consulta, atualizacao e exclusao de usuarios.",
         },
+        {
+            "name": "Verificacao",
+            "description": "Envio e validacao do codigo de 6 digitos por e-mail.",
+        },
         {"name": "Servico", "description": "Sondas de saude da API."},
     ],
     "components": {

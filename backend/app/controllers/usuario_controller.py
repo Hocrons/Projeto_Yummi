@@ -5,9 +5,9 @@ negocio nem SQL: so le a requisicao, delega e monta a resposta JSON.
 
 O YAML depois do `---` em cada docstring alimenta o Swagger UI em /apidocs.
 """
-from flask import jsonify, request
+from flask import current_app, jsonify, request
 
-from app.services import usuario_service
+from app.services import otp_service, usuario_service
 
 
 def _corpo_json():
@@ -117,7 +117,21 @@ def criar():
             example: {erro: {campo: cpf, mensagem: Ja existe um usuario cadastrado com este cpf.}}
     """
     usuario = usuario_service.criar_usuario(_corpo_json())
-    return jsonify({"dados": usuario.to_dict()}), 201
+
+    # O controller orquestra os dois servicos do caso de uso: cadastrar e
+    # disparar a verificacao. Falha no envio nao desfaz o cadastro - a conta
+    # existe, e o usuario pode pedir um reenvio.
+    enviado = False
+    if usuario.email:
+        try:
+            _, enviado = otp_service.enviar_codigo(usuario.id_usuario, "cadastro")
+        except Exception:
+            current_app.logger.exception("Cadastro criado, mas o codigo nao saiu.")
+
+    return jsonify({
+        "dados": usuario.to_dict(),
+        "verificacao": {"codigo_enviado": enviado},
+    }), 201
 
 
 def listar():

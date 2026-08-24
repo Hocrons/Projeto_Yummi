@@ -40,3 +40,24 @@ CREATE TABLE `USUARIO` (
 	CONSTRAINT `uk_USUARIO_cpf` UNIQUE (cpf)
 )CHARSET=utf8mb4 ENGINE=InnoDB;
 
+
+-- ---------------------------------------------- CODIGO_OTP
+CREATE TABLE `CODIGO_OTP` (
+	id_otp INTEGER NOT NULL AUTO_INCREMENT, 
+	id_usuario INTEGER NOT NULL, 
+	codigo CHAR(6) NOT NULL, 
+	canal VARCHAR(20) NOT NULL, 
+	finalidade VARCHAR(20) NOT NULL, 
+	criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, 
+	expira_em DATETIME NOT NULL, 
+	tentativas INTEGER NOT NULL DEFAULT 0, 
+	validado BOOL NOT NULL DEFAULT 0, 
+	CONSTRAINT `pk_CODIGO_OTP` PRIMARY KEY (id_otp), 
+	CONSTRAINT `ck_CODIGO_OTP_canal` CHECK (canal IN ('whatsapp','sms','email')), 
+	CONSTRAINT `ck_CODIGO_OTP_finalidade` CHECK (finalidade IN ('cadastro','login')), 
+	CONSTRAINT `ck_CODIGO_OTP_codigo` CHECK (LENGTH(codigo) = 6), 
+	CONSTRAINT `ck_CODIGO_OTP_tentativas` CHECK (tentativas BETWEEN 0 AND 5), 
+	CONSTRAINT `fk_CODIGO_OTP_id_usuario` FOREIGN KEY(id_usuario) REFERENCES `USUARIO` (id_usuario)
+)CHARSET=utf8mb4 ENGINE=InnoDB;
+
+CREATE INDEX `ix_CODIGO_OTP_id_usuario` ON `CODIGO_OTP` (id_usuario);

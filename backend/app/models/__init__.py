@@ -1,4 +1,5 @@
 """Camada de Model. Importar aqui registra as tabelas no metadata do SQLAlchemy."""
+from app.models.codigo_otp import CodigoOtp
 from app.models.usuario import Usuario
 
-__all__ = ["Usuario"]
+__all__ = ["Usuario", "CodigoOtp"]
