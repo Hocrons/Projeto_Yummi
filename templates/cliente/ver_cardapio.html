@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ restaurante.nome_fantasia }} - Cardápio{% endblock %}
+{% block content %}
+<section class="cabecalho-restaurante">
+    <h1>{{ restaurante.nome_fantasia }}</h1>
+    <p class="muted">{{ restaurante.categoria or 'Diversos' }} · {{ restaurante.bairro }}, {{ restaurante.cidade }}</p>
+    <p class="muted">Taxa de entrega: R$ {{ '%.2f' % restaurante.taxa_entrega }} · {{ restaurante.horario_funcionamento or '' }}</p>
+</section>
+
+<section class="grid-produtos">
+    {% if produtos %}
+        {% for p in produtos %}
+        <div class="card-produto" data-id="{{ p.id }}">
+            <div class="card-produto__info">
+                <h3>{{ p.nome }}</h3>
+                <p class="muted">{{ p.descricao or '' }}</p>
+                <p class="preco">R$ {{ '%.2f' % p.preco }}</p>
+            </div>
+            <button class="btn btn--primary btn-adicionar"
+                    data-id="{{ p.id }}"
+                    data-nome="{{ p.nome }}">
+                Adicionar
+            </button>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="muted">Este restaurante ainda não cadastrou produtos.</p>
+    {% endif %}
+</section>
+
+<div id="toast" class="toast" hidden></div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/carrinho.js') }}"></script>
+{% endblock %}

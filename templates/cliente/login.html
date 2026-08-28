@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Login - Cliente{% endblock %}
+{% block content %}
+<div class="form-card">
+    <h2>Entrar como cliente</h2>
+    <form method="post">
+        <label>E-mail
+            <input type="email" name="email" required>
+        </label>
+        <label>Senha
+            <input type="password" name="senha" required>
+        </label>
+        <button type="submit" class="btn btn--primary btn--full">Entrar</button>
+    </form>
+    <p class="muted">Não tem conta? <a href="{{ url_for('auth.cadastrar_cliente') }}">Cadastre-se</a></p>
+    <p class="muted">
+        É um restaurante? <a href="{{ url_for('auth.login_restaurante') }}">Entrar aqui</a> ·
+        É entregador? <a href="{{ url_for('auth.login_entregador') }}">Entrar aqui</a>
+    </p>
+</div>
+{% endblock %}

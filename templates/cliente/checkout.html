@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Checkout{% endblock %}
+{% block content %}
+<h2>Finalizar pedido</h2>
+<p class="muted">Restaurante: <strong>{{ restaurante.nome_fantasia }}</strong></p>
+
+<div class="checkout-grid">
+    <form method="post" class="form-card">
+        <h3>Endereço de entrega</h3>
+        {% if enderecos %}
+            {% for e in enderecos %}
+                <label class="radio-linha">
+                    <input type="radio" name="id_endereco" value="{{ e.id }}" required>
+                    {{ e.rua }}, {{ e.numero }} - {{ e.bairro }}, {{ e.cidade }} ({{ e.cep }})
+                </label>
+            {% endfor %}
+        {% else %}
+            <p class="muted">Você ainda não tem endereço cadastrado.</p>
+        {% endif %}
+
+        <details style="margin: 12px 0;">
+            <summary>+ Adicionar novo endereço</summary>
+            <div class="mini-form">
+                <label>Rua <input type="text" name="rua" form="form-endereco"></label>
+                <label>Número <input type="text" name="numero" form="form-endereco"></label>
+                <label>Bairro <input type="text" name="bairro" form="form-endereco"></label>
+                <label>Cidade <input type="text" name="cidade" form="form-endereco"></label>
+                <label>CEP <input type="text" name="cep" form="form-endereco"></label>
+            </div>
+        </details>
+
+        <h3>Forma de pagamento</h3>
+        <label class="radio-linha"><input type="radio" name="forma_pagamento" value="cartao" checked> Cartão</label>
+        <label class="radio-linha"><input type="radio" name="forma_pagamento" value="pix"> Pix</label>
+        <label class="radio-linha"><input type="radio" name="forma_pagamento" value="dinheiro"> Dinheiro</label>
+
+        <button type="submit" class="btn btn--primary btn--full" style="margin-top:16px;">
+            Confirmar pedido - R$ {{ '%.2f' % totais.total }}
+        </button>
+    </form>
+
+    <aside class="resumo-pedido">
+        <h3>Resumo</h3>
+        {% for id_produto, item in carrinho.itens.items() %}
+            <div class="linha-resumo">
+                <span>{{ item.quantidade }}x {{ item.nome }}</span>
+                <span>R$ {{ '%.2f' % (item.preco * item.quantidade) }}</span>
+            </div>
+        {% endfor %}
+        <hr>
+        <div class="linha-resumo linha-resumo--total">
+            <span>Total</span>
+            <span>R$ {{ '%.2f' % totais.total }}</span>
+        </div>
+    </aside>
+</div>
+
+<!-- form separado para permitir cadastrar endereço sem sair da página de checkout -->
+<form id="form-endereco" method="post" action="{{ url_for('cliente.adicionar_endereco') }}"></form>
+{% endblock %}

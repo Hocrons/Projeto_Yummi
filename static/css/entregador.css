@@ -1,0 +1,5 @@
+/* Estilos específicos do painel do entregador */
+
+.card-pedido {
+    border-left: 4px solid #5b2fb5;
+}

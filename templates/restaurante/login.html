@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Login - Restaurante{% endblock %}
+{% block content %}
+<div class="form-card">
+    <h2>Entrar como restaurante</h2>
+    <form method="post">
+        <label>E-mail
+            <input type="email" name="email" required>
+        </label>
+        <label>Senha
+            <input type="password" name="senha" required>
+        </label>
+        <button type="submit" class="btn btn--primary btn--full">Entrar</button>
+    </form>
+    <p class="muted">Ainda não tem loja no Yummy? <a href="{{ url_for('auth.cadastrar_restaurante') }}">Cadastre seu restaurante</a></p>
+</div>
+{% endblock %}

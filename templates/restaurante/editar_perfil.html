@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Perfil do restaurante{% endblock %}
+{% block content %}
+<div class="form-card form-card--wide">
+    <h2>Perfil do restaurante</h2>
+    <form method="post">
+        <div class="form-grid">
+            <label>Nome do responsável
+                <input type="text" name="nome_responsavel" value="{{ restaurante.nome }}" required>
+            </label>
+            <label>Nome fantasia
+                <input type="text" name="nome_fantasia" value="{{ restaurante.nome_fantasia }}" required>
+            </label>
+            <label>Categoria
+                <input type="text" name="categoria" value="{{ restaurante.categoria or '' }}">
+            </label>
+            <label>Taxa de entrega (R$)
+                <input type="number" step="0.01" name="taxa_entrega" value="{{ restaurante.taxa_entrega }}">
+            </label>
+            <label>Horário de funcionamento
+                <input type="text" name="horario_funcionamento" value="{{ restaurante.horario_funcionamento or '' }}">
+            </label>
+            <label>Telefone
+                <input type="text" name="telefone" value="{{ restaurante.telefone or '' }}">
+            </label>
+        </div>
+
+        <h3>Endereço</h3>
+        <div class="form-grid">
+            <label>Rua <input type="text" name="rua" value="{{ restaurante.rua or '' }}"></label>
+            <label>Número <input type="text" name="numero" value="{{ restaurante.numero or '' }}"></label>
+            <label>Bairro <input type="text" name="bairro" value="{{ restaurante.bairro or '' }}"></label>
+            <label>Cidade <input type="text" name="cidade" value="{{ restaurante.cidade or '' }}"></label>
+            <label>CEP <input type="text" name="cep" value="{{ restaurante.cep or '' }}"></label>
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--full">Salvar alterações</button>
+    </form>
+</div>
+{% endblock %}

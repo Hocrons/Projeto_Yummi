@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Pedido confirmado{% endblock %}
+{% block content %}
+<div class="form-card" style="text-align:center;">
+    <h2>🎉 Pedido #{{ pedido.id }} confirmado!</h2>
+    <p class="muted">{{ pedido.nome_fantasia }}</p>
+    <p>Status atual: <strong id="status-pedido" data-id="{{ pedido.id }}">{{ pedido.status }}</strong></p>
+    <p>Total: R$ {{ '%.2f' % pedido.valor_total }}</p>
+
+    <ul style="text-align:left; max-width:320px; margin: 16px auto;">
+        {% for item in pedido.itens %}
+            <li>{{ item.quantidade }}x {{ item.nome_produto }}</li>
+        {% endfor %}
+    </ul>
+
+    <a href="{{ url_for('cliente.meus_pedidos') }}" class="btn btn--primary">Ver meus pedidos</a>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/status_pedido.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Meus pedidos{% endblock %}
+{% block content %}
+<h2>Meus pedidos</h2>
+
+{% if pedidos %}
+    <div class="lista-pedidos">
+        {% for p in pedidos %}
+        <div class="card-pedido">
+            <div>
+                <strong>#{{ p.id }} - {{ p.nome_fantasia }}</strong>
+                <p class="muted">{{ p.data_hora }}</p>
+            </div>
+            <div>
+                <span class="status-badge status-badge--{{ p.status }}">{{ p.status }}</span>
+                <p>R$ {{ '%.2f' % p.valor_total }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="muted">Você ainda não fez nenhum pedido. <a href="{{ url_for('home.index') }}">Pedir agora</a></p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Meu carrinho{% endblock %}
+{% block content %}
+<h2>Meu carrinho</h2>
+
+{% if restaurante %}
+    <p class="muted">Pedido de: <strong>{{ restaurante.nome_fantasia }}</strong></p>
+{% endif %}
+
+<div id="itens-carrinho">
+    {% if carrinho.itens %}
+        {% for id_produto, item in carrinho.itens.items() %}
+        <div class="linha-carrinho" data-id="{{ id_produto }}">
+            <span class="linha-carrinho__nome">{{ item.nome }}</span>
+            <div class="linha-carrinho__qtd">
+                <button class="btn-qtd" data-id="{{ id_produto }}" data-delta="-1">-</button>
+                <span class="qtd-valor">{{ item.quantidade }}</span>
+                <button class="btn-qtd" data-id="{{ id_produto }}" data-delta="1">+</button>
+            </div>
+            <span class="linha-carrinho__preco">R$ {{ '%.2f' % (item.preco * item.quantidade) }}</span>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="muted">Seu carrinho está vazio. <a href="{{ url_for('home.index') }}">Ver restaurantes</a></p>
+    {% endif %}
+</div>
+
+{% if carrinho.itens %}
+<div class="resumo-carrinho">
+    <p>Subtotal: <strong id="total-carrinho">R$ {{ '%.2f' % totais.total }}</strong></p>
+    <a href="{{ url_for('cliente.checkout') }}" class="btn btn--primary btn--full">Ir para o checkout</a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/carrinho.js') }}"></script>
+{% endblock %}

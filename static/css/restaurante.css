@@ -1,0 +1,9 @@
+/* Estilos específicos do painel do restaurante (pedidos, cardápio, CRUD) */
+
+.card-pedido--restaurante {
+    border-left: 4px solid var(--cor-primaria);
+}
+
+.tabela tr:hover {
+    background: #fafafa;
+}

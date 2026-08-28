@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Login - Entregador{% endblock %}
+{% block content %}
+<div class="form-card">
+    <h2>Entrar como entregador</h2>
+    <form method="post">
+        <label>E-mail
+            <input type="email" name="email" required>
+        </label>
+        <label>Senha
+            <input type="password" name="senha" required>
+        </label>
+        <button type="submit" class="btn btn--primary btn--full">Entrar</button>
+    </form>
+    <p class="muted">Ainda não é entregador parceiro? <a href="{{ url_for('auth.cadastrar_entregador') }}">Cadastre-se</a></p>
+</div>
+{% endblock %}

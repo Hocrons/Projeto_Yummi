@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Meu perfil{% endblock %}
+{% block content %}
+<div class="form-card">
+    <h2>Meu perfil</h2>
+    <form method="post">
+        <label>Nome
+            <input type="text" name="nome" value="{{ cliente.nome }}" required>
+        </label>
+        <label>Apelido
+            <input type="text" name="apelido" value="{{ cliente.apelido or '' }}">
+        </label>
+        <label>Telefone
+            <input type="text" name="telefone" value="{{ cliente.telefone or '' }}">
+        </label>
+        <label>E-mail
+            <input type="email" value="{{ cliente.email }}" disabled>
+        </label>
+        <button type="submit" class="btn btn--primary btn--full">Salvar alterações</button>
+    </form>
+</div>
+
+<div class="form-card">
+    <h3>Meus endereços</h3>
+    {% for e in enderecos %}
+        <div class="linha-endereco">
+            <span>{{ e.rua }}, {{ e.numero }} - {{ e.bairro }}, {{ e.cidade }}</span>
+        </div>
+    {% else %}
+        <p class="muted">Nenhum endereço cadastrado ainda (adicione um no checkout).</p>
+    {% endfor %}
+</div>
+{% endblock %}

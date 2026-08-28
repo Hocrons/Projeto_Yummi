@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Cadastro - Cliente{% endblock %}
+{% block content %}
+<div class="form-card">
+    <h2>Criar conta de cliente</h2>
+    <form method="post">
+        <label>Nome completo
+            <input type="text" name="nome" required>
+        </label>
+        <label>Apelido (como quer ser chamado)
+            <input type="text" name="apelido">
+        </label>
+        <label>CPF (somente números)
+            <input type="text" name="cpf" maxlength="11" pattern="\d{11}" required>
+        </label>
+        <label>E-mail
+            <input type="email" name="email" required>
+        </label>
+        <label>Telefone
+            <input type="text" name="telefone">
+        </label>
+        <label>Senha
+            <input type="password" name="senha" minlength="6" required>
+        </label>
+        <button type="submit" class="btn btn--primary btn--full">Cadastrar</button>
+    </form>
+    <p class="muted">Já tem conta? <a href="{{ url_for('auth.login_cliente') }}">Entrar</a></p>
+</div>
+{% endblock %}

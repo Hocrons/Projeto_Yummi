@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Cadastro - Entregador{% endblock %}
+{% block content %}
+<div class="form-card">
+    <h2>Cadastrar como entregador</h2>
+    <form method="post">
+        <label>Nome completo
+            <input type="text" name="nome" required>
+        </label>
+        <label>CPF (somente números)
+            <input type="text" name="cpf" maxlength="11" pattern="\d{11}" required>
+        </label>
+        <label>Veículo
+            <input type="text" name="veiculo" placeholder="Ex: Moto, Bicicleta, Carro">
+        </label>
+        <label>Placa
+            <input type="text" name="placa">
+        </label>
+        <label>E-mail
+            <input type="email" name="email" required>
+        </label>
+        <label>Telefone
+            <input type="text" name="telefone">
+        </label>
+        <label>Senha
+            <input type="password" name="senha" minlength="6" required>
+        </label>
+        <button type="submit" class="btn btn--primary btn--full">Cadastrar</button>
+    </form>
+    <p class="muted">Já tem conta? <a href="{{ url_for('auth.login_entregador') }}">Entrar</a></p>
+</div>
+{% endblock %}

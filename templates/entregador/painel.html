@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Painel do entregador{% endblock %}
+{% block content %}
+<div class="cabecalho-lista">
+    <h2>Olá, {{ entregador.nome }}</h2>
+    <form method="post" action="{{ url_for('entregador.alternar_disponibilidade') }}">
+        <button type="submit" class="btn {{ 'btn--primary' if not entregador.disponivel else 'btn--secundario' }}">
+            {{ 'Ficar disponível' if not entregador.disponivel else 'Ficar indisponível' }}
+        </button>
+    </form>
+</div>
+<p class="muted">
+    Status: <strong>{{ 'Disponível para entregas' if entregador.disponivel else 'Indisponível' }}</strong>
+</p>
+
+<h3>Pedidos prontos para retirada</h3>
+{% if disponiveis %}
+    <div class="lista-pedidos">
+        {% for p in disponiveis %}
+        <div class="card-pedido">
+            <div>
+                <strong>#{{ p.id }} - {{ p.nome_fantasia }}</strong>
+                <p class="muted">Retirar em: {{ p.rua_restaurante }}, {{ p.bairro_restaurante }}</p>
+                <p class="muted">Entregar em: {{ p.rua_entrega or '-' }}, {{ p.bairro_entrega or '' }}</p>
+            </div>
+            <form method="post" action="{{ url_for('entregador.aceitar_pedido', id_pedido=p.id) }}">
+                <button type="submit" class="btn btn--primary">Aceitar entrega</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="muted">Nenhum pedido pronto para retirada no momento.</p>
+{% endif %}
+
+<h3>Minhas entregas</h3>
+{% if minhas_entregas %}
+    <div class="lista-pedidos">
+        {% for p in minhas_entregas %}
+        <div class="card-pedido">
+            <div>
+                <strong>#{{ p.id }} - {{ p.nome_fantasia }}</strong>
+                <span class="status-badge status-badge--{{ p.status }}">{{ p.status }}</span>
+            </div>
+            {% if p.status == 'saiu_entrega' %}
+            <form method="post" action="{{ url_for('entregador.marcar_entregue', id_pedido=p.id) }}">
+                <button type="submit" class="btn btn--secundario">Marcar como entregue</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="muted">Você ainda não fez nenhuma entrega.</p>
+{% endif %}
+{% endblock %}

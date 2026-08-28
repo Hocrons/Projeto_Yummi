@@ -1,0 +1,22 @@
+/* Pequenos ajustes de estilo carregados em todas as páginas,
+   separados do global.css para facilitar customizações rápidas. */
+
+.hero h1 {
+    font-size: 28px;
+    margin-bottom: 4px;
+}
+
+.card-restaurante {
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+.card-restaurante:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+
+.card-produto {
+    transition: box-shadow .15s ease;
+}
+.card-produto:hover {
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}

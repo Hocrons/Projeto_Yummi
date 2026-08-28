@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Painel do restaurante{% endblock %}
+{% block content %}
+<h2>Pedidos recebidos</h2>
+
+<div class="categorias">
+    <a href="{{ url_for('restaurante.painel') }}" class="chip {{ 'chip--ativo' if not status_filtro }}">Todos</a>
+    {% for s in ['pendente', 'preparando', 'pronto', 'saiu_entrega', 'entregue', 'cancelado'] %}
+        <a href="{{ url_for('restaurante.painel', status=s) }}"
+           class="chip {{ 'chip--ativo' if status_filtro == s }}">{{ s }}</a>
+    {% endfor %}
+</div>
+
+{% if pedidos %}
+<div class="lista-pedidos">
+    {% for p in pedidos %}
+    <div class="card-pedido card-pedido--restaurante">
+        <div>
+            <strong>#{{ p.id }} - {{ p.nome_cliente }}</strong>
+            <p class="muted">{{ p.data_hora }}</p>
+            <span class="status-badge status-badge--{{ p.status }}">{{ p.status }}</span>
+        </div>
+        <div>
+            <p>R$ {{ '%.2f' % p.valor_total }}</p>
+            {% if p.status in ['pendente', 'preparando'] %}
+            <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}">
+                {% if p.status == 'pendente' %}
+                    <input type="hidden" name="status" value="preparando">
+                    <button class="btn btn--secundario">Aceitar / Preparar</button>
+                {% elif p.status == 'preparando' %}
+                    <input type="hidden" name="status" value="pronto">
+                    <button class="btn btn--secundario">Marcar como pronto</button>
+                {% endif %}
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+    <p class="muted">Nenhum pedido por aqui ainda.</p>
+{% endif %}
+{% endblock %}

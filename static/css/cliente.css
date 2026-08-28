@@ -1,0 +1,18 @@
+/* Estilos específicos das páginas de cliente (cardápio, carrinho, checkout) */
+
+.cabecalho-restaurante {
+    background: white;
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.btn-adicionar {
+    align-self: flex-start;
+}
+
+.resumo-pedido {
+    position: sticky;
+    top: 80px;
+}

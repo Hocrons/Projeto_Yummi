@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Yummy - Peça já!{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>O que você quer comer hoje?</h1>
+    <form class="hero__busca" method="get" action="{{ url_for('home.index') }}">
+        <input type="text" name="busca" placeholder="Buscar restaurante..." value="{{ busca }}">
+        <button type="submit" class="btn btn--primary">Buscar</button>
+    </form>
+
+    <div class="categorias">
+        <a href="{{ url_for('home.index') }}"
+           class="chip {{ 'chip--ativo' if not categoria_selecionada }}">Todas</a>
+        {% for cat in categorias %}
+            <a href="{{ url_for('home.index', categoria=cat) }}"
+               class="chip {{ 'chip--ativo' if categoria_selecionada == cat }}">{{ cat }}</a>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="lista-restaurantes">
+    {% if restaurantes %}
+        <div class="grid">
+            {% for r in restaurantes %}
+                <a href="{{ url_for('cliente.ver_cardapio', id_restaurante=r.id) }}" class="card-restaurante">
+                    <div class="card-restaurante__banner">{{ r.nome_fantasia[:1] }}</div>
+                    <div class="card-restaurante__info">
+                        <h3>{{ r.nome_fantasia }}</h3>
+                        <p class="muted">{{ r.categoria or 'Diversos' }} · {{ r.bairro or '' }}</p>
+                        <p class="muted">Taxa de entrega: R$ {{ '%.2f' % r.taxa_entrega }}</p>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="muted" style="text-align:center; padding: 40px 0;">
+            Nenhum restaurante encontrado. Que tal <a href="{{ url_for('auth.cadastrar_restaurante') }}">cadastrar o seu</a>?
+        </p>
+    {% endif %}
+</section>
+{% endblock %}

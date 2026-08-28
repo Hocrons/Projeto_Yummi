@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Novo produto{% endblock %}
+{% block content %}
+<div class="form-card">
+    <h2>Novo produto</h2>
+    <form method="post">
+        <label>Nome
+            <input type="text" name="nome" required>
+        </label>
+        <label>Descrição
+            <textarea name="descricao" rows="3"></textarea>
+        </label>
+        <label>Preço (R$)
+            <input type="number" step="0.01" min="0" name="preco" required>
+        </label>
+        <label class="checkbox-linha">
+            <input type="checkbox" name="disponivel" checked> Disponível no cardápio
+        </label>
+        <button type="submit" class="btn btn--primary btn--full">Salvar produto</button>
+    </form>
+</div>
+{% endblock %}
