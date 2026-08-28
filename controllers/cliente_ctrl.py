@@ -8,8 +8,7 @@ cliente_bp = Blueprint("cliente", __name__, url_prefix="/cliente")
 def _carrinho():
     """Garante que o carrinho existe na sessão e auto-repara a estrutura se estiver corrompida."""
     carrinho = session.get("carrinho")
-    
-    # Valida se é um dicionário e se contém as chaves 'itens' e 'id_restaurante'
+
     if not isinstance(carrinho, dict) or "itens" not in carrinho or "id_restaurante" not in carrinho:
         session["carrinho"] = {"id_restaurante": None, "itens": {}}
         session.modified = True
@@ -42,16 +41,18 @@ def ver_cardapio(id_restaurante):
 
 # ---------------------------------------------------------
 # CARRINHO
+# (a regra de "só um restaurante por carrinho" é aplicada aqui E de novo
+#  no models.criar_pedido_completo, como segunda camada de proteção)
 # ---------------------------------------------------------
 @cliente_bp.route("/carrinho")
 @login_requerido("cliente")
 def ver_carrinho():
     carrinho = _carrinho()
     restaurante = None
-    
+
     if carrinho.get("id_restaurante"):
         restaurante = models.buscar_restaurante(carrinho["id_restaurante"])
-    
+
     if not restaurante:
         restaurante = {"nome_fantasia": "Nenhum restaurante selecionado"}
 
@@ -78,7 +79,7 @@ def adicionar_ao_carrinho():
 
     carrinho = _carrinho()
 
-    # Regra iFood: impede adicionar itens de restaurantes diferentes
+    # Regra iFood: impede adicionar itens de restaurantes diferentes no mesmo carrinho
     if carrinho.get("itens") and carrinho.get("id_restaurante") != produto["id_restaurante"]:
         return jsonify({
             "erro": "Seu carrinho já tem itens de outro restaurante.",
@@ -87,7 +88,7 @@ def adicionar_ao_carrinho():
 
     carrinho["id_restaurante"] = produto["id_restaurante"]
     pid = str(produto["id"])
-    
+
     if pid in carrinho["itens"]:
         carrinho["itens"][pid]["quantidade"] += 1
     else:
@@ -96,7 +97,7 @@ def adicionar_ao_carrinho():
             "preco": float(produto["preco"]),
             "quantidade": 1,
         }
-        
+
     session.modified = True
     return jsonify({"ok": True, "carrinho": carrinho, "totais": _carrinho_totais(carrinho)})
 
@@ -131,7 +132,7 @@ def atualizar_carrinho():
 
 
 # ---------------------------------------------------------
-# ENDEREÇO
+# ENDEREÇO - CRUD completo, usado tanto no perfil quanto no checkout
 # ---------------------------------------------------------
 @cliente_bp.route("/endereco/adicionar", methods=["POST"])
 @login_requerido("cliente")
@@ -145,7 +146,46 @@ def adicionar_endereco():
         cep=request.form.get("cep"),
     )
     flash("Endereço adicionado.", "sucesso")
+
+    # 'origem' define para onde voltar depois de salvar (perfil ou checkout)
+    if request.form.get("origem") == "perfil":
+        return redirect(url_for("cliente.editar_perfil"))
     return redirect(url_for("cliente.ver_carrinho"))
+
+
+@cliente_bp.route("/endereco/<int:id_endereco>/editar", methods=["GET", "POST"])
+@login_requerido("cliente")
+def editar_endereco(id_endereco):
+    endereco = models.buscar_endereco(id_endereco)
+    if not endereco or endereco["id_cliente"] != session["user_id"]:
+        flash("Endereço não encontrado.", "erro")
+        return redirect(url_for("cliente.editar_perfil"))
+
+    if request.method == "POST":
+        models.atualizar_endereco(
+            id_endereco,
+            id_cliente=session["user_id"],
+            rua=request.form["rua"],
+            numero=request.form.get("numero"),
+            bairro=request.form.get("bairro"),
+            cidade=request.form.get("cidade"),
+            cep=request.form.get("cep"),
+        )
+        flash("Endereço atualizado.", "sucesso")
+        return redirect(url_for("cliente.editar_perfil"))
+
+    return render_template("cliente/editar_endereco.html", endereco=endereco)
+
+
+@cliente_bp.route("/endereco/<int:id_endereco>/excluir", methods=["POST"])
+@login_requerido("cliente")
+def excluir_endereco(id_endereco):
+    sucesso = models.deletar_endereco(id_endereco, session["user_id"])
+    if sucesso:
+        flash("Endereço removido.", "sucesso")
+    else:
+        flash("Não foi possível remover esse endereço.", "erro")
+    return redirect(url_for("cliente.editar_perfil"))
 
 
 # ---------------------------------------------------------
@@ -164,13 +204,19 @@ def checkout():
             {"id_produto": int(pid), "quantidade": item["quantidade"], "preco_unitario": item["preco"]}
             for pid, item in carrinho["itens"].items()
         ]
-        id_pedido = models.criar_pedido_completo(
-            id_cliente=session["user_id"],
-            id_restaurante=carrinho["id_restaurante"],
-            id_endereco=request.form.get("id_endereco") or None,
-            itens=itens,
-            forma_pagamento=request.form["forma_pagamento"],
-        )
+        try:
+            id_pedido = models.criar_pedido_completo(
+                id_cliente=session["user_id"],
+                id_restaurante=carrinho["id_restaurante"],
+                id_endereco=request.form.get("id_endereco") or None,
+                itens=itens,
+                forma_pagamento=request.form["forma_pagamento"],
+            )
+        except ValueError as e:
+            # Ex: itens de restaurantes diferentes, produto removido, etc.
+            flash(str(e), "erro")
+            return redirect(url_for("cliente.ver_carrinho"))
+
         session["carrinho"] = {"id_restaurante": None, "itens": {}}
         session.modified = True
         return redirect(url_for("cliente.pedido_sucesso", id_pedido=id_pedido))
@@ -178,7 +224,7 @@ def checkout():
     restaurante = None
     if carrinho.get("id_restaurante"):
         restaurante = models.buscar_restaurante(carrinho["id_restaurante"])
-        
+
     if not restaurante:
         restaurante = {"nome_fantasia": "Nenhum restaurante selecionado"}
 

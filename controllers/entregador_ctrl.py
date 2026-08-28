@@ -31,18 +31,35 @@ def alternar_disponibilidade():
 @entregador_bp.route("/pedido/<int:id_pedido>/aceitar", methods=["POST"])
 @login_requerido("entregador")
 def aceitar_pedido(id_pedido):
+    """Entregador aceita a corrida -> status vai para 'indo_ao_restaurante'."""
     sucesso = models.atribuir_entregador(id_pedido, session["user_id"])
     if sucesso:
-        flash(f"Pedido #{id_pedido} aceito! Bora entregar.", "sucesso")
+        flash(f"Pedido #{id_pedido} aceito! Vá até o restaurante para retirar.", "sucesso")
     else:
-        flash("Esse pedido já foi aceito por outro entregador.", "erro")
+        flash("Esse pedido já foi aceito por outro entregador ou não está mais disponível.", "erro")
+    return redirect(url_for("entregador.painel"))
+
+
+@entregador_bp.route("/pedido/<int:id_pedido>/retirado", methods=["POST"])
+@login_requerido("entregador")
+def marcar_retirado(id_pedido):
+    """Entregador confirma que retirou o pedido no restaurante -> 'saiu_para_entrega'."""
+    sucesso = models.marcar_pedido_retirado(id_pedido, session["user_id"])
+    if sucesso:
+        flash(f"Pedido #{id_pedido} retirado. Bora entregar!", "sucesso")
+    else:
+        flash("Não foi possível atualizar esse pedido.", "erro")
     return redirect(url_for("entregador.painel"))
 
 
 @entregador_bp.route("/pedido/<int:id_pedido>/entregue", methods=["POST"])
 @login_requerido("entregador")
 def marcar_entregue(id_pedido):
-    models.atualizar_status_pedido(id_pedido, "entregue")
-    models.atualizar_status_pagamento(id_pedido, "aprovado")
-    flash(f"Pedido #{id_pedido} marcado como entregue.", "sucesso")
+    """Entregador confirma a entrega -> 'entregue' + pagamento aprovado."""
+    sucesso = models.marcar_pedido_entregue(id_pedido, session["user_id"])
+    if sucesso:
+        models.atualizar_status_pagamento(id_pedido, "aprovado")
+        flash(f"Pedido #{id_pedido} marcado como entregue.", "sucesso")
+    else:
+        flash("Não foi possível concluir esse pedido.", "erro")
     return redirect(url_for("entregador.painel"))

@@ -13,7 +13,7 @@
     Status: <strong>{{ 'Disponível para entregas' if entregador.disponivel else 'Indisponível' }}</strong>
 </p>
 
-<h3>Pedidos prontos para retirada</h3>
+<h3>Pedidos aguardando entregador</h3>
 {% if disponiveis %}
     <div class="lista-pedidos">
         {% for p in disponiveis %}
@@ -24,13 +24,13 @@
                 <p class="muted">Entregar em: {{ p.rua_entrega or '-' }}, {{ p.bairro_entrega or '' }}</p>
             </div>
             <form method="post" action="{{ url_for('entregador.aceitar_pedido', id_pedido=p.id) }}">
-                <button type="submit" class="btn btn--primary">Aceitar entrega</button>
+                <button type="submit" class="btn btn--primary">Aceitar corrida</button>
             </form>
         </div>
         {% endfor %}
     </div>
 {% else %}
-    <p class="muted">Nenhum pedido pronto para retirada no momento.</p>
+    <p class="muted">Nenhum pedido aguardando entregador no momento.</p>
 {% endif %}
 
 <h3>Minhas entregas</h3>
@@ -40,12 +40,22 @@
         <div class="card-pedido">
             <div>
                 <strong>#{{ p.id }} - {{ p.nome_fantasia }}</strong>
-                <span class="status-badge status-badge--{{ p.status }}">{{ p.status }}</span>
+                <span class="status-badge status-badge--{{ p.status }}">{{ p.status.replace('_', ' ') }}</span>
+                {% if p.status == 'indo_ao_restaurante' %}
+                    <p class="muted">Retirar em: {{ p.rua_restaurante }}, {{ p.bairro_restaurante }}</p>
+                {% elif p.status == 'saiu_para_entrega' %}
+                    <p class="muted">Entregar em: {{ p.rua_entrega or '-' }}, {{ p.bairro_entrega or '' }}</p>
+                {% endif %}
             </div>
-            {% if p.status == 'saiu_entrega' %}
-            <form method="post" action="{{ url_for('entregador.marcar_entregue', id_pedido=p.id) }}">
-                <button type="submit" class="btn btn--secundario">Marcar como entregue</button>
-            </form>
+
+            {% if p.status == 'indo_ao_restaurante' %}
+                <form method="post" action="{{ url_for('entregador.marcar_retirado', id_pedido=p.id) }}">
+                    <button type="submit" class="btn btn--secundario">Retirei o pedido</button>
+                </form>
+            {% elif p.status == 'saiu_para_entrega' %}
+                <form method="post" action="{{ url_for('entregador.marcar_entregue', id_pedido=p.id) }}">
+                    <button type="submit" class="btn btn--secundario">Marcar como entregue</button>
+                </form>
             {% endif %}
         </div>
         {% endfor %}

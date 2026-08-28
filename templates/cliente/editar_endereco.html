@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Editar endereço{% endblock %}
+{% block content %}
+<div class="form-card">
+    <h2>Editar endereço</h2>
+    <form method="post">
+        <label>Rua
+            <input type="text" name="rua" value="{{ endereco.rua }}" required>
+        </label>
+        <label>Número
+            <input type="text" name="numero" value="{{ endereco.numero or '' }}">
+        </label>
+        <label>Bairro
+            <input type="text" name="bairro" value="{{ endereco.bairro or '' }}">
+        </label>
+        <label>Cidade
+            <input type="text" name="cidade" value="{{ endereco.cidade or '' }}">
+        </label>
+        <label>CEP
+            <input type="text" name="cep" value="{{ endereco.cep or '' }}">
+        </label>
+        <button type="submit" class="btn btn--primary btn--full">Salvar alterações</button>
+    </form>
+    <p class="muted"><a href="{{ url_for('cliente.editar_perfil') }}">Voltar ao perfil</a></p>
+</div>
+{% endblock %}

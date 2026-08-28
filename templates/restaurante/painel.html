@@ -5,9 +5,9 @@
 
 <div class="categorias">
     <a href="{{ url_for('restaurante.painel') }}" class="chip {{ 'chip--ativo' if not status_filtro }}">Todos</a>
-    {% for s in ['pendente', 'preparando', 'pronto', 'saiu_entrega', 'entregue', 'cancelado'] %}
+    {% for s in ['pendente', 'preparando', 'localizando_entregador', 'indo_ao_restaurante', 'saiu_para_entrega', 'entregue', 'cancelado'] %}
         <a href="{{ url_for('restaurante.painel', status=s) }}"
-           class="chip {{ 'chip--ativo' if status_filtro == s }}">{{ s }}</a>
+           class="chip {{ 'chip--ativo' if status_filtro == s }}">{{ s.replace('_', ' ') }}</a>
     {% endfor %}
 </div>
 
@@ -18,20 +18,45 @@
         <div>
             <strong>#{{ p.id }} - {{ p.nome_cliente }}</strong>
             <p class="muted">{{ p.data_hora }}</p>
-            <span class="status-badge status-badge--{{ p.status }}">{{ p.status }}</span>
+            <span class="status-badge status-badge--{{ p.status }}">{{ p.status.replace('_', ' ') }}</span>
         </div>
-        <div>
+        <div class="acoes-pedido">
             <p>R$ {{ '%.2f' % p.valor_total }}</p>
-            {% if p.status in ['pendente', 'preparando'] %}
-            <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}">
-                {% if p.status == 'pendente' %}
+
+            {% if p.status == 'pendente' %}
+                <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}">
                     <input type="hidden" name="status" value="preparando">
                     <button class="btn btn--secundario">Aceitar / Preparar</button>
-                {% elif p.status == 'preparando' %}
-                    <input type="hidden" name="status" value="pronto">
+                </form>
+                <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}"
+                      onsubmit="return confirm('Cancelar este pedido?');">
+                    <input type="hidden" name="status" value="cancelado">
+                    <button class="btn btn--perigo">Cancelar</button>
+                </form>
+
+            {% elif p.status == 'preparando' %}
+                <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}">
+                    <input type="hidden" name="status" value="localizando_entregador">
                     <button class="btn btn--secundario">Marcar como pronto</button>
-                {% endif %}
-            </form>
+                </form>
+                <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}"
+                      onsubmit="return confirm('Cancelar este pedido?');">
+                    <input type="hidden" name="status" value="cancelado">
+                    <button class="btn btn--perigo">Cancelar</button>
+                </form>
+
+            {% elif p.status == 'localizando_entregador' %}
+                <p class="muted">Aguardando um entregador aceitar...</p>
+
+            {% elif p.status == 'indo_ao_restaurante' %}
+                <p class="muted">Entregador a caminho para retirar.</p>
+                <form method="post" action="{{ url_for('restaurante.trocar_entregador', id_pedido=p.id) }}"
+                      onsubmit="return confirm('Trocar o entregador deste pedido?');">
+                    <button class="btn btn--perigo">Trocar entregador</button>
+                </form>
+
+            {% elif p.status == 'saiu_para_entrega' %}
+                <p class="muted">Pedido a caminho do cliente.</p>
             {% endif %}
         </div>
     </div>

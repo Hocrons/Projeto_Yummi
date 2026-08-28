@@ -4,6 +4,12 @@ from controllers.decorators import login_requerido
 
 restaurante_bp = Blueprint("restaurante", __name__, url_prefix="/restaurante")
 
+# Transições de status permitidas para o restaurante controlar (id_restaurante -> próximo status)
+TRANSICOES_PERMITIDAS = {
+    "pendente": ["preparando", "cancelado"],
+    "preparando": ["localizando_entregador", "cancelado"],
+}
+
 
 # ---------------------------------------------------------
 # PAINEL (pedidos recebidos)
@@ -20,10 +26,35 @@ def painel():
 @login_requerido("restaurante")
 def atualizar_status_pedido(id_pedido):
     novo_status = request.form["status"]
-    permitido = {"pendente", "preparando", "pronto", "cancelado"}
-    if novo_status in permitido:
-        models.atualizar_status_pedido(id_pedido, novo_status)
-        flash(f"Pedido #{id_pedido} atualizado para '{novo_status}'.", "sucesso")
+    pedido = models.buscar_pedido(id_pedido)
+
+    if not pedido or pedido["id_restaurante"] != session["user_id"]:
+        flash("Pedido não encontrado.", "erro")
+        return redirect(url_for("restaurante.painel"))
+
+    permitidos = TRANSICOES_PERMITIDAS.get(pedido["status"], [])
+    if novo_status not in permitidos:
+        flash("Essa mudança de status não é permitida neste momento.", "erro")
+        return redirect(url_for("restaurante.painel"))
+
+    models.atualizar_status_pedido(id_pedido, novo_status, id_restaurante=session["user_id"])
+    flash(f"Pedido #{id_pedido} atualizado para '{novo_status}'.", "sucesso")
+    return redirect(url_for("restaurante.painel"))
+
+
+@restaurante_bp.route("/pedido/<int:id_pedido>/trocar-entregador", methods=["POST"])
+@login_requerido("restaurante")
+def trocar_entregador(id_pedido):
+    """
+    Permite ao restaurante liberar o entregador atual (ex: demorou demais
+    para chegar) e devolver o pedido para a fila de 'localizando_entregador'.
+    Só funciona enquanto o entregador ainda não retirou o pedido.
+    """
+    sucesso = models.liberar_entregador(id_pedido, session["user_id"])
+    if sucesso:
+        flash(f"Pedido #{id_pedido}: buscando um novo entregador.", "sucesso")
+    else:
+        flash("Não é possível trocar o entregador neste momento (ele já pode ter retirado o pedido).", "erro")
     return redirect(url_for("restaurante.painel"))
 
 

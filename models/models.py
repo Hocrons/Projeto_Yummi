@@ -243,12 +243,24 @@ def buscar_endereco(id_endereco):
         return db.cursor.fetchone()
 
 
+def atualizar_endereco(id_endereco, id_cliente, rua, numero, bairro, cidade, cep):
+    """Só atualiza se o endereço pertencer ao cliente logado (id_cliente)."""
+    with DB() as db:
+        db.cursor.execute(
+            """UPDATE endereco SET rua=%s, numero=%s, bairro=%s, cidade=%s, cep=%s
+               WHERE id=%s AND id_cliente=%s""",
+            (rua, numero, bairro, cidade, cep, id_endereco, id_cliente),
+        )
+        return db.cursor.rowcount > 0
+
+
 def deletar_endereco(id_endereco, id_cliente):
     with DB() as db:
         db.cursor.execute(
             "DELETE FROM endereco WHERE id=%s AND id_cliente=%s",
             (id_endereco, id_cliente),
         )
+        return db.cursor.rowcount > 0
 
 
 # =========================================================
@@ -258,10 +270,36 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens, forma_
     """
     itens: lista de dicts [{id_produto, quantidade, preco_unitario}, ...]
     Cria pedido + itens + pagamento numa única transação.
+
+    Validação de segurança: garante que TODOS os produtos pertencem ao
+    mesmo restaurante (id_restaurante) antes de gravar qualquer coisa,
+    mesmo que o carrinho já tenha bloqueado isso na camada de sessão.
+    Isso evita que alguém manipule a requisição e misture pedidos de
+    restaurantes diferentes.
     """
-    valor_total = sum(i["quantidade"] * float(i["preco_unitario"]) for i in itens)
+    if not itens:
+        raise ValueError("O pedido precisa ter pelo menos um item.")
 
     with DB() as db:
+        ids_produto = [i["id_produto"] for i in itens]
+        formato = ",".join(["%s"] * len(ids_produto))
+        db.cursor.execute(
+            f"SELECT id, id_restaurante FROM produto WHERE id IN ({formato})",
+            ids_produto,
+        )
+        produtos_encontrados = db.cursor.fetchall()
+
+        if len(produtos_encontrados) != len(set(ids_produto)):
+            raise ValueError("Um ou mais produtos do pedido não foram encontrados.")
+
+        for p in produtos_encontrados:
+            if p["id_restaurante"] != id_restaurante:
+                raise ValueError(
+                    "Não é possível fazer um pedido com produtos de restaurantes diferentes."
+                )
+
+        valor_total = sum(i["quantidade"] * float(i["preco_unitario"]) for i in itens)
+
         db.cursor.execute(
             """INSERT INTO pedido (id_cliente, id_restaurante, id_endereco, status, valor_total)
                VALUES (%s,%s,%s,'pendente',%s)""",
@@ -335,7 +373,7 @@ def listar_pedidos_restaurante(id_restaurante, status=None):
 
 
 def listar_pedidos_disponiveis_para_entrega():
-    """Pedidos com status 'pronto' e ainda sem entregador."""
+    """Pedidos prontos, aguardando algum entregador aceitar (sem entregador atribuído)."""
     with DB() as db:
         db.cursor.execute(
             """SELECT p.*, r.nome_fantasia, r.rua AS rua_restaurante,
@@ -343,38 +381,97 @@ def listar_pedidos_disponiveis_para_entrega():
                FROM pedido p
                JOIN restaurante r ON r.id_usuario = p.id_restaurante
                LEFT JOIN endereco e ON e.id = p.id_endereco
-               WHERE p.status='pronto' AND p.id_entregador IS NULL
+               WHERE p.status='localizando_entregador' AND p.id_entregador IS NULL
                ORDER BY p.data_hora"""
         )
         return db.cursor.fetchall()
 
 
-def listar_pedidos_entregador(id_entregador):
+def listar_pedidos_entregador(id_entregador, apenas_ativos=False):
+    query = """SELECT p.*, r.nome_fantasia, r.rua AS rua_restaurante, r.bairro AS bairro_restaurante,
+                      e.rua AS rua_entrega, e.bairro AS bairro_entrega
+               FROM pedido p
+               JOIN restaurante r ON r.id_usuario = p.id_restaurante
+               LEFT JOIN endereco e ON e.id = p.id_endereco
+               WHERE p.id_entregador=%s"""
+    params = [id_entregador]
+    if apenas_ativos:
+        query += " AND p.status IN ('indo_ao_restaurante', 'saiu_para_entrega')"
+    query += " ORDER BY p.data_hora DESC"
     with DB() as db:
-        db.cursor.execute(
-            """SELECT p.*, r.nome_fantasia
-               FROM pedido p JOIN restaurante r ON r.id_usuario = p.id_restaurante
-               WHERE p.id_entregador=%s ORDER BY p.data_hora DESC""",
-            (id_entregador,),
-        )
+        db.cursor.execute(query, params)
         return db.cursor.fetchall()
 
 
 def atribuir_entregador(id_pedido, id_entregador):
+    """
+    Entregador aceita a corrida: só funciona se o pedido ainda estiver
+    'localizando_entregador' e sem ninguém atribuído (evita corrida entre
+    dois entregadores aceitando ao mesmo tempo).
+    """
     with DB() as db:
         db.cursor.execute(
-            """UPDATE pedido SET id_entregador=%s, status='saiu_entrega'
-               WHERE id=%s AND id_entregador IS NULL""",
+            """UPDATE pedido SET id_entregador=%s, status='indo_ao_restaurante'
+               WHERE id=%s AND id_entregador IS NULL AND status='localizando_entregador'""",
             (id_entregador, id_pedido),
         )
         return db.cursor.rowcount > 0
 
 
-def atualizar_status_pedido(id_pedido, status):
+def marcar_pedido_retirado(id_pedido, id_entregador):
+    """Entregador confirma que retirou o pedido no restaurante e saiu para entregar."""
     with DB() as db:
         db.cursor.execute(
-            "UPDATE pedido SET status=%s WHERE id=%s", (status, id_pedido)
+            """UPDATE pedido SET status='saiu_para_entrega'
+               WHERE id=%s AND id_entregador=%s AND status='indo_ao_restaurante'""",
+            (id_pedido, id_entregador),
         )
+        return db.cursor.rowcount > 0
+
+
+def marcar_pedido_entregue(id_pedido, id_entregador):
+    """Entregador confirma a entrega. Só permite se a corrida for dele mesmo."""
+    with DB() as db:
+        db.cursor.execute(
+            """UPDATE pedido SET status='entregue'
+               WHERE id=%s AND id_entregador=%s AND status='saiu_para_entrega'""",
+            (id_pedido, id_entregador),
+        )
+        return db.cursor.rowcount > 0
+
+
+def liberar_entregador(id_pedido, id_restaurante):
+    """
+    Restaurante troca de entregador: só é permitido enquanto o entregador
+    ainda está a caminho do restaurante (ainda não retirou o pedido).
+    O pedido volta para a fila de 'localizando_entregador'.
+    """
+    with DB() as db:
+        db.cursor.execute(
+            """UPDATE pedido SET id_entregador=NULL, status='localizando_entregador'
+               WHERE id=%s AND id_restaurante=%s AND status='indo_ao_restaurante'""",
+            (id_pedido, id_restaurante),
+        )
+        return db.cursor.rowcount > 0
+
+
+def atualizar_status_pedido(id_pedido, status, id_restaurante=None):
+    """
+    Atualiza o status do pedido. Quando id_restaurante é informado, só
+    atualiza se o pedido pertencer àquele restaurante (evita um restaurante
+    mexer no pedido de outro).
+    """
+    with DB() as db:
+        if id_restaurante is not None:
+            db.cursor.execute(
+                "UPDATE pedido SET status=%s WHERE id=%s AND id_restaurante=%s",
+                (status, id_pedido, id_restaurante),
+            )
+        else:
+            db.cursor.execute(
+                "UPDATE pedido SET status=%s WHERE id=%s", (status, id_pedido)
+            )
+        return db.cursor.rowcount > 0
 
 
 def atualizar_status_pagamento(id_pedido, status):

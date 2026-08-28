@@ -20,14 +20,39 @@
     </form>
 </div>
 
-<div class="form-card">
-    <h3>Meus endereços</h3>
+<div class="form-card form-card--wide">
+    <div class="cabecalho-lista">
+        <h3>Meus endereços</h3>
+    </div>
+
     {% for e in enderecos %}
         <div class="linha-endereco">
-            <span>{{ e.rua }}, {{ e.numero }} - {{ e.bairro }}, {{ e.cidade }}</span>
+            <span>{{ e.rua }}, {{ e.numero }} - {{ e.bairro }}, {{ e.cidade }} ({{ e.cep }})</span>
+            <div class="acoes">
+                <a href="{{ url_for('cliente.editar_endereco', id_endereco=e.id) }}" class="btn btn--secundario">Editar</a>
+                <form method="post" action="{{ url_for('cliente.excluir_endereco', id_endereco=e.id) }}"
+                      onsubmit="return confirm('Remover este endereço?');" style="display:inline;">
+                    <button type="submit" class="btn btn--perigo">Excluir</button>
+                </form>
+            </div>
         </div>
     {% else %}
-        <p class="muted">Nenhum endereço cadastrado ainda (adicione um no checkout).</p>
+        <p class="muted">Nenhum endereço cadastrado ainda.</p>
     {% endfor %}
+
+    <details style="margin-top: 16px;">
+        <summary>+ Adicionar novo endereço</summary>
+        <form method="post" action="{{ url_for('cliente.adicionar_endereco') }}" class="mini-form" style="margin-top: 12px;">
+            <input type="hidden" name="origem" value="perfil">
+            <div class="form-grid">
+                <label>Rua <input type="text" name="rua" required></label>
+                <label>Número <input type="text" name="numero"></label>
+                <label>Bairro <input type="text" name="bairro"></label>
+                <label>Cidade <input type="text" name="cidade"></label>
+                <label>CEP <input type="text" name="cep"></label>
+            </div>
+            <button type="submit" class="btn btn--primary">Salvar endereço</button>
+        </form>
+    </details>
 </div>
 {% endblock %}

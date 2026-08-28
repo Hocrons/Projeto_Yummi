@@ -1,8 +1,14 @@
-/* Estilos específicos do painel do restaurante (pedidos, cardápio, CRUD) */
-
 .card-pedido--restaurante {
     border-left: 4px solid var(--cor-primaria);
 }
+
+.acoes-pedido {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+.acoes-pedido form { margin: 0; }
 
 .tabela tr:hover {
     background: #fafafa;

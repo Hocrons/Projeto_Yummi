@@ -232,8 +232,9 @@ main.container { flex: 1; padding-top: 24px; padding-bottom: 60px; }
     justify-content: space-between;
     padding: 10px 0;
     border-bottom: 1px solid var(--cor-borda);
+    gap: 12px;
 }
-.linha-carrinho__qtd { display: flex; align-items: center; gap: 8px; }
+.linha-endereco .acoes { display: flex; gap: 8px; flex-shrink: 0; }
 .btn-qtd {
     width: 28px; height: 28px;
     border-radius: 50%;
@@ -282,8 +283,9 @@ main.container { flex: 1; padding-top: 24px; padding-bottom: 60px; }
 }
 .status-badge--pendente { background: #fff4ce; color: #8a6d00; }
 .status-badge--preparando { background: #ffe1c2; color: #a4530a; }
-.status-badge--pronto { background: #d8f0ff; color: #0b5f8a; }
-.status-badge--saiu_entrega { background: #e3d8ff; color: #5b2fb5; }
+.status-badge--localizando_entregador { background: #d8f0ff; color: #0b5f8a; }
+.status-badge--indo_ao_restaurante { background: #e3d8ff; color: #5b2fb5; }
+.status-badge--saiu_para_entrega { background: #d8d8ff; color: #2e2ea6; }
 .status-badge--entregue { background: #e6f4ea; color: var(--cor-sucesso); }
 .status-badge--cancelado { background: #fdecea; color: var(--cor-erro); }
 
