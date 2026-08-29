@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Concluir cadastro{% endblock %}
+{% block content %}
+<div class="form-card">
+    <h2>Só mais um passo!</h2>
+    <p class="muted">
+        Recebemos seus dados do {{ dados.provider.capitalize() }}
+        ({{ dados.email }}). Precisamos só do seu CPF para concluir o cadastro.
+    </p>
+    <form method="post">
+        <label>Nome completo
+            <input type="text" name="nome" value="{{ dados.nome }}" required>
+        </label>
+        <label>Apelido (como quer ser chamado)
+            <input type="text" name="apelido">
+        </label>
+        <label>CPF (somente números)
+            <input type="text" name="cpf" maxlength="11" pattern="\d{11}" required>
+        </label>
+        <label>Telefone
+            <input type="text" name="telefone">
+        </label>
+        <button type="submit" class="btn btn--primary btn--full">Concluir cadastro</button>
+    </form>
+</div>
+{% endblock %}

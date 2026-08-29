@@ -155,6 +155,43 @@ main.container { flex: 1; padding-top: 24px; padding-bottom: 60px; }
 .checkbox-linha, .radio-linha { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .checkbox-linha input, .radio-linha input { width: auto; }
 
+/* ---------- LOGIN SOCIAL ---------- */
+.divisor-social {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: var(--cor-muted);
+    font-size: 13px;
+    margin: 18px 0;
+}
+.divisor-social::before, .divisor-social::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid var(--cor-borda);
+}
+.divisor-social span { padding: 0 10px; }
+
+.botoes-social { display: flex; flex-direction: column; gap: 10px; margin-bottom: 6px; }
+.btn-social {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid var(--cor-borda);
+    background: white;
+    color: var(--cor-texto);
+    cursor: pointer;
+}
+.btn-social svg { width: 18px; height: 18px; flex-shrink: 0; }
+.btn-social--google:hover { background: #f7f7f7; }
+.btn-social--facebook { background: #1877f2; border-color: #1877f2; color: white; }
+.btn-social--facebook:hover { background: #166fe0; }
+
 /* ---------- HERO / HOME ---------- */
 .hero { text-align: center; padding: 20px 0 30px; }
 .hero__busca {

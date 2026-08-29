@@ -2,6 +2,7 @@ import os
 from flask import Flask, session
 from dotenv import load_dotenv
 
+from extensions import oauth
 from controllers.home_ctrl import home_bp
 from controllers.auth_ctrl import auth_bp
 from controllers.cliente_ctrl import cliente_bp
@@ -15,6 +16,9 @@ load_dotenv()
 def create_app():
     app = Flask(__name__)
     app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key-troque-isso")
+
+    # OAuth (login social - Google / Facebook)
+    oauth.init_app(app)
 
     # Blueprints (Controllers)
     app.register_blueprint(home_bp)
