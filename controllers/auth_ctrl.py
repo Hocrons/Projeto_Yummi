@@ -12,6 +12,7 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 # 127.0.0.1 são domínios DIFERENTES para o Google/Facebook).
 BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
 
+
 # ---------------------------------------------------------
 # CLIENTE
 # ---------------------------------------------------------
