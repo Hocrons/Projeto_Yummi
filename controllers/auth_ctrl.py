@@ -1,8 +1,11 @@
 import os
+import time
 import secrets
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from extensions import oauth
 from models import models
+from services import otp, verificacao_email, verificacao_whatsapp_local
+from utils import normalizar_telefone, mascarar_email, mascarar_telefone
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -58,7 +61,8 @@ def login_cliente():
 
 
 # ---------------------------------------------------------
-# LOGIN SOCIAL (Google / Facebook) - apenas para clientes
+# Helper de sessão compartilhado pelo login social e pela entrada
+# unificada (celular/e-mail) - ambos autenticam sempre como "cliente"
 # ---------------------------------------------------------
 def _logar_usuario_cliente(usuario):
     session["user_id"] = usuario["id"]
@@ -67,6 +71,349 @@ def _logar_usuario_cliente(usuario):
     session.setdefault("carrinho", {"id_restaurante": None, "itens": {}})
 
 
+# ---------------------------------------------------------
+# ENTRADA UNIFICADA (estilo iFood): Facebook / Google / Celular / E-mail
+# Login e cadastro se fundem no mesmo funil "passwordless" por celular
+# ou e-mail: quem já tem conta é reconhecido e logado; quem não tem,
+# preenche um mini-cadastro ao final. Google/Facebook continuam com as
+# rotas já existentes (login_google, login_facebook, mais abaixo).
+# ---------------------------------------------------------
+@auth_bp.route("/entrar")
+def entrar():
+    return render_template("cliente/entrar.html")
+
+
+def _fluxo_atual():
+    return session.get("fluxo_entrada")
+
+
+def _codigo_valido(fluxo):
+    if not fluxo or "codigo_esperado" not in fluxo:
+        return False
+    idade = time.time() - fluxo.get("codigo_gerado_em", 0)
+    return idade <= otp.CODIGO_VALIDADE_SEGUNDOS
+
+
+# ----- CELULAR -----
+@auth_bp.route("/celular", methods=["GET", "POST"])
+def entrada_celular():
+    if request.method == "POST":
+        telefone = normalizar_telefone(request.form.get("telefone", ""))
+        if not telefone:
+            flash("Informe um número de celular válido.", "erro")
+            return render_template("cliente/celular.html")
+
+        codigo = otp.gerar_codigo()
+        sucesso, erro = verificacao_whatsapp_local.enviar_codigo(telefone, codigo)
+        if not sucesso:
+            flash(erro, "erro")
+            return render_template("cliente/celular.html")
+
+        session["fluxo_entrada"] = {
+            "metodo": "celular",
+            "telefone": telefone,
+            "codigo_esperado": codigo,
+            "codigo_gerado_em": time.time(),
+        }
+        flash(f"Enviamos um código por WhatsApp para {mascarar_telefone(telefone)}.", "sucesso")
+        return redirect(url_for("auth.entrada_celular_codigo"))
+
+    return render_template("cliente/celular.html")
+
+
+@auth_bp.route("/celular/codigo", methods=["GET", "POST"])
+def entrada_celular_codigo():
+    fluxo = _fluxo_atual()
+    if not fluxo or fluxo.get("metodo") != "celular":
+        flash("Sessão expirada. Informe seu celular novamente.", "erro")
+        return redirect(url_for("auth.entrada_celular"))
+
+    if request.method == "POST":
+        codigo_digitado = (request.form.get("codigo") or "").strip()
+
+        if not _codigo_valido(fluxo):
+            flash("O código expirou. Peça um novo código.", "erro")
+        elif not codigo_digitado or codigo_digitado != fluxo.get("codigo_esperado"):
+            flash("Código inválido. Confira e tente de novo.", "erro")
+        else:
+            usuario = models.buscar_usuario_por_telefone(fluxo["telefone"])
+
+            if usuario and usuario["tipo"] != "cliente":
+                flash(f"Esse celular já está associado a uma conta de {usuario['tipo']}.", "erro")
+                session.pop("fluxo_entrada", None)
+                return redirect(url_for("auth.entrar"))
+
+            if usuario:
+                # Cliente já cadastrado: confirma posse do e-mail antes de logar
+                fluxo["id_usuario_existente"] = usuario["id"]
+                fluxo["email_cadastrado"] = usuario["email"]
+                session["fluxo_entrada"] = fluxo
+                return redirect(url_for("auth.entrada_celular_confirmar_email"))
+
+            # Telefone novo -> segue para o mini-cadastro
+            fluxo["telefone_verificado"] = True
+            session["fluxo_entrada"] = fluxo
+            return redirect(url_for("auth.cadastro_rapido"))
+
+    return render_template("cliente/codigo.html", destino=mascarar_telefone(fluxo["telefone"]),
+                            canal="WhatsApp", voltar_url=url_for("auth.entrada_celular"))
+
+
+@auth_bp.route("/celular/confirmar-email", methods=["GET", "POST"])
+def entrada_celular_confirmar_email():
+    fluxo = _fluxo_atual()
+    if not fluxo or "email_cadastrado" not in fluxo:
+        flash("Sessão expirada. Informe seu celular novamente.", "erro")
+        return redirect(url_for("auth.entrada_celular"))
+
+    if request.method == "POST":
+        email_digitado = (request.form.get("email") or "").strip().lower()
+        if email_digitado == fluxo["email_cadastrado"].strip().lower():
+            usuario = models.buscar_usuario_por_id(fluxo["id_usuario_existente"])
+            _logar_usuario_cliente(usuario)
+            session.pop("fluxo_entrada", None)
+            flash("Login realizado com sucesso!", "sucesso")
+            return redirect(url_for("home.index"))
+        flash("O e-mail não corresponde ao cadastrado. Tente novamente.", "erro")
+
+    return render_template("cliente/confirmar_email.html",
+                            email_mascarado=mascarar_email(fluxo["email_cadastrado"]))
+
+
+# ----- E-MAIL -----
+@auth_bp.route("/email", methods=["GET", "POST"])
+def entrada_email():
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            flash("Informe um e-mail válido.", "erro")
+            return render_template("cliente/email.html")
+
+        codigo = otp.gerar_codigo()
+        sucesso, erro = verificacao_email.enviar_codigo(email, codigo)
+        if not sucesso:
+            flash(erro, "erro")
+            return render_template("cliente/email.html")
+
+        session["fluxo_entrada"] = {
+            "metodo": "email",
+            "email": email,
+            "codigo_esperado": codigo,
+            "codigo_gerado_em": time.time(),
+        }
+        flash(f"Enviamos um código para {email}.", "sucesso")
+        return redirect(url_for("auth.entrada_email_codigo"))
+
+    return render_template("cliente/email.html")
+
+
+@auth_bp.route("/email/codigo", methods=["GET", "POST"])
+def entrada_email_codigo():
+    fluxo = _fluxo_atual()
+    if not fluxo or fluxo.get("metodo") != "email":
+        flash("Sessão expirada. Informe seu e-mail novamente.", "erro")
+        return redirect(url_for("auth.entrada_email"))
+
+    if request.method == "POST":
+        codigo_digitado = (request.form.get("codigo") or "").strip()
+
+        if not _codigo_valido(fluxo):
+            flash("O código expirou. Peça um novo código.", "erro")
+        elif not codigo_digitado or codigo_digitado != fluxo.get("codigo_esperado"):
+            flash("Código inválido. Confira e tente de novo.", "erro")
+        else:
+            fluxo["email_verificado"] = True
+            usuario = models.buscar_usuario_por_email(fluxo["email"])
+
+            if usuario and usuario["tipo"] != "cliente":
+                flash(f"Esse e-mail já está associado a uma conta de {usuario['tipo']}.", "erro")
+                session.pop("fluxo_entrada", None)
+                return redirect(url_for("auth.entrar"))
+
+            if usuario and usuario.get("telefone"):
+                # Cliente já cadastrado e com celular salvo: confirma posse do celular
+                fluxo["id_usuario_existente"] = usuario["id"]
+                fluxo["telefone_cadastrado"] = usuario["telefone"]
+                session["fluxo_entrada"] = fluxo
+                return redirect(url_for("auth.entrada_email_confirmar_celular"))
+
+            if usuario:
+                # Cliente já existe mas nunca cadastrou celular: loga direto
+                _logar_usuario_cliente(usuario)
+                session.pop("fluxo_entrada", None)
+                flash("Login realizado com sucesso!", "sucesso")
+                return redirect(url_for("home.index"))
+
+            # E-mail novo -> segue para o mini-cadastro (que ainda vai pedir e verificar o celular)
+            session["fluxo_entrada"] = fluxo
+            return redirect(url_for("auth.cadastro_rapido"))
+
+    return render_template("cliente/codigo.html", destino=fluxo["email"],
+                            canal="e-mail", voltar_url=url_for("auth.entrada_email"))
+
+
+@auth_bp.route("/email/confirmar-celular", methods=["GET", "POST"])
+def entrada_email_confirmar_celular():
+    fluxo = _fluxo_atual()
+    if not fluxo or "telefone_cadastrado" not in fluxo:
+        flash("Sessão expirada. Informe seu e-mail novamente.", "erro")
+        return redirect(url_for("auth.entrada_email"))
+
+    if request.method == "POST":
+        codigo = otp.gerar_codigo()
+        sucesso, erro = verificacao_whatsapp_local.enviar_codigo(fluxo["telefone_cadastrado"], codigo)
+        if not sucesso:
+            flash(erro, "erro")
+            return render_template("cliente/confirmar_celular.html",
+                                    telefone_mascarado=mascarar_telefone(fluxo["telefone_cadastrado"]))
+
+        fluxo["codigo_esperado"] = codigo
+        fluxo["codigo_gerado_em"] = time.time()
+        session["fluxo_entrada"] = fluxo
+        return redirect(url_for("auth.entrada_email_confirmar_celular_codigo"))
+
+    return render_template("cliente/confirmar_celular.html",
+                            telefone_mascarado=mascarar_telefone(fluxo["telefone_cadastrado"]))
+
+
+@auth_bp.route("/email/confirmar-celular/codigo", methods=["GET", "POST"])
+def entrada_email_confirmar_celular_codigo():
+    fluxo = _fluxo_atual()
+    if not fluxo or "telefone_cadastrado" not in fluxo or "codigo_esperado" not in fluxo:
+        flash("Sessão expirada. Informe seu e-mail novamente.", "erro")
+        return redirect(url_for("auth.entrada_email"))
+
+    if request.method == "POST":
+        codigo_digitado = (request.form.get("codigo") or "").strip()
+
+        if not _codigo_valido(fluxo):
+            flash("O código expirou. Peça um novo código.", "erro")
+        elif not codigo_digitado or codigo_digitado != fluxo.get("codigo_esperado"):
+            flash("Código inválido. Confira e tente de novo.", "erro")
+        else:
+            usuario = models.buscar_usuario_por_id(fluxo["id_usuario_existente"])
+            _logar_usuario_cliente(usuario)
+            session.pop("fluxo_entrada", None)
+            flash("Login realizado com sucesso!", "sucesso")
+            return redirect(url_for("home.index"))
+
+    return render_template("cliente/codigo.html",
+                            destino=mascarar_telefone(fluxo["telefone_cadastrado"]),
+                            canal="WhatsApp",
+                            voltar_url=url_for("auth.entrada_email_confirmar_celular"))
+
+
+# ----- MINI-CADASTRO (usuário novo, vindo do celular ou do e-mail) -----
+@auth_bp.route("/cadastro-rapido", methods=["GET", "POST"])
+def cadastro_rapido():
+    fluxo = _fluxo_atual()
+    if not fluxo or fluxo.get("metodo") not in ("celular", "email"):
+        flash("Sessão expirada. Comece novamente.", "erro")
+        return redirect(url_for("auth.entrar"))
+
+    veio_do_celular = fluxo["metodo"] == "celular"
+
+    if request.method == "POST":
+        nome = request.form.get("nome", "").strip()
+        cpf = request.form.get("cpf", "").strip()
+
+        if not nome or not cpf:
+            flash("Preencha nome e CPF para continuar.", "erro")
+            return render_template("cliente/cadastro_rapido.html", fluxo=fluxo, veio_do_celular=veio_do_celular)
+
+        fluxo["nome"] = nome
+        fluxo["cpf"] = cpf
+
+        if veio_do_celular:
+            # Telefone já verificado; e-mail só é coletado (sem OTP extra)
+            email = request.form.get("email", "").strip().lower()
+            if not email or "@" not in email:
+                flash("Informe um e-mail válido.", "erro")
+                return render_template("cliente/cadastro_rapido.html", fluxo=fluxo, veio_do_celular=veio_do_celular)
+            if models.buscar_usuario_por_email(email):
+                flash("Este e-mail já está cadastrado em outra conta.", "erro")
+                return render_template("cliente/cadastro_rapido.html", fluxo=fluxo, veio_do_celular=veio_do_celular)
+
+            fluxo["email"] = email
+            session["fluxo_entrada"] = fluxo
+            return _finalizar_cadastro_rapido()
+
+        else:
+            # E-mail já verificado; celular precisa ser verificado via WhatsApp agora
+            telefone = normalizar_telefone(request.form.get("telefone", ""))
+            if not telefone:
+                flash("Informe um celular válido.", "erro")
+                return render_template("cliente/cadastro_rapido.html", fluxo=fluxo, veio_do_celular=veio_do_celular)
+            if models.buscar_usuario_por_telefone(telefone):
+                flash("Este celular já está cadastrado em outra conta.", "erro")
+                return render_template("cliente/cadastro_rapido.html", fluxo=fluxo, veio_do_celular=veio_do_celular)
+
+            codigo = otp.gerar_codigo()
+            sucesso, erro = verificacao_whatsapp_local.enviar_codigo(telefone, codigo)
+            if not sucesso:
+                flash(erro, "erro")
+                return render_template("cliente/cadastro_rapido.html", fluxo=fluxo, veio_do_celular=veio_do_celular)
+
+            fluxo["telefone"] = telefone
+            fluxo["codigo_esperado"] = codigo
+            fluxo["codigo_gerado_em"] = time.time()
+            session["fluxo_entrada"] = fluxo
+            return redirect(url_for("auth.cadastro_rapido_verificar_celular"))
+
+    return render_template("cliente/cadastro_rapido.html", fluxo=fluxo, veio_do_celular=veio_do_celular)
+
+
+@auth_bp.route("/cadastro-rapido/verificar-celular", methods=["GET", "POST"])
+def cadastro_rapido_verificar_celular():
+    fluxo = _fluxo_atual()
+    if not fluxo or "telefone" not in fluxo or "nome" not in fluxo:
+        flash("Sessão expirada. Comece novamente.", "erro")
+        return redirect(url_for("auth.entrar"))
+
+    if request.method == "POST":
+        codigo_digitado = (request.form.get("codigo") or "").strip()
+
+        if not _codigo_valido(fluxo):
+            flash("O código expirou. Peça um novo código.", "erro")
+        elif not codigo_digitado or codigo_digitado != fluxo.get("codigo_esperado"):
+            flash("Código inválido. Confira e tente de novo.", "erro")
+        else:
+            fluxo["telefone_verificado"] = True
+            session["fluxo_entrada"] = fluxo
+            return _finalizar_cadastro_rapido()
+
+    return render_template("cliente/codigo.html", destino=mascarar_telefone(fluxo["telefone"]),
+                            canal="WhatsApp", voltar_url=url_for("auth.cadastro_rapido"))
+
+
+def _finalizar_cadastro_rapido():
+    """Cria a conta (usuario + cliente) a partir dos dados acumulados na sessão e efetua o login."""
+    fluxo = _fluxo_atual()
+    try:
+        senha_aleatoria = secrets.token_urlsafe(24)  # login é sempre via código, senha nunca é usada
+        id_usuario = models.criar_usuario(
+            nome=fluxo["nome"],
+            email=fluxo["email"],
+            senha=senha_aleatoria,
+            telefone=fluxo["telefone"],
+            tipo="cliente",
+        )
+        models.criar_cliente(id_usuario=id_usuario, cpf=fluxo["cpf"], apelido=None)
+    except Exception as e:
+        flash(f"Erro ao concluir o cadastro: {e}", "erro")
+        return redirect(url_for("auth.cadastro_rapido"))
+
+    session.pop("fluxo_entrada", None)
+    usuario = {"id": id_usuario, "nome": fluxo["nome"]}
+    _logar_usuario_cliente(usuario)
+    flash("Cadastro concluído! Bem-vindo(a) ao Yummy.", "sucesso")
+    return redirect(url_for("home.index"))
+
+
+
+# ---------------------------------------------------------
+# LOGIN SOCIAL (Google / Facebook) - apenas para clientes
+# ---------------------------------------------------------
 def _login_ou_cadastrar_social(email, nome, provider):
     """
     Se já existe uma conta de CLIENTE com esse e-mail, loga direto.

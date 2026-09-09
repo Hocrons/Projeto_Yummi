@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Entrar com e-mail{% endblock %}
+{% block content %}
+<div class="form-card">
+    <a href="{{ url_for('auth.entrar') }}" class="link-voltar">&lsaquo;</a>
+    <h2 class="entrada-titulo-sm">Informe o seu <span class="destaque-google">e-mail</span> para continuar</h2>
+
+    <form method="post">
+        <input type="email" name="email" placeholder="Informe o seu e-mail" required autofocus>
+        <button type="submit" class="btn btn--primary btn--full" style="margin-top: 20px;">Continuar</button>
+    </form>
+</div>
+{% endblock %}

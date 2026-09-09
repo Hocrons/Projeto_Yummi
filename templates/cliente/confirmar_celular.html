@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Confirme seu celular{% endblock %}
+{% block content %}
+<div class="form-card">
+    <a href="{{ url_for('auth.entrada_email') }}" class="link-voltar">&lsaquo;</a>
+    <p class="entrada-titulo-sm" style="text-align:center;">Agora é só confirmar o seu celular</p>
+
+    <div class="campo-telefone campo-telefone--somente-leitura">
+        <span class="prefixo-pais">🇧🇷 +55</span>
+        <span style="font-weight:600;">{{ telefone_mascarado }}</span>
+    </div>
+
+    <p class="muted" style="margin: 16px 0 10px;">
+        Para finalizar, confirme seu celular cadastrado. Por onde prefere receber o código de confirmação?
+    </p>
+
+    <form method="post">
+        <button type="submit" class="btn btn--primary btn--full">WhatsApp</button>
+    </form>
+
+    <p class="muted" style="text-align:center; margin-top: 14px;">
+        <a href="{{ url_for('auth.entrada_email') }}">Este não é seu número?</a>
+    </p>
+</div>
+{% endblock %}

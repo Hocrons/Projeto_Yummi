@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Entrar com celular{% endblock %}
+{% block content %}
+<div class="form-card">
+    <a href="{{ url_for('auth.entrar') }}" class="link-voltar">&lsaquo;</a>
+    <h2 class="entrada-titulo-sm">Informe o número do seu <span class="destaque-google">celular</span> para continuar</h2>
+
+    <form method="post">
+        <div class="campo-telefone">
+            <span class="prefixo-pais">🇧🇷 +55</span>
+            <input type="text" name="telefone" placeholder="Informe o seu número de celular"
+                   inputmode="numeric" required autofocus>
+        </div>
+
+        <p class="muted" style="margin: 20px 0 10px;">Como deseja receber seu código?</p>
+        <button type="submit" class="btn btn--primary btn--full">WhatsApp</button>
+    </form>
+</div>
+{% endblock %}

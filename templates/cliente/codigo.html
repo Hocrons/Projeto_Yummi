@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Confirme o código{% endblock %}
+{% block content %}
+<div class="form-card">
+    <a href="{{ voltar_url }}" class="link-voltar">&lsaquo;</a>
+    <p class="entrada-titulo-sm" style="text-align:center;">
+        Digite o código de 6 dígitos que enviamos por {{ canal }} para
+    </p>
+    <p style="text-align:center; font-weight:700; margin-bottom: 20px;">{{ destino }}</p>
+
+    <form method="post" id="form-codigo">
+        <div class="caixa-codigo">
+            <input type="text" maxlength="1" inputmode="numeric" class="digito" autofocus>
+            <input type="text" maxlength="1" inputmode="numeric" class="digito">
+            <input type="text" maxlength="1" inputmode="numeric" class="digito">
+            <input type="text" maxlength="1" inputmode="numeric" class="digito">
+            <input type="text" maxlength="1" inputmode="numeric" class="digito">
+            <input type="text" maxlength="1" inputmode="numeric" class="digito">
+        </div>
+        <input type="hidden" name="codigo" id="codigo-completo">
+        <button type="submit" class="btn btn--primary btn--full">Continuar</button>
+    </form>
+
+    <p class="muted" style="text-align:center; margin-top: 16px;">
+        <a href="{{ voltar_url }}">Não recebi meu código</a>
+    </p>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/codigo.js') }}"></script>
+{% endblock %}

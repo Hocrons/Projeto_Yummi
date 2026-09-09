@@ -44,15 +44,26 @@
         <summary>+ Adicionar novo endereço</summary>
         <form method="post" action="{{ url_for('cliente.adicionar_endereco') }}" class="mini-form" style="margin-top: 12px;">
             <input type="hidden" name="origem" value="perfil">
+            
+            <label>Buscar endereço
+                <input type="text" id="google-autocomplete" placeholder="Comece a digitar o nome da rua..." autocomplete="off">
+            </label>
+
+            <div style="text-align: center; margin: 10px 0; font-size: 0.9em; color: #888;">ou preencha por CEP/Rua</div>
+
             <div class="form-grid">
-                <label>Rua <input type="text" name="rua" required></label>
-                <label>Número <input type="text" name="numero"></label>
-                <label>Bairro <input type="text" name="bairro"></label>
-                <label>Cidade <input type="text" name="cidade"></label>
-                <label>CEP <input type="text" name="cep"></label>
+                <label>Rua <input type="text" id="rua" name="rua" required></label>
+                <label>Número <input type="text" id="numero" name="numero"></label>
+                <label>Bairro <input type="text" id="bairro" name="bairro"></label>
+                <label>Cidade <input type="text" id="cidade" name="cidade"></label>
+                <label>CEP <input type="text" id="cep" name="cep" placeholder="00000-000" maxlength="9"></label>
             </div>
-            <button type="submit" class="btn btn--primary">Salvar endereço</button>
+            <button type="submit" class="btn btn--primary" style="margin-top: 12px;">Salvar endereço</button>
         </form>
     </details>
 </div>
+
+<!-- Scripts de comportamento e busca de endereço -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/endereco.js') }}?v=3.0"></script>
 {% endblock %}

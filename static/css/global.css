@@ -192,6 +192,61 @@ main.container { flex: 1; padding-top: 24px; padding-bottom: 60px; }
 .btn-social--facebook { background: #1877f2; border-color: #1877f2; color: white; }
 .btn-social--facebook:hover { background: #166fe0; }
 
+/* ---------- ENTRADA UNIFICADA (celular / e-mail / social) ---------- */
+.entrada-card { max-width: 460px; }
+.entrada-titulo { text-align: center; font-size: 26px; margin-bottom: 4px; }
+.entrada-titulo-sm { font-size: 19px; margin-bottom: 18px; line-height: 1.4; }
+.entrada-subtitulo { text-align: center; margin-bottom: 24px; }
+.destaque-google { color: var(--cor-primaria); }
+
+.opcoes-entrada { display: flex; flex-direction: column; gap: 10px; }
+.opcoes-entrada__linha-dupla { display: flex; gap: 10px; margin-top: 4px; }
+.opcao-secundaria { flex: 1; text-align: center; }
+.entrada-separador { border: none; border-top: 1px solid var(--cor-borda); margin: 22px 0 12px; }
+
+.link-voltar {
+    display: inline-block;
+    font-size: 22px;
+    color: var(--cor-primaria);
+    margin-bottom: 14px;
+    text-decoration: none;
+    line-height: 1;
+}
+
+.campo-telefone {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--cor-borda);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+.campo-telefone input {
+    border: none;
+    flex: 1;
+    font-size: 14px;
+    padding: 2px 0;
+}
+.campo-telefone input:focus { outline: none; }
+.prefixo-pais { background: var(--cor-fundo); border-radius: 6px; padding: 4px 8px; font-size: 14px; white-space: nowrap; }
+.campo-telefone--somente-leitura { background: var(--cor-fundo); }
+
+.caixa-codigo { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; }
+.caixa-codigo .digito {
+    width: 44px;
+    height: 52px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 700;
+    border: 1px solid var(--cor-borda);
+    border-radius: 8px;
+}
+.caixa-codigo .digito:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 2px rgba(234, 29, 44, 0.15);
+}
+
 /* ---------- HERO / HOME ---------- */
 .hero { text-align: center; padding: 20px 0 30px; }
 .hero__busca {

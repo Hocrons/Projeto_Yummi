@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Complete seu cadastro{% endblock %}
+{% block content %}
+<div class="form-card">
+    <h2 class="entrada-titulo-sm">Só mais um passo!</h2>
+    <p class="muted">
+        {% if veio_do_celular %}
+            Confirmamos seu celular. Complete os dados abaixo para criar sua conta.
+        {% else %}
+            Confirmamos seu e-mail. Complete os dados abaixo para criar sua conta.
+        {% endif %}
+    </p>
+
+    <form method="post">
+        <label>Nome completo
+            <input type="text" name="nome" value="{{ fluxo.nome or '' }}" required autofocus>
+        </label>
+        <label>CPF (somente números)
+            <input type="text" name="cpf" maxlength="11" pattern="\d{11}" value="{{ fluxo.cpf or '' }}" required>
+        </label>
+
+        {% if veio_do_celular %}
+            <label>E-mail
+                <input type="email" name="email" placeholder="Informe seu e-mail" required>
+            </label>
+        {% else %}
+            <label>Celular (com DDD)
+                <input type="text" name="telefone" placeholder="Ex: (11) 99999-9999" required>
+            </label>
+            <p class="muted">Enviaremos um código por WhatsApp para confirmar esse número.</p>
+        {% endif %}
+
+        <button type="submit" class="btn btn--primary btn--full" style="margin-top: 10px;">Continuar</button>
+    </form>
+</div>
+{% endblock %}

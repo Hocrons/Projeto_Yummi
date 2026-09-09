@@ -33,6 +33,16 @@ def buscar_usuario_por_id(id_usuario):
         return db.cursor.fetchone()
 
 
+def buscar_usuario_por_telefone(telefone_normalizado):
+    """
+    Busca por telefone já normalizado (ver utils.normalizar_telefone).
+    Usado no fluxo de login/cadastro passwordless por celular.
+    """
+    with DB() as db:
+        db.cursor.execute("SELECT * FROM usuario WHERE telefone=%s", (telefone_normalizado,))
+        return db.cursor.fetchone()
+
+
 def validar_login(email, senha):
     usuario = buscar_usuario_por_email(email)
     if usuario and check_password_hash(usuario["senha"], senha):
@@ -222,17 +232,21 @@ def deletar_produto(id_produto):
 def criar_endereco(id_cliente, rua, numero, bairro, cidade, cep):
     with DB() as db:
         db.cursor.execute(
-            """INSERT INTO endereco (id_cliente, rua, numero, bairro, cidade, cep)
-               VALUES (%s,%s,%s,%s,%s,%s)""",
+            """INSERT INTO endereco (id_cliente, rua, numero, bairro, cidade, cep, ativo)
+               VALUES (%s,%s,%s,%s,%s,%s, 1)""",
             (id_cliente, rua, numero, bairro, cidade, cep),
         )
         return db.cursor.lastrowid
 
 
 def listar_enderecos_cliente(id_cliente):
+    """Retorna apenas os endereços ativos do cliente."""
     with DB() as db:
         db.cursor.execute(
-            "SELECT * FROM endereco WHERE id_cliente=%s ORDER BY id DESC", (id_cliente,)
+            """SELECT * FROM endereco 
+               WHERE id_cliente=%s AND (ativo = 1 OR ativo IS NULL) 
+               ORDER BY id DESC""", 
+            (id_cliente,)
         )
         return db.cursor.fetchall()
 
@@ -255,9 +269,10 @@ def atualizar_endereco(id_endereco, id_cliente, rua, numero, bairro, cidade, cep
 
 
 def deletar_endereco(id_endereco, id_cliente):
+    """Realiza exclusão lógica (soft delete) para evitar o erro de chave estrangeira com pedidos."""
     with DB() as db:
         db.cursor.execute(
-            "DELETE FROM endereco WHERE id=%s AND id_cliente=%s",
+            "UPDATE endereco SET ativo = 0 WHERE id=%s AND id_cliente=%s",
             (id_endereco, id_cliente),
         )
         return db.cursor.rowcount > 0

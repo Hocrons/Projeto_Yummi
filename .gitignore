@@ -4,3 +4,7 @@ __pycache__/
 .env
 instance/
 *.db
+
+# Microsservico de WhatsApp
+whatsapp-service/node_modules/
+whatsapp-service/sessao/

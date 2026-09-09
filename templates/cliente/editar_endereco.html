@@ -3,24 +3,36 @@
 {% block content %}
 <div class="form-card">
     <h2>Editar endereço</h2>
+    
+    <label>Buscar endereço
+        <input type="text" id="google-autocomplete" placeholder="Comece a digitar o nome da rua..." autocomplete="off">
+    </label>
+
+    <div style="text-align: center; margin: 10px 0; font-size: 0.9em; color: #888;">ou busque pelo CEP</div>
+
     <form method="post">
+        <label>CEP
+            <input type="text" id="cep" name="cep" value="{{ endereco.cep or '' }}" placeholder="00000-000" maxlength="9">
+        </label>
         <label>Rua
-            <input type="text" name="rua" value="{{ endereco.rua }}" required>
+            <input type="text" id="rua" name="rua" value="{{ endereco.rua }}" required>
         </label>
         <label>Número
-            <input type="text" name="numero" value="{{ endereco.numero or '' }}">
+            <input type="text" id="numero" name="numero" value="{{ endereco.numero or '' }}">
         </label>
         <label>Bairro
-            <input type="text" name="bairro" value="{{ endereco.bairro or '' }}">
+            <input type="text" id="bairro" name="bairro" value="{{ endereco.bairro or '' }}">
         </label>
         <label>Cidade
-            <input type="text" name="cidade" value="{{ endereco.cidade or '' }}">
+            <input type="text" id="cidade" name="cidade" value="{{ endereco.cidade or '' }}">
         </label>
-        <label>CEP
-            <input type="text" name="cep" value="{{ endereco.cep or '' }}">
-        </label>
+
         <button type="submit" class="btn btn--primary btn--full">Salvar alterações</button>
     </form>
     <p class="muted"><a href="{{ url_for('cliente.editar_perfil') }}">Voltar ao perfil</a></p>
 </div>
+
+<!-- Scripts com parâmetro de versão para forçar a atualização do cache -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/endereco.js') }}?v=3.0"></script>
 {% endblock %}

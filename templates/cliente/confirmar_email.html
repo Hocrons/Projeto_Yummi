@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Confirme seu e-mail{% endblock %}
+{% block content %}
+<div class="form-card">
+    <a href="{{ url_for('auth.entrada_celular') }}" class="link-voltar">&lsaquo;</a>
+    <p class="entrada-titulo-sm" style="text-align:center;">
+        Para sua segurança, digite novamente o seu e-mail:
+    </p>
+    <p style="text-align:center; font-weight:700; margin-bottom: 20px;">{{ email_mascarado }}</p>
+
+    <form method="post">
+        <input type="email" name="email" placeholder="E-mail" required autofocus>
+        <button type="submit" class="btn btn--primary btn--full" style="margin-top: 16px;">Continuar</button>
+    </form>
+</div>
+{% endblock %}

@@ -47,12 +47,12 @@
                 <div class="dropdown">
                     <button class="btn btn--ghost dropdown__toggle" type="button">Entrar ▾</button>
                     <div class="dropdown__menu">
-                        <a href="{{ url_for('auth.login_cliente') }}">Sou Cliente</a>
+                        <a href="{{ url_for('auth.entrar') }}">Sou Cliente</a>
                         <a href="{{ url_for('auth.login_restaurante') }}">Sou Restaurante</a>
                         <a href="{{ url_for('auth.login_entregador') }}">Sou Entregador</a>
                     </div>
                 </div>
-                <a href="{{ url_for('auth.cadastrar_cliente') }}" class="btn btn--primary">Criar conta</a>
+                <a href="{{ url_for('auth.entrar') }}" class="btn btn--primary">Criar conta</a>
             {% endif %}
         </nav>
     </div>
