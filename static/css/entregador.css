@@ -4,6 +4,40 @@
     border-left: 4px solid #5b2fb5;
 }
 
+/* ---------- THUMB DO RESTAURANTE NO CARD ---------- */
+.card-pedido__thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--cor-primaria) 0%, #ff5b68 100%);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.card-pedido__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.card-pedido__thumb-fallback {
+    color: white;
+    font-size: 22px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.card-pedido__texto {
+    flex: 1;
+    min-width: 0;
+}
+
 /* ---------- MODAL DE CÓDIGO DE ENTREGA ---------- */
 .modal-codigo {
     position: fixed;
@@ -16,13 +50,8 @@
     padding: 20px;
     animation: fadeIn .15s ease;
 }
-
 .modal-codigo[hidden] { display: none; }
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .modal-codigo__box {
     background: white;
@@ -34,17 +63,12 @@
     text-align: center;
     animation: slideUp .2s ease;
 }
-
 @keyframes slideUp {
     from { transform: translateY(12px); opacity: 0; }
     to   { transform: translateY(0);    opacity: 1; }
 }
 
-.modal-codigo__titulo {
-    margin: 0 0 8px 0;
-    font-size: 20px;
-}
-
+.modal-codigo__titulo { margin: 0 0 8px 0; font-size: 20px; }
 .modal-codigo__desc {
     color: var(--cor-muted);
     font-size: 14px;
@@ -58,7 +82,6 @@
     gap: 10px;
     margin-bottom: 22px;
 }
-
 .caixa-codigo-modal .digito-modal {
     width: 56px;
     height: 64px;
@@ -71,7 +94,6 @@
     background: white;
     transition: border-color .15s ease, box-shadow .15s ease, transform .1s ease;
 }
-
 .caixa-codigo-modal .digito-modal:focus {
     outline: none;
     border-color: var(--cor-primaria);
@@ -79,25 +101,10 @@
     transform: translateY(-1px);
 }
 
-.modal-codigo__acoes {
-    display: flex;
-    gap: 12px;
-}
+.modal-codigo__acoes { display: flex; gap: 12px; }
+.modal-codigo__acoes .btn { flex: 1; padding: 12px 16px; font-size: 14px; }
 
-.modal-codigo__acoes .btn {
-    flex: 1;
-    padding: 12px 16px;
-    font-size: 14px;
-}
-
-/* Responsivo */
 @media (max-width: 480px) {
-    .caixa-codigo-modal .digito-modal {
-        width: 46px;
-        height: 54px;
-        font-size: 22px;
-    }
-    .modal-codigo__box {
-        padding: 22px 18px 18px;
-    }
+    .caixa-codigo-modal .digito-modal { width: 46px; height: 54px; font-size: 22px; }
+    .modal-codigo__box { padding: 22px 18px 18px; }
 }

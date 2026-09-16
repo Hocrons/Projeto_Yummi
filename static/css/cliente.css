@@ -8,6 +8,24 @@
     margin-bottom: 20px;
 }
 
+.cabecalho-restaurante--com-foto {
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.cabecalho-restaurante__foto {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+}
+
+.cabecalho-restaurante__texto {
+    padding: 20px;
+}
+
 .btn-adicionar {
     align-self: flex-start;
 }
@@ -17,7 +35,7 @@
     top: 80px;
 }
 
-/* ---------- CÓDIGO DE ENTREGA (destaque na tela de sucesso) ---------- */
+/* ---------- CÓDIGO DE ENTREGA ---------- */
 .codigo-entrega-box {
     background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
     border: 2px dashed var(--cor-primaria);
@@ -27,7 +45,6 @@
     max-width: 320px;
     text-align: center;
 }
-
 .codigo-entrega-box__titulo {
     font-size: 12px;
     font-weight: 700;
@@ -36,7 +53,6 @@
     color: var(--cor-primaria);
     margin: 0 0 8px 0;
 }
-
 .codigo-entrega-box__numero {
     font-size: 42px;
     font-weight: 800;
@@ -44,9 +60,8 @@
     color: var(--cor-texto);
     margin: 0 0 6px 0;
     font-family: "Courier New", monospace;
-    text-indent: 8px; /* compensa o letter-spacing */
+    text-indent: 8px;
 }
-
 .codigo-entrega-box__aviso {
     font-size: 13px;
     color: var(--cor-muted);
@@ -54,7 +69,6 @@
     line-height: 1.4;
 }
 
-/* ---------- CÓDIGO DE ENTREGA INLINE (na lista de pedidos) ---------- */
 .codigo-entrega-inline {
     background: var(--cor-fundo);
     border: 1px solid var(--cor-borda);

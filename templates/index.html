@@ -31,7 +31,7 @@
     </form>
 </section>
 
-{# ---------- CATEGORIAS EM CÍRCULOS (scroll horizontal) ---------- #}
+{# ---------- CATEGORIAS EM CÍRCULOS ---------- #}
 <section class="categorias-secao">
     <h2 class="categorias-secao__titulo">Conheça as categorias</h2>
 
@@ -64,7 +64,17 @@
                 <a href="{{ url_for('cliente.ver_cardapio', id_restaurante=r.id) }}"
                    class="card-restaurante">
                     <div class="card-restaurante__banner card-restaurante__banner--grande">
-                        {{ r.nome_fantasia[:1]|upper }}
+                        {% if r.foto_url %}
+                            <img src="{{ r.foto_url }}"
+                                 alt="{{ r.nome_fantasia }}"
+                                 class="card-restaurante__foto"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <span class="card-restaurante__foto-fallback" style="display:none;">
+                                {{ r.nome_fantasia[:1]|upper }}
+                            </span>
+                        {% else %}
+                            {{ r.nome_fantasia[:1]|upper }}
+                        {% endif %}
                     </div>
                     <div class="card-restaurante__info">
                         <h3>{{ r.nome_fantasia }}</h3>

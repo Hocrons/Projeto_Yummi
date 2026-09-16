@@ -124,7 +124,8 @@ def criar_restaurante(id_usuario, nome_fantasia, cnpj, categoria, taxa_entrega,
                        horario_funcionamento, rua, numero, bairro, cidade, cep,
                        tem_mesa=0, complemento=None,
                        cpf_representante=None, nome_representante=None,
-                       data_nasc_representante=None, id_plano=None):
+                       data_nasc_representante=None, id_plano=None,
+                       foto_url=None):
     with DB() as db:
         db.cursor.execute(
             """INSERT INTO restaurante
@@ -132,13 +133,13 @@ def criar_restaurante(id_usuario, nome_fantasia, cnpj, categoria, taxa_entrega,
                 horario_funcionamento, rua, numero, bairro, cidade, cep,
                 tem_mesa, complemento,
                 cpf_representante, nome_representante, data_nasc_representante,
-                id_plano)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                id_plano, foto_url)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
             (id_usuario, nome_fantasia, cnpj, categoria, taxa_entrega,
              horario_funcionamento, rua, numero, bairro, cidade, cep,
              tem_mesa, complemento,
              cpf_representante, nome_representante, data_nasc_representante,
-             id_plano),
+             id_plano, foto_url),
         )
 
 
@@ -163,7 +164,7 @@ def buscar_restaurante(id_usuario):
         db.cursor.execute(
             """SELECT u.*, r.nome_fantasia, r.cnpj, r.categoria, r.taxa_entrega,
                       r.horario_funcionamento, r.rua, r.numero, r.bairro, r.cidade, r.cep,
-                      r.tem_mesa, r.complemento,
+                      r.tem_mesa, r.complemento, r.foto_url,
                       r.cpf_representante, r.nome_representante, r.data_nasc_representante,
                       r.id_plano,
                       p.nome AS plano_nome, p.mensalidade AS plano_mensalidade,
@@ -182,21 +183,30 @@ def atualizar_restaurante(id_usuario, nome_fantasia, categoria, taxa_entrega,
                            horario_funcionamento, rua, numero, bairro, cidade, cep,
                            tem_mesa=0, complemento=None,
                            cpf_representante=None, nome_representante=None,
-                           data_nasc_representante=None, id_plano=None):
+                           data_nasc_representante=None, id_plano=None,
+                           foto_url=None):
     with DB() as db:
         db.cursor.execute(
             """UPDATE restaurante SET nome_fantasia=%s, categoria=%s, taxa_entrega=%s,
                horario_funcionamento=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, cep=%s,
                tem_mesa=%s, complemento=%s,
                cpf_representante=%s, nome_representante=%s, data_nasc_representante=%s,
-               id_plano=%s
+               id_plano=%s, foto_url=%s
                WHERE id_usuario=%s""",
             (nome_fantasia, categoria, taxa_entrega, horario_funcionamento,
              rua, numero, bairro, cidade, cep,
              tem_mesa, complemento,
              cpf_representante, nome_representante, data_nasc_representante,
-             id_plano,
+             id_plano, foto_url,
              id_usuario),
+        )
+
+
+def atualizar_foto_restaurante(id_usuario, foto_url):
+    with DB() as db:
+        db.cursor.execute(
+            "UPDATE restaurante SET foto_url=%s WHERE id_usuario=%s",
+            (foto_url, id_usuario),
         )
 
 
@@ -339,7 +349,6 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens, forma_
         raise ValueError("O pedido precisa ter pelo menos um item.")
 
     with DB() as db:
-        # Busca o código de entrega do cliente (com fallback)
         db.cursor.execute(
             "SELECT codigo_entrega FROM cliente WHERE id_usuario=%s",
             (id_cliente,),
@@ -401,7 +410,8 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens, forma_
 def buscar_pedido(id_pedido):
     with DB() as db:
         db.cursor.execute(
-            """SELECT p.*, r.nome_fantasia, uc.nome AS nome_cliente,
+            """SELECT p.*, r.nome_fantasia, r.foto_url AS restaurante_foto_url,
+                      uc.nome AS nome_cliente,
                       ue.nome AS nome_entregador
                FROM pedido p
                JOIN restaurante r ON r.id_usuario = p.id_restaurante
@@ -426,7 +436,7 @@ def buscar_pedido(id_pedido):
 def listar_pedidos_cliente(id_cliente):
     with DB() as db:
         db.cursor.execute(
-            """SELECT p.*, r.nome_fantasia
+            """SELECT p.*, r.nome_fantasia, r.foto_url AS restaurante_foto_url
                FROM pedido p JOIN restaurante r ON r.id_usuario = p.id_restaurante
                WHERE p.id_cliente=%s ORDER BY p.data_hora DESC""",
             (id_cliente,),
@@ -451,8 +461,9 @@ def listar_pedidos_restaurante(id_restaurante, status=None):
 def listar_pedidos_disponiveis_para_entrega():
     with DB() as db:
         db.cursor.execute(
-            """SELECT p.*, r.nome_fantasia, r.rua AS rua_restaurante,
-                      r.bairro AS bairro_restaurante, e.rua AS rua_entrega, e.bairro AS bairro_entrega
+            """SELECT p.*, r.nome_fantasia, r.foto_url AS restaurante_foto_url,
+                      r.rua AS rua_restaurante, r.bairro AS bairro_restaurante,
+                      e.rua AS rua_entrega, e.bairro AS bairro_entrega
                FROM pedido p
                JOIN restaurante r ON r.id_usuario = p.id_restaurante
                LEFT JOIN endereco e ON e.id = p.id_endereco
@@ -463,7 +474,8 @@ def listar_pedidos_disponiveis_para_entrega():
 
 
 def listar_pedidos_entregador(id_entregador, apenas_ativos=False):
-    query = """SELECT p.*, r.nome_fantasia, r.rua AS rua_restaurante, r.bairro AS bairro_restaurante,
+    query = """SELECT p.*, r.nome_fantasia, r.foto_url AS restaurante_foto_url,
+                      r.rua AS rua_restaurante, r.bairro AS bairro_restaurante,
                       e.rua AS rua_entrega, e.bairro AS bairro_entrega
                FROM pedido p
                JOIN restaurante r ON r.id_usuario = p.id_restaurante
