@@ -1,13 +1,26 @@
-/* Estilos específicos das páginas de cliente (cardápio, carrinho, checkout) */
+/* =========================================================
+   YUMMY — PORTAL DO CLIENTE
+   (cardápio, carrinho, checkout, código de entrega)
+   ========================================================= */
 
+/* ---------- CABEÇALHO DO RESTAURANTE (cardápio) ---------- */
 .cabecalho-restaurante {
-    background: white;
+    background: var(--cor-branco);
     border-radius: var(--raio);
     box-shadow: var(--sombra);
-    padding: 20px;
-    margin-bottom: 20px;
+    border: 2px solid var(--cor-borda);
+    padding: 24px;
+    margin-bottom: 22px;
 }
 
+.cabecalho-restaurante h1 {
+    font-size: 26px;
+    font-weight: 800;
+    margin: 0 0 8px 0;
+    color: var(--cor-texto);
+}
+
+/* Versão com foto (banner) */
 .cabecalho-restaurante--com-foto {
     padding: 0;
     overflow: hidden;
@@ -17,65 +30,264 @@
 
 .cabecalho-restaurante__foto {
     width: 100%;
-    height: 200px;
+    height: 220px;
     object-fit: cover;
     display: block;
 }
 
 .cabecalho-restaurante__texto {
-    padding: 20px;
+    padding: 22px 24px;
 }
 
+.cabecalho-restaurante__texto h1 {
+    font-size: 26px;
+}
+
+/* ---------- BOTÃO ADICIONAR (cardápio) ---------- */
 .btn-adicionar {
     align-self: flex-start;
+    padding: 10px 24px;
 }
 
+/* ---------- GRID DE PRODUTOS ---------- */
+.grid-produtos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.card-produto {
+    background: var(--cor-branco);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+    border: 2px solid var(--cor-borda);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 12px;
+    transition: all var(--transicao);
+    position: relative;
+    overflow: hidden;
+}
+
+.card-produto::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--gradiente);
+    opacity: 0;
+    transition: opacity var(--transicao);
+}
+
+.card-produto:hover {
+    transform: translateY(-3px);
+    border-color: var(--cor-primaria);
+    box-shadow: var(--sombra-forte);
+}
+
+.card-produto:hover::before {
+    opacity: 1;
+}
+
+.card-produto h3 {
+    margin: 0 0 6px 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--cor-texto);
+}
+
+.card-produto .preco {
+    font-weight: 800;
+    font-size: 17px;
+    color: var(--cor-primaria);
+    margin: 4px 0 0 0;
+}
+
+/* ---------- RESUMO DO PEDIDO (sticky) ---------- */
 .resumo-pedido {
     position: sticky;
-    top: 80px;
+    top: 90px;
+    background: var(--cor-branco);
+    border-radius: var(--raio);
+    border: 2px solid var(--cor-borda);
+    padding: 22px;
+    box-shadow: var(--sombra);
 }
 
-/* ---------- CÓDIGO DE ENTREGA ---------- */
+.resumo-pedido h3 {
+    margin-top: 0;
+    font-weight: 800;
+    color: var(--cor-primaria);
+}
+
+/* ---------- CARRINHO ---------- */
+.linha-carrinho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--cor-branco);
+    border-radius: var(--raio-sm);
+    border: 2px solid var(--cor-borda);
+    margin-bottom: 10px;
+    transition: all var(--transicao);
+}
+
+.linha-carrinho:hover {
+    border-color: var(--cor-primaria);
+}
+
+.linha-carrinho__nome {
+    flex: 1;
+    font-weight: 600;
+}
+
+.linha-carrinho__qtd {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.qtd-valor {
+    font-weight: 800;
+    font-size: 16px;
+    min-width: 24px;
+    text-align: center;
+    color: var(--cor-primaria);
+}
+
+.linha-carrinho__preco {
+    font-weight: 800;
+    min-width: 90px;
+    text-align: right;
+}
+
+.resumo-carrinho {
+    max-width: 440px;
+    margin-top: 24px;
+    padding: 20px;
+    background: var(--cor-branco);
+    border-radius: var(--raio);
+    border: 2px solid var(--cor-borda);
+    box-shadow: var(--sombra);
+}
+
+.resumo-carrinho p {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+}
+
+.resumo-carrinho #total-carrinho {
+    color: var(--cor-primaria);
+    font-size: 20px;
+}
+
+/* ---------- CHECKOUT ---------- */
+.checkout-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 22px;
+    align-items: start;
+}
+
+/* ---------- CÓDIGO DE ENTREGA (destaque) ---------- */
 .codigo-entrega-box {
-    background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+    background: linear-gradient(135deg, var(--cor-primaria-suave) 0%, var(--cor-branco) 100%);
     border: 2px dashed var(--cor-primaria);
     border-radius: var(--raio);
-    padding: 18px 16px;
-    margin: 20px auto;
-    max-width: 320px;
+    padding: 22px 20px;
+    margin: 24px auto;
+    max-width: 340px;
     text-align: center;
+    position: relative;
+    overflow: hidden;
 }
+
+.codigo-entrega-box::before {
+    content: "🎀";
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 20px;
+    opacity: 0.6;
+}
+
 .codigo-entrega-box__titulo {
     font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--cor-primaria);
-    margin: 0 0 8px 0;
-}
-.codigo-entrega-box__numero {
-    font-size: 42px;
     font-weight: 800;
-    letter-spacing: 8px;
-    color: var(--cor-texto);
-    margin: 0 0 6px 0;
-    font-family: "Courier New", monospace;
-    text-indent: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--cor-primaria);
+    margin: 0 0 10px 0;
 }
+
+.codigo-entrega-box__numero {
+    font-size: 46px;
+    font-weight: 800;
+    letter-spacing: 10px;
+    color: var(--cor-texto);
+    margin: 0 0 8px 0;
+    font-family: "Courier New", monospace;
+    text-indent: 10px;
+    text-shadow: 0 2px 8px rgba(255, 92, 157, 0.2);
+}
+
 .codigo-entrega-box__aviso {
     font-size: 13px;
     color: var(--cor-muted);
     margin: 0;
-    line-height: 1.4;
+    line-height: 1.5;
+    font-weight: 500;
 }
 
+/* Versão inline (na lista de pedidos) */
 .codigo-entrega-inline {
-    background: var(--cor-fundo);
-    border: 1px solid var(--cor-borda);
+    background: var(--cor-primaria-suave);
+    border: 1px solid var(--cor-primaria);
     border-radius: 6px;
-    padding: 2px 8px;
+    padding: 3px 10px;
     font-family: "Courier New", monospace;
     font-size: 13px;
-    letter-spacing: 2px;
-    color: var(--cor-texto);
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--cor-primaria);
+}
+
+/* ---------- RESPONSIVO ---------- */
+@media (max-width: 800px) {
+    .checkout-grid {
+        grid-template-columns: 1fr;
+    }
+    .resumo-pedido {
+        position: static;
+    }
+    .cabecalho-restaurante__foto {
+        height: 160px;
+    }
+    .cabecalho-restaurante__texto h1,
+    .cabecalho-restaurante h1 {
+        font-size: 22px;
+    }
+    .codigo-entrega-box__numero {
+        font-size: 38px;
+        letter-spacing: 8px;
+        text-indent: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .linha-carrinho {
+        flex-wrap: wrap;
+    }
+    .linha-carrinho__preco {
+        min-width: auto;
+        width: 100%;
+        text-align: left;
+        font-size: 15px;
+    }
 }
