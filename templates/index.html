@@ -2,40 +2,85 @@
 {% block title %}Yummy - Peça já!{% endblock %}
 
 {% block content %}
+{# Mapa de emoji por categoria (fallback: 🍽️) #}
+{% set emojis = {
+    'pizza': '🍕', 'pizzaria': '🍕',
+    'lanches': '🍔', 'hamburgueria': '🍔', 'hamburguer': '🍔', 'hambúrguer': '🍔',
+    'casa de lanches': '🍔', 'fast food': '🍔',
+    'japonesa': '🍣', 'sushi': '🍣', 'asiática': '🍜', 'asiatica': '🍜',
+    'chinesa': '🥡', 'coreana': '🍲', 'yakisoba': '🍜',
+    'doces & bolos': '🍰', 'doces': '🍰', 'confeitaria': '🧁', 'sobremesas': '🍰',
+    'bebidas': '🥤', 'cafeteria': '☕',
+    'fit / saudável': '🥗', 'saudavel': '🥗', 'saudável': '🥗', 'vegana': '🥗', 'vegetariana': '🥗',
+    'marmita': '🍱', 'brasileira': '🍲', 'baiana': '🌶️', 'mineira': '🍲', 'nordestina': '🌵', 'gaúcha': '🥩',
+    'italiana': '🍝', 'mediterrânea': '🫒', 'mexicana': '🌮', 'árabe': '🥙', 'indiana': '🍛',
+    'açaí': '🍇', 'padaria': '🥐', 'pastelaria': '🥟', 'salgados': '🥟',
+    'sorvetes': '🍦', 'crepe': '🥞', 'tapiocaria': '🫓', 'sopas & caldos': '🍲',
+    'peixes': '🐟', 'frutos do mar': '🦐', 'carnes': '🥩',
+    'congelados': '🧊', 'comida de boteco': '🍻',
+    'restaurantes': '🍽️', 'mercado': '🛒', 'farmácia': '💊', 'pet shop': '🐶',
+    'express': '⚡', 'shopping': '🛍️'
+} %}
+
 <section class="hero">
     <h1>O que você quer comer hoje?</h1>
+
     <form class="hero__busca" method="get" action="{{ url_for('home.index') }}">
         <input type="text" name="busca" placeholder="Buscar restaurante..." value="{{ busca }}">
         <button type="submit" class="btn btn--primary">Buscar</button>
     </form>
+</section>
 
-    <div class="categorias">
-        <a href="{{ url_for('home.index') }}"
-           class="chip {{ 'chip--ativo' if not categoria_selecionada }}">Todas</a>
+{# ---------- CATEGORIAS EM CÍRCULOS (scroll horizontal) ---------- #}
+<section class="categorias-secao">
+    <h2 class="categorias-secao__titulo">Conheça as categorias</h2>
+
+    <div class="cat-scroll">
+        <a href="{{ url_for('home.index', busca=busca or none) }}"
+           class="cat-item {{ 'cat-item--ativo' if not categoria_selecionada }}">
+            <span class="cat-item__circle">
+                <span class="cat-item__emoji">🍽️</span>
+            </span>
+            <span class="cat-item__nome">Todas</span>
+        </a>
+
         {% for cat in categorias %}
-            <a href="{{ url_for('home.index', categoria=cat) }}"
-               class="chip {{ 'chip--ativo' if categoria_selecionada == cat }}">{{ cat }}</a>
+            <a href="{{ url_for('home.index', categoria=cat, busca=busca or none) }}"
+               class="cat-item {{ 'cat-item--ativo' if categoria_selecionada == cat }}">
+                <span class="cat-item__circle">
+                    <span class="cat-item__emoji">{{ emojis.get(cat|lower, '🍽️') }}</span>
+                </span>
+                <span class="cat-item__nome">{{ cat }}</span>
+            </a>
         {% endfor %}
     </div>
 </section>
 
+{# ---------- LISTA DE RESTAURANTES ---------- #}
 <section class="lista-restaurantes">
     {% if restaurantes %}
         <div class="grid">
             {% for r in restaurantes %}
-                <a href="{{ url_for('cliente.ver_cardapio', id_restaurante=r.id) }}" class="card-restaurante">
-                    <div class="card-restaurante__banner">{{ r.nome_fantasia[:1] }}</div>
+                <a href="{{ url_for('cliente.ver_cardapio', id_restaurante=r.id) }}"
+                   class="card-restaurante">
+                    <div class="card-restaurante__banner card-restaurante__banner--grande">
+                        {{ r.nome_fantasia[:1]|upper }}
+                    </div>
                     <div class="card-restaurante__info">
                         <h3>{{ r.nome_fantasia }}</h3>
-                        <p class="muted">{{ r.categoria or 'Diversos' }} · {{ r.bairro or '' }}</p>
-                        <p class="muted">Taxa de entrega: R$ {{ '%.2f' % r.taxa_entrega }}</p>
+                        <p class="muted card-restaurante__linha">
+                            {{ r.categoria or 'Diversos' }}{% if r.bairro %} · {{ r.bairro }}{% endif %}
+                        </p>
+                        <p class="card-restaurante__taxa">
+                            Taxa de entrega: R$ {{ '%.2f'|format(r.taxa_entrega|float) }}
+                        </p>
                     </div>
                 </a>
             {% endfor %}
         </div>
     {% else %}
-        <p class="muted" style="text-align:center; padding: 40px 0;">
-            Nenhum restaurante encontrado. Que tal <a href="{{ url_for('auth.cadastrar_restaurante') }}">cadastrar o seu</a>?
+        <p class="muted estado-vazio">
+            Nenhum restaurante encontrado.
         </p>
     {% endif %}
 </section>

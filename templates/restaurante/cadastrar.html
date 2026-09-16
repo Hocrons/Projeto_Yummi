@@ -1,50 +1,203 @@
 {% extends "base.html" %}
-{% block title %}Cadastro - Restaurante{% endblock %}
+{% block title %}Dados do restaurante{% endblock %}
+
 {% block content %}
 <div class="form-card form-card--wide">
-    <h2>Cadastrar restaurante</h2>
-    <form method="post">
-        <div class="form-grid">
-            <label>Nome do responsável
-                <input type="text" name="nome_responsavel" required>
+    <h2>Últimos dados do seu restaurante</h2>
+    <p class="muted">
+        Confirme o e-mail <strong>{{ fluxo.email }}</strong> e o celular
+        <strong>{{ fluxo.telefone }}</strong> — já validados.
+    </p>
+
+    <form method="post" action="{{ url_for('auth.restaurante_completar') }}" id="form-restaurante">
+
+        <fieldset class="fieldset-secao">
+            <legend>Acesso ao portal</legend>
+            <label>Senha de acesso
+                <input type="password" name="senha" minlength="6" required
+                       value="{{ form_dados.senha or '' }}">
             </label>
+        </fieldset>
+
+        <fieldset class="fieldset-secao">
+            <legend>Dados do restaurante</legend>
+
             <label>Nome fantasia
-                <input type="text" name="nome_fantasia" required>
+                <input type="text" name="nome_fantasia" maxlength="100" required
+                       value="{{ form_dados.nome_fantasia or '' }}">
             </label>
-            <label>CNPJ
-                <input type="text" name="cnpj" required>
+
+            <label>CNPJ (somente números)
+                <input type="text" name="cnpj" maxlength="14" pattern="\d{14}"
+                       placeholder="00000000000000" required
+                       value="{{ form_dados.cnpj or '' }}">
             </label>
+
             <label>Categoria
-                <input type="text" name="categoria" placeholder="Ex: Pizza, Japonesa, Lanches">
+                <select name="categoria" required>
+                    <option value="">Selecione uma categoria...</option>
+                    {% for cat in categorias %}
+                        <option value="{{ cat }}"
+                            {% if form_dados.categoria == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
             </label>
+
+            <label>Possui mesa em salão?
+                <span class="radio-inline">
+                    <label class="radio-linha">
+                        <input type="radio" name="tem_mesa" value="1" required
+                            {% if form_dados.tem_mesa == '1' %}checked{% endif %}> Sim
+                    </label>
+                    <label class="radio-linha">
+                        <input type="radio" name="tem_mesa" value="0"
+                            {% if form_dados.tem_mesa != '1' %}checked{% endif %}> Não
+                    </label>
+                </span>
+            </label>
+
             <label>Taxa de entrega (R$)
-                <input type="number" step="0.01" name="taxa_entrega" value="0">
+                <input type="number" name="taxa_entrega" step="0.01" min="0"
+                       value="{{ form_dados.taxa_entrega or '0.00' }}" placeholder="0.00">
             </label>
+
             <label>Horário de funcionamento
-                <input type="text" name="horario_funcionamento" placeholder="Ex: 18h-23h">
+                <input type="text" name="horario_funcionamento" maxlength="100"
+                       placeholder="Ex: Seg a Sex, 18h às 23h"
+                       value="{{ form_dados.horario_funcionamento or '' }}">
             </label>
-            <label>E-mail
-                <input type="email" name="email" required>
-            </label>
-            <label>Telefone
-                <input type="text" name="telefone">
-            </label>
-            <label>Senha
-                <input type="password" name="senha" minlength="6" required>
-            </label>
-        </div>
+        </fieldset>
 
-        <h3>Endereço</h3>
-        <div class="form-grid">
-            <label>Rua <input type="text" name="rua"></label>
-            <label>Número <input type="text" name="numero"></label>
-            <label>Bairro <input type="text" name="bairro"></label>
-            <label>Cidade <input type="text" name="cidade"></label>
-            <label>CEP <input type="text" name="cep"></label>
-        </div>
+        <fieldset class="fieldset-secao">
+            <legend>Endereço</legend>
 
-        <button type="submit" class="btn btn--primary btn--full">Cadastrar restaurante</button>
+            <label>CEP (digite e o resto preenche sozinho)
+                <input type="text" id="cep" name="cep" maxlength="9"
+                       placeholder="00000-000" required
+                       value="{{ form_dados.cep or '' }}">
+            </label>
+            <p id="cep-status" class="cep-status"></p>
+
+            <div class="form-grid">
+                <label>Estado (UF)
+                    <input type="text" id="estado" name="estado" maxlength="2"
+                           placeholder="SP" readonly>
+                </label>
+                <label>Cidade
+                    <input type="text" id="cidade" name="cidade" maxlength="50" readonly
+                           value="{{ form_dados.cidade or '' }}">
+                </label>
+            </div>
+
+            <label>Bairro
+                <input type="text" id="bairro" name="bairro" maxlength="50" readonly
+                       value="{{ form_dados.bairro or '' }}">
+            </label>
+
+            <label>Rua
+                <input type="text" id="rua" name="rua" maxlength="100" readonly
+                       value="{{ form_dados.rua or '' }}">
+            </label>
+
+            <div class="form-grid">
+                <label>Número
+                    <input type="text" id="numero" name="numero" maxlength="10" required
+                           value="{{ form_dados.numero or '' }}">
+                </label>
+                <label>Complemento (opcional)
+                    <input type="text" name="complemento" maxlength="50"
+                           value="{{ form_dados.complemento or '' }}">
+                </label>
+            </div>
+        </fieldset>
+
+        <fieldset class="fieldset-secao">
+            <legend>Dados do representante legal</legend>
+            <p class="muted">
+                A pessoa representante legal é quem pode tomar decisões e
+                assinar contratos pela loja.
+            </p>
+
+            <label>CPF do representante legal (somente números)
+                <input type="text" name="cpf_representante" maxlength="11"
+                       pattern="\d{11}" placeholder="00000000000" required
+                       value="{{ form_dados.cpf_representante or '' }}">
+            </label>
+
+            <label>Nome do representante legal
+                <input type="text" name="nome_representante" maxlength="100" required
+                       value="{{ form_dados.nome_representante or '' }}">
+            </label>
+
+            <label>Data de nascimento
+                <input type="date" name="data_nasc_representante" required
+                       value="{{ form_dados.data_nasc_representante or '' }}">
+            </label>
+        </fieldset>
+
+        <fieldset class="fieldset-secao">
+            <legend>Contratação de plano</legend>
+            <p class="muted">
+                Escolha um plano para começar. Você poderá trocar depois sem custos.
+            </p>
+
+            <div class="planos-grid">
+                {% for p in planos %}
+                <label class="plano-card">
+                    <input type="radio" name="id_plano" value="{{ p.id }}" required
+                           class="plano-card__radio"
+                           {% if form_dados.id_plano|string == p.id|string %}checked{% endif %}>
+                    <div class="plano-card__conteudo">
+                        <div class="plano-card__cabecalho">
+                            {% if p.entrega_propria %}
+                                <svg class="plano-card__icone" viewBox="0 0 24 24" fill="none"
+                                     stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                    <polyline points="9 22 9 12 15 12 15 22"/>
+                                </svg>
+                            {% else %}
+                                <svg class="plano-card__icone" viewBox="0 0 24 24" fill="none"
+                                     stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="5.5" cy="17.5" r="3.5"/>
+                                    <circle cx="18.5" cy="17.5" r="3.5"/>
+                                    <path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
+                                    <path d="M5.5 17.5V14l3-3 3 3 2-2 3 3v2.5"/>
+                                </svg>
+                            {% endif %}
+                            <h3 class="plano-card__nome">{{ p.nome }}</h3>
+                        </div>
+
+                        <p class="muted plano-card__desc">{{ p.descricao }}</p>
+
+                        <p class="plano-card__preco">
+                            R$ {{ '%.0f'|format(p.mensalidade) }}<span>/mês*</span>
+                        </p>
+                        <p class="plano-card__promo">Grátis por 3 meses!</p>
+
+                        <ul class="plano-card__lista">
+                            <li><strong>{{ '%.0f'|format(p.comissao_pct) }}%</strong> Comissão Yummy sobre cada pedido</li>
+                            <li><strong>{{ '%.1f'|format(p.taxa_cartao_pct) }}%</strong> Cobrança da operadora de cartão</li>
+                        </ul>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+
+            <p class="muted" style="font-size: 13px; margin-top: 12px;">
+                * A mensalidade só será cobrada se faturar mais que R$ 1.800 no mês,
+                após o período promocional.
+            </p>
+        </fieldset>
+
+        <button type="submit" class="btn btn--primary btn--full">
+            Continuar
+        </button>
     </form>
-    <p class="muted">Já tem conta? <a href="{{ url_for('auth.login_restaurante') }}">Entrar</a></p>
 </div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/viacep.js') }}"></script>
 {% endblock %}

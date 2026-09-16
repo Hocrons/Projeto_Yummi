@@ -1,36 +1,23 @@
-// Comportamento global do site (carregado em toda página via base.html)
+/**
+ * Comportamento genérico dos dropdowns da navbar.
+ * Abre/fecha ao clicar no botão .dropdown__toggle, fecha ao clicar fora.
+ */
+document.addEventListener("click", function (event) {
+    const toggles = document.querySelectorAll(".dropdown__toggle");
 
-document.addEventListener("DOMContentLoaded", () => {
-    // Dropdown "Entrar" no header
-    const toggle = document.querySelector(".dropdown__toggle");
-    if (toggle) {
+    toggles.forEach(function (toggle) {
         const dropdown = toggle.closest(".dropdown");
-        toggle.addEventListener("click", (e) => {
-            e.stopPropagation();
+        if (dropdown.contains(event.target)) {
+            // clicou dentro do dropdown -> alterna
+            event.preventDefault();
+            // fecha outros dropdowns
+            document.querySelectorAll(".dropdown.aberto").forEach(function (d) {
+                if (d !== dropdown) d.classList.remove("aberto");
+            });
             dropdown.classList.toggle("aberto");
-        });
-        document.addEventListener("click", () => dropdown.classList.remove("aberto"));
-    }
-
-    // Some sozinho com as mensagens flash depois de alguns segundos
-    document.querySelectorAll(".flash").forEach((el) => {
-        setTimeout(() => {
-            el.style.transition = "opacity .4s ease";
-            el.style.opacity = "0";
-            setTimeout(() => el.remove(), 400);
-        }, 4000);
+        } else {
+            // clicou fora -> fecha
+            dropdown.classList.remove("aberto");
+        }
     });
 });
-
-// Pequeno helper de toast reutilizado por outras páginas (ex: carrinho.js)
-function mostrarToast(mensagem) {
-    const toast = document.getElementById("toast");
-    if (!toast) {
-        alert(mensagem);
-        return;
-    }
-    toast.textContent = mensagem;
-    toast.hidden = false;
-    clearTimeout(window.__toastTimeout);
-    window.__toastTimeout = setTimeout(() => (toast.hidden = true), 2500);
-}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Yummy - Escolha seu portal{% endblock %}
+
+{% block content %}
+<section class="landing">
+    <div class="landing__header">
+        <h1>Como você quer usar o Yummy?</h1>
+        <p class="muted">Escolha o portal ideal para você.</p>
+    </div>
+
+    <div class="landing__cards">
+        {# ---------- CLIENTE ---------- #}
+        <a href="{{ url_for('home.index') }}" class="landing-card">
+            <div class="landing-card__icone">🍔</div>
+            <h2 class="landing-card__titulo">Quero pedir</h2>
+            <p class="landing-card__desc">
+                Comida do seu restaurante favorito, entregue na sua porta.
+            </p>
+            <span class="btn btn--primary btn--full">Entrar</span>
+        </a>
+
+        {# ---------- RESTAURANTE ---------- #}
+        <a href="{{ url_for('restaurante.portal') }}" class="landing-card">
+            <div class="landing-card__icone">🏪</div>
+            <h2 class="landing-card__titulo">Sou parceiro</h2>
+            <p class="landing-card__desc">
+                Cadastre seu restaurante e comece a vender para milhares
+                de clientes.
+            </p>
+            <span class="btn btn--primary btn--full">Entrar</span>
+        </a>
+
+        {# ---------- ENTREGADOR ---------- #}
+        <a href="{{ url_for('entregador.portal') }}" class="landing-card">
+            <div class="landing-card__icone">🛵</div>
+            <h2 class="landing-card__titulo">Sou entregador</h2>
+            <p class="landing-card__desc">
+                Faça entregas quando quiser e aumente sua renda.
+            </p>
+            <span class="btn btn--primary btn--full">Entrar</span>
+        </a>
+    </div>
+
+    <p class="landing__rodape muted">
+        Yummy &copy; 2026 — Projeto acadêmico de delivery
+    </p>
+</section>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Confirme a localização{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block content %}
+<div class="form-card form-card--wide">
+    <a href="{{ voltar_url }}" class="link-voltar">&lsaquo;</a>
+
+    <p class="entrada-titulo-sm">INFORMAÇÕES DA LOJA</p>
+    <h2>A localização está correta?</h2>
+    <p class="muted">Verifique a localização identificada e ajuste se for necessário.</p>
+
+    <div class="mapa-wrapper">
+        <div id="mapa"></div>
+    </div>
+
+    {% if not lat or not lon %}
+        <p class="cep-status cep-status--erro" style="margin-top: 8px;">
+            Não conseguimos localizar exatamente, mas você pode continuar.
+        </p>
+    {% elif precisao == 'bairro' %}
+        <p class="cep-status cep-status--info" style="margin-top: 8px;">
+            Localizamos o seu bairro. Se o pino não estiver no lugar certo, ajuste o endereço.
+        </p>
+    {% elif precisao == 'cidade' %}
+        <p class="cep-status cep-status--info" style="margin-top: 8px;">
+            Localizamos apenas a sua cidade. Confira se o endereço está correto.
+        </p>
+    {% endif %}
+
+    <div class="endereco-confirmacao">
+        <p class="endereco-confirmacao__texto">
+            {{ endereco_completo }}
+        </p>
+        <a href="{{ voltar_url }}" class="endereco-confirmacao__editar" title="Editar endereço">
+            ✏️
+        </a>
+    </div>
+
+    <form method="post" style="margin-top: 16px;">
+        <button type="submit" class="btn btn--primary btn--full">
+            Confirmar e criar conta
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+    "use strict";
+
+    const lat = {{ lat|tojson }};
+    const lon = {{ lon|tojson }};
+    const precisao = {{ (precisao or 'nenhuma')|tojson }};
+    const mapaEl = document.getElementById("mapa");
+    if (!mapaEl) return;
+
+    let centro, zoom;
+
+    if (lat !== null && lon !== null) {
+        centro = [lat, lon];
+        if (precisao === "rua") zoom = 17;
+        else if (precisao === "bairro") zoom = 14;
+        else zoom = 12; // cidade
+    } else {
+        centro = [-14.235, -51.9253];
+        zoom = 4;
+    }
+
+    const mapa = L.map("mapa").setView(centro, zoom);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(mapa);
+
+    if (lat !== null && lon !== null) {
+        const iconeVermelho = L.divIcon({
+            className: "pino-yummy",
+            html: `
+                <div style="
+                    width: 28px; height: 28px;
+                    background: #ea1d2c;
+                    border: 3px solid white;
+                    border-radius: 50% 50% 50% 0;
+                    transform: rotate(-45deg);
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                "></div>
+            `,
+            iconSize: [28, 28],
+            iconAnchor: [14, 28],
+        });
+
+        L.marker([lat, lon], { icon: iconeVermelho }).addTo(mapa);
+    }
+})();
+</script>
+{% endblock %}

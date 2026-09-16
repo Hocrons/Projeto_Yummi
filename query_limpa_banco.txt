@@ -1,0 +1,17 @@
+USE yummy;
+
+-- Desliga temporariamente a checagem de FK
+SET FOREIGN_KEY_CHECKS = 0;
+
+TRUNCATE TABLE pagamento;
+TRUNCATE TABLE item_pedido;
+TRUNCATE TABLE pedido;
+TRUNCATE TABLE endereco;
+TRUNCATE TABLE produto;
+TRUNCATE TABLE cliente;
+TRUNCATE TABLE restaurante;
+TRUNCATE TABLE entregador;
+TRUNCATE TABLE usuario;
+
+-- Religa a checagem de FK
+SET FOREIGN_KEY_CHECKS = 1;

@@ -34,10 +34,6 @@ def buscar_usuario_por_id(id_usuario):
 
 
 def buscar_usuario_por_telefone(telefone_normalizado):
-    """
-    Busca por telefone já normalizado (ver utils.normalizar_telefone).
-    Usado no fluxo de login/cadastro passwordless por celular.
-    """
     with DB() as db:
         db.cursor.execute("SELECT * FROM usuario WHERE telefone=%s", (telefone_normalizado,))
         return db.cursor.fetchone()
@@ -89,18 +85,46 @@ def atualizar_cliente(id_usuario, apelido):
 
 
 # =========================================================
+# PLANO
+# =========================================================
+def listar_planos(apenas_ativos=True):
+    query = "SELECT * FROM plano"
+    if apenas_ativos:
+        query += " WHERE ativo=1"
+    query += " ORDER BY mensalidade DESC"
+    with DB() as db:
+        db.cursor.execute(query)
+        return db.cursor.fetchall()
+
+
+def buscar_plano(id_plano):
+    with DB() as db:
+        db.cursor.execute("SELECT * FROM plano WHERE id=%s", (id_plano,))
+        return db.cursor.fetchone()
+
+
+# =========================================================
 # RESTAURANTE
 # =========================================================
 def criar_restaurante(id_usuario, nome_fantasia, cnpj, categoria, taxa_entrega,
-                       horario_funcionamento, rua, numero, bairro, cidade, cep):
+                       horario_funcionamento, rua, numero, bairro, cidade, cep,
+                       tem_mesa=0, complemento=None,
+                       cpf_representante=None, nome_representante=None,
+                       data_nasc_representante=None, id_plano=None):
     with DB() as db:
         db.cursor.execute(
             """INSERT INTO restaurante
                (id_usuario, nome_fantasia, cnpj, categoria, taxa_entrega,
-                horario_funcionamento, rua, numero, bairro, cidade, cep)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                horario_funcionamento, rua, numero, bairro, cidade, cep,
+                tem_mesa, complemento,
+                cpf_representante, nome_representante, data_nasc_representante,
+                id_plano)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
             (id_usuario, nome_fantasia, cnpj, categoria, taxa_entrega,
-             horario_funcionamento, rua, numero, bairro, cidade, cep),
+             horario_funcionamento, rua, numero, bairro, cidade, cep,
+             tem_mesa, complemento,
+             cpf_representante, nome_representante, data_nasc_representante,
+             id_plano),
         )
 
 
@@ -124,8 +148,16 @@ def buscar_restaurante(id_usuario):
     with DB() as db:
         db.cursor.execute(
             """SELECT u.*, r.nome_fantasia, r.cnpj, r.categoria, r.taxa_entrega,
-                      r.horario_funcionamento, r.rua, r.numero, r.bairro, r.cidade, r.cep
-               FROM usuario u JOIN restaurante r ON r.id_usuario = u.id
+                      r.horario_funcionamento, r.rua, r.numero, r.bairro, r.cidade, r.cep,
+                      r.tem_mesa, r.complemento,
+                      r.cpf_representante, r.nome_representante, r.data_nasc_representante,
+                      r.id_plano,
+                      p.nome AS plano_nome, p.mensalidade AS plano_mensalidade,
+                      p.comissao_pct AS plano_comissao_pct,
+                      p.taxa_cartao_pct AS plano_taxa_cartao_pct
+               FROM usuario u
+               JOIN restaurante r ON r.id_usuario = u.id
+               LEFT JOIN plano p ON p.id = r.id_plano
                WHERE u.id=%s""",
             (id_usuario,),
         )
@@ -133,14 +165,24 @@ def buscar_restaurante(id_usuario):
 
 
 def atualizar_restaurante(id_usuario, nome_fantasia, categoria, taxa_entrega,
-                           horario_funcionamento, rua, numero, bairro, cidade, cep):
+                           horario_funcionamento, rua, numero, bairro, cidade, cep,
+                           tem_mesa=0, complemento=None,
+                           cpf_representante=None, nome_representante=None,
+                           data_nasc_representante=None, id_plano=None):
     with DB() as db:
         db.cursor.execute(
             """UPDATE restaurante SET nome_fantasia=%s, categoria=%s, taxa_entrega=%s,
-               horario_funcionamento=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, cep=%s
+               horario_funcionamento=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, cep=%s,
+               tem_mesa=%s, complemento=%s,
+               cpf_representante=%s, nome_representante=%s, data_nasc_representante=%s,
+               id_plano=%s
                WHERE id_usuario=%s""",
             (nome_fantasia, categoria, taxa_entrega, horario_funcionamento,
-             rua, numero, bairro, cidade, cep, id_usuario),
+             rua, numero, bairro, cidade, cep,
+             tem_mesa, complemento,
+             cpf_representante, nome_representante, data_nasc_representante,
+             id_plano,
+             id_usuario),
         )
 
 
@@ -240,7 +282,6 @@ def criar_endereco(id_cliente, rua, numero, bairro, cidade, cep):
 
 
 def listar_enderecos_cliente(id_cliente):
-    """Retorna apenas os endereços ativos do cliente."""
     with DB() as db:
         db.cursor.execute(
             """SELECT * FROM endereco 
@@ -258,7 +299,6 @@ def buscar_endereco(id_endereco):
 
 
 def atualizar_endereco(id_endereco, id_cliente, rua, numero, bairro, cidade, cep):
-    """Só atualiza se o endereço pertencer ao cliente logado (id_cliente)."""
     with DB() as db:
         db.cursor.execute(
             """UPDATE endereco SET rua=%s, numero=%s, bairro=%s, cidade=%s, cep=%s
@@ -269,7 +309,6 @@ def atualizar_endereco(id_endereco, id_cliente, rua, numero, bairro, cidade, cep
 
 
 def deletar_endereco(id_endereco, id_cliente):
-    """Realiza exclusão lógica (soft delete) para evitar o erro de chave estrangeira com pedidos."""
     with DB() as db:
         db.cursor.execute(
             "UPDATE endereco SET ativo = 0 WHERE id=%s AND id_cliente=%s",
@@ -282,16 +321,6 @@ def deletar_endereco(id_endereco, id_cliente):
 # PEDIDO / ITEM_PEDIDO / PAGAMENTO
 # =========================================================
 def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens, forma_pagamento):
-    """
-    itens: lista de dicts [{id_produto, quantidade, preco_unitario}, ...]
-    Cria pedido + itens + pagamento numa única transação.
-
-    Validação de segurança: garante que TODOS os produtos pertencem ao
-    mesmo restaurante (id_restaurante) antes de gravar qualquer coisa,
-    mesmo que o carrinho já tenha bloqueado isso na camada de sessão.
-    Isso evita que alguém manipule a requisição e misture pedidos de
-    restaurantes diferentes.
-    """
     if not itens:
         raise ValueError("O pedido precisa ter pelo menos um item.")
 
@@ -388,7 +417,6 @@ def listar_pedidos_restaurante(id_restaurante, status=None):
 
 
 def listar_pedidos_disponiveis_para_entrega():
-    """Pedidos prontos, aguardando algum entregador aceitar (sem entregador atribuído)."""
     with DB() as db:
         db.cursor.execute(
             """SELECT p.*, r.nome_fantasia, r.rua AS rua_restaurante,
@@ -419,11 +447,6 @@ def listar_pedidos_entregador(id_entregador, apenas_ativos=False):
 
 
 def atribuir_entregador(id_pedido, id_entregador):
-    """
-    Entregador aceita a corrida: só funciona se o pedido ainda estiver
-    'localizando_entregador' e sem ninguém atribuído (evita corrida entre
-    dois entregadores aceitando ao mesmo tempo).
-    """
     with DB() as db:
         db.cursor.execute(
             """UPDATE pedido SET id_entregador=%s, status='indo_ao_restaurante'
@@ -434,7 +457,6 @@ def atribuir_entregador(id_pedido, id_entregador):
 
 
 def marcar_pedido_retirado(id_pedido, id_entregador):
-    """Entregador confirma que retirou o pedido no restaurante e saiu para entregar."""
     with DB() as db:
         db.cursor.execute(
             """UPDATE pedido SET status='saiu_para_entrega'
@@ -445,7 +467,6 @@ def marcar_pedido_retirado(id_pedido, id_entregador):
 
 
 def marcar_pedido_entregue(id_pedido, id_entregador):
-    """Entregador confirma a entrega. Só permite se a corrida for dele mesmo."""
     with DB() as db:
         db.cursor.execute(
             """UPDATE pedido SET status='entregue'
@@ -456,11 +477,6 @@ def marcar_pedido_entregue(id_pedido, id_entregador):
 
 
 def liberar_entregador(id_pedido, id_restaurante):
-    """
-    Restaurante troca de entregador: só é permitido enquanto o entregador
-    ainda está a caminho do restaurante (ainda não retirou o pedido).
-    O pedido volta para a fila de 'localizando_entregador'.
-    """
     with DB() as db:
         db.cursor.execute(
             """UPDATE pedido SET id_entregador=NULL, status='localizando_entregador'
@@ -471,11 +487,6 @@ def liberar_entregador(id_pedido, id_restaurante):
 
 
 def atualizar_status_pedido(id_pedido, status, id_restaurante=None):
-    """
-    Atualiza o status do pedido. Quando id_restaurante é informado, só
-    atualiza se o pedido pertencer àquele restaurante (evita um restaurante
-    mexer no pedido de outro).
-    """
     with DB() as db:
         if id_restaurante is not None:
             db.cursor.execute(

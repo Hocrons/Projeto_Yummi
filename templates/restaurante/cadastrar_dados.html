@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Dados do responsável{% endblock %}
+{% block content %}
+<div class="form-card">
+    <a href="{{ url_for('auth.cadastrar_restaurante') }}" class="link-voltar">&lsaquo;</a>
+    <p class="entrada-titulo-sm" style="text-align:center;">
+        Agora, precisamos do seu <span class="destaque-google">nome</span> e
+        <span class="destaque-google">celular</span>
+    </p>
+
+    <form method="post">
+        <label>Nome completo do responsável
+            <input type="text" name="nome_responsavel" maxlength="100"
+                   value="{{ fluxo.nome_responsavel or '' }}" required autofocus>
+        </label>
+
+        <label>Celular (com DDD)
+            <div class="campo-telefone">
+                <span class="prefixo-pais">🇧🇷 +55</span>
+                <input type="text" name="telefone" placeholder="(11) 99999-9999"
+                       value="{{ fluxo.telefone or '' }}" required>
+            </div>
+        </label>
+
+        <p class="muted" style="margin-top: 8px;">
+            Enviaremos um código por WhatsApp para confirmar esse número.
+        </p>
+
+        <button type="submit" class="btn btn--primary btn--full" style="margin-top: 16px;">
+            Enviar código
+        </button>
+    </form>
+</div>
+{% endblock %}

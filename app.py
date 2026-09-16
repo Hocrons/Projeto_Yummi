@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 from extensions import oauth
 from controllers.home_ctrl import home_bp
+from controllers.landing_ctrl import landing_bp
 from controllers.auth_ctrl import auth_bp
 from controllers.cliente_ctrl import cliente_bp
 from controllers.restaurante_ctrl import restaurante_bp
@@ -21,6 +22,7 @@ def create_app():
     oauth.init_app(app)
 
     # Blueprints (Controllers)
+    app.register_blueprint(landing_bp)
     app.register_blueprint(home_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(cliente_bp)

@@ -1,0 +1,88 @@
+/* ---------- LANDING PAGE (escolha do portal) ---------- */
+.landing {
+    padding: 40px 0 60px;
+}
+
+.landing__header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.landing__header h1 {
+    font-size: 32px;
+    margin: 0 0 6px 0;
+}
+
+.landing__cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.landing-card {
+    background: white;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    padding: 28px 22px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    color: var(--cor-texto);
+}
+
+.landing-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.10);
+    border-color: var(--cor-primaria);
+}
+
+.landing-card__icone {
+    font-size: 52px;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.landing-card__titulo {
+    font-size: 20px;
+    margin: 0;
+}
+
+.landing-card__desc {
+    font-size: 14px;
+    color: var(--cor-muted);
+    line-height: 1.45;
+    margin: 0 0 8px 0;
+    min-height: 60px;
+}
+
+.landing-card .btn {
+    margin-top: auto;
+}
+
+.landing__rodape {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 13px;
+}
+
+/* ---------- RESPONSIVO ---------- */
+@media (max-width: 800px) {
+    .landing__cards {
+        grid-template-columns: 1fr;
+        max-width: 380px;
+    }
+    .landing__header h1 {
+        font-size: 24px;
+    }
+    .landing-card__icone {
+        font-size: 44px;
+    }
+    .landing-card__desc {
+        min-height: auto;
+    }
+}

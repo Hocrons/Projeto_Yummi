@@ -5,6 +5,20 @@ from controllers.decorators import login_requerido
 entregador_bp = Blueprint("entregador", __name__, url_prefix="/entregador")
 
 
+# ---------------------------------------------------------
+# PORTAL (ponto de entrada)
+# ---------------------------------------------------------
+@entregador_bp.route("")
+@entregador_bp.route("/")
+def portal():
+    if session.get("user_tipo") == "entregador":
+        return redirect(url_for("entregador.painel"))
+    return redirect(url_for("auth.login_entregador"))
+
+
+# ---------------------------------------------------------
+# PAINEL
+# ---------------------------------------------------------
 @entregador_bp.route("/painel")
 @login_requerido("entregador")
 def painel():
@@ -31,7 +45,6 @@ def alternar_disponibilidade():
 @entregador_bp.route("/pedido/<int:id_pedido>/aceitar", methods=["POST"])
 @login_requerido("entregador")
 def aceitar_pedido(id_pedido):
-    """Entregador aceita a corrida -> status vai para 'indo_ao_restaurante'."""
     sucesso = models.atribuir_entregador(id_pedido, session["user_id"])
     if sucesso:
         flash(f"Pedido #{id_pedido} aceito! Vá até o restaurante para retirar.", "sucesso")
@@ -43,7 +56,6 @@ def aceitar_pedido(id_pedido):
 @entregador_bp.route("/pedido/<int:id_pedido>/retirado", methods=["POST"])
 @login_requerido("entregador")
 def marcar_retirado(id_pedido):
-    """Entregador confirma que retirou o pedido no restaurante -> 'saiu_para_entrega'."""
     sucesso = models.marcar_pedido_retirado(id_pedido, session["user_id"])
     if sucesso:
         flash(f"Pedido #{id_pedido} retirado. Bora entregar!", "sucesso")
@@ -55,7 +67,6 @@ def marcar_retirado(id_pedido):
 @entregador_bp.route("/pedido/<int:id_pedido>/entregue", methods=["POST"])
 @login_requerido("entregador")
 def marcar_entregue(id_pedido):
-    """Entregador confirma a entrega -> 'entregue' + pagamento aprovado."""
     sucesso = models.marcar_pedido_entregue(id_pedido, session["user_id"])
     if sucesso:
         models.atualizar_status_pagamento(id_pedido, "aprovado")

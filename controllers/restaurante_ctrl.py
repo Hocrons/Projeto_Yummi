@@ -4,11 +4,22 @@ from controllers.decorators import login_requerido
 
 restaurante_bp = Blueprint("restaurante", __name__, url_prefix="/restaurante")
 
-# Transições de status permitidas para o restaurante controlar (id_restaurante -> próximo status)
 TRANSICOES_PERMITIDAS = {
     "pendente": ["preparando", "cancelado"],
     "preparando": ["localizando_entregador", "cancelado"],
 }
+
+
+# ---------------------------------------------------------
+# PORTAL (ponto de entrada — decide entre painel e login)
+# ---------------------------------------------------------
+@restaurante_bp.route("")
+@restaurante_bp.route("/")
+def portal():
+    """Ponto de entrada do portal do parceiro."""
+    if session.get("user_tipo") == "restaurante":
+        return redirect(url_for("restaurante.painel"))
+    return redirect(url_for("auth.login_restaurante"))
 
 
 # ---------------------------------------------------------
@@ -45,11 +56,6 @@ def atualizar_status_pedido(id_pedido):
 @restaurante_bp.route("/pedido/<int:id_pedido>/trocar-entregador", methods=["POST"])
 @login_requerido("restaurante")
 def trocar_entregador(id_pedido):
-    """
-    Permite ao restaurante liberar o entregador atual (ex: demorou demais
-    para chegar) e devolver o pedido para a fila de 'localizando_entregador'.
-    Só funciona enquanto o entregador ainda não retirou o pedido.
-    """
     sucesso = models.liberar_entregador(id_pedido, session["user_id"])
     if sucesso:
         flash(f"Pedido #{id_pedido}: buscando um novo entregador.", "sucesso")

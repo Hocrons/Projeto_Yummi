@@ -6,6 +6,7 @@
     <title>{% block title %}Yummy - Delivery{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
     {% if user_tipo == 'cliente' %}
         <link rel="stylesheet" href="{{ url_for('static', filename='css/cliente.css') }}">
     {% elif user_tipo == 'restaurante' %}
@@ -19,10 +20,11 @@
 
 <header class="navbar">
     <div class="navbar__inner container">
-        <a href="{{ url_for('home.index') }}" class="navbar__logo">Yummy<span>.</span></a>
+        <a href="{{ url_for('landing.index') }}" class="navbar__logo">Yummy<span>.</span></a>
 
         <nav class="navbar__links">
             {% if logado and user_tipo == 'cliente' %}
+                <a href="{{ url_for('home.index') }}">Restaurantes</a>
                 <a href="{{ url_for('cliente.meus_pedidos') }}">Meus pedidos</a>
                 <a href="{{ url_for('cliente.editar_perfil') }}">Perfil</a>
                 <a href="{{ url_for('cliente.ver_carrinho') }}" class="navbar__cart">
@@ -44,15 +46,7 @@
                 <a href="{{ url_for('auth.logout') }}" class="btn btn--ghost">Sair ({{ user_nome }})</a>
 
             {% else %}
-                <div class="dropdown">
-                    <button class="btn btn--ghost dropdown__toggle" type="button">Entrar ▾</button>
-                    <div class="dropdown__menu">
-                        <a href="{{ url_for('auth.entrar') }}">Sou Cliente</a>
-                        <a href="{{ url_for('auth.login_restaurante') }}">Sou Restaurante</a>
-                        <a href="{{ url_for('auth.login_entregador') }}">Sou Entregador</a>
-                    </div>
-                </div>
-                <a href="{{ url_for('auth.entrar') }}" class="btn btn--primary">Criar conta</a>
+                <a href="{{ url_for('landing.index') }}" class="btn btn--ghost">Início</a>
             {% endif %}
         </nav>
     </div>
