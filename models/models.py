@@ -3,12 +3,17 @@ Models do sistema Yummy.
 Cada função representa uma operação no banco (Model, no padrão MVC).
 Nenhuma lógica de rota/HTTP entra aqui - isso fica nos controllers.
 """
+import re
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.db import DB
 
 
+def _so_digitos(txt):
+    return re.sub(r"\D", "", txt or "")
+
+
 # =========================================================
-# USUARIO (base de cliente / restaurante / entregador)
+# USUARIO
 # =========================================================
 def criar_usuario(nome, email, senha, telefone, tipo):
     senha_hash = generate_password_hash(senha)
@@ -57,18 +62,19 @@ def atualizar_usuario(id_usuario, nome, telefone):
 # =========================================================
 # CLIENTE
 # =========================================================
-def criar_cliente(id_usuario, cpf, apelido):
+def criar_cliente(id_usuario, cpf, apelido, codigo_entrega=None):
     with DB() as db:
         db.cursor.execute(
-            "INSERT INTO cliente (id_usuario, cpf, apelido) VALUES (%s, %s, %s)",
-            (id_usuario, cpf, apelido),
+            """INSERT INTO cliente (id_usuario, cpf, apelido, codigo_entrega)
+               VALUES (%s, %s, %s, %s)""",
+            (id_usuario, cpf, apelido, codigo_entrega),
         )
 
 
 def buscar_cliente(id_usuario):
     with DB() as db:
         db.cursor.execute(
-            """SELECT u.*, c.cpf, c.apelido
+            """SELECT u.*, c.cpf, c.apelido, c.codigo_entrega
                FROM usuario u JOIN cliente c ON c.id_usuario = u.id
                WHERE u.id=%s""",
             (id_usuario,),
@@ -81,6 +87,14 @@ def atualizar_cliente(id_usuario, apelido):
         db.cursor.execute(
             "UPDATE cliente SET apelido=%s WHERE id_usuario=%s",
             (apelido, id_usuario),
+        )
+
+
+def atualizar_codigo_entrega(id_usuario, codigo_entrega):
+    with DB() as db:
+        db.cursor.execute(
+            "UPDATE cliente SET codigo_entrega=%s WHERE id_usuario=%s",
+            (codigo_entrega, id_usuario),
         )
 
 
@@ -325,6 +339,23 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens, forma_
         raise ValueError("O pedido precisa ter pelo menos um item.")
 
     with DB() as db:
+        # Busca o código de entrega do cliente (com fallback)
+        db.cursor.execute(
+            "SELECT codigo_entrega FROM cliente WHERE id_usuario=%s",
+            (id_cliente,),
+        )
+        cli = db.cursor.fetchone()
+        codigo_entrega = (cli or {}).get("codigo_entrega") if cli else None
+
+        if not codigo_entrega:
+            db.cursor.execute(
+                "SELECT telefone FROM usuario WHERE id=%s",
+                (id_cliente,),
+            )
+            u = db.cursor.fetchone()
+            tel = _so_digitos((u or {}).get("telefone") or "")
+            codigo_entrega = tel[-4:] if len(tel) >= 4 else None
+
         ids_produto = [i["id_produto"] for i in itens]
         formato = ",".join(["%s"] * len(ids_produto))
         db.cursor.execute(
@@ -345,9 +376,10 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens, forma_
         valor_total = sum(i["quantidade"] * float(i["preco_unitario"]) for i in itens)
 
         db.cursor.execute(
-            """INSERT INTO pedido (id_cliente, id_restaurante, id_endereco, status, valor_total)
-               VALUES (%s,%s,%s,'pendente',%s)""",
-            (id_cliente, id_restaurante, id_endereco, valor_total),
+            """INSERT INTO pedido
+               (id_cliente, id_restaurante, id_endereco, status, valor_total, codigo_entrega)
+               VALUES (%s,%s,%s,'pendente',%s,%s)""",
+            (id_cliente, id_restaurante, id_endereco, valor_total, codigo_entrega),
         )
         id_pedido = db.cursor.lastrowid
 

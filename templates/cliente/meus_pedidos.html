@@ -10,6 +10,13 @@
             <div>
                 <strong>#{{ p.id }} - {{ p.nome_fantasia }}</strong>
                 <p class="muted">{{ p.data_hora }}</p>
+
+                {% if p.codigo_entrega and p.status not in ('entregue', 'cancelado') %}
+                    <p class="muted" style="margin-top: 6px;">
+                        Código de entrega:
+                        <strong class="codigo-entrega-inline">{{ p.codigo_entrega }}</strong>
+                    </p>
+                {% endif %}
             </div>
             <div>
                 <span class="status-badge status-badge--{{ p.status }}">{{ p.status }}</span>

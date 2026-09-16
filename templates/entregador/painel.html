@@ -53,9 +53,12 @@
                     <button type="submit" class="btn btn--secundario">Retirei o pedido</button>
                 </form>
             {% elif p.status == 'saiu_para_entrega' %}
-                <form method="post" action="{{ url_for('entregador.marcar_entregue', id_pedido=p.id) }}">
-                    <button type="submit" class="btn btn--secundario">Marcar como entregue</button>
-                </form>
+                <button type="button"
+                        class="btn btn--primary btn-abrir-modal-codigo"
+                        data-id="{{ p.id }}"
+                        data-cliente="{{ p.nome_cliente }}">
+                    Cheguei no local
+                </button>
             {% endif %}
         </div>
         {% endfor %}
@@ -63,4 +66,34 @@
 {% else %}
     <p class="muted">Você ainda não fez nenhuma entrega.</p>
 {% endif %}
+
+{# ---------- MODAL DE CÓDIGO DE ENTREGA ---------- #}
+<div id="modal-codigo" class="modal-codigo" hidden>
+    <div class="modal-codigo__box">
+        <h3 class="modal-codigo__titulo">Confirmar entrega</h3>
+        <p class="modal-codigo__desc">
+            Peça ao cliente o <strong>código de entrega</strong> (4 dígitos)
+            e digite abaixo:
+        </p>
+
+        <form method="post" id="form-codigo-entrega" action="">
+            <div class="caixa-codigo-modal">
+                <input type="text" maxlength="1" inputmode="numeric" class="digito-modal" autofocus>
+                <input type="text" maxlength="1" inputmode="numeric" class="digito-modal">
+                <input type="text" maxlength="1" inputmode="numeric" class="digito-modal">
+                <input type="text" maxlength="1" inputmode="numeric" class="digito-modal">
+            </div>
+            <input type="hidden" name="codigo" id="codigo-modal-completo">
+
+            <div class="modal-codigo__acoes">
+                <button type="button" class="btn btn--ghost" id="btn-fechar-modal">Cancelar</button>
+                <button type="submit" class="btn btn--primary">Confirmar entrega</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/entregador.js') }}"></script>
 {% endblock %}

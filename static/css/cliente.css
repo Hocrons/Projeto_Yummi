@@ -16,3 +16,52 @@
     position: sticky;
     top: 80px;
 }
+
+/* ---------- CÓDIGO DE ENTREGA (destaque na tela de sucesso) ---------- */
+.codigo-entrega-box {
+    background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+    border: 2px dashed var(--cor-primaria);
+    border-radius: var(--raio);
+    padding: 18px 16px;
+    margin: 20px auto;
+    max-width: 320px;
+    text-align: center;
+}
+
+.codigo-entrega-box__titulo {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--cor-primaria);
+    margin: 0 0 8px 0;
+}
+
+.codigo-entrega-box__numero {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: 8px;
+    color: var(--cor-texto);
+    margin: 0 0 6px 0;
+    font-family: "Courier New", monospace;
+    text-indent: 8px; /* compensa o letter-spacing */
+}
+
+.codigo-entrega-box__aviso {
+    font-size: 13px;
+    color: var(--cor-muted);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* ---------- CÓDIGO DE ENTREGA INLINE (na lista de pedidos) ---------- */
+.codigo-entrega-inline {
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-family: "Courier New", monospace;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: var(--cor-texto);
+}

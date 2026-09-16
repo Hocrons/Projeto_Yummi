@@ -67,10 +67,40 @@ def marcar_retirado(id_pedido):
 @entregador_bp.route("/pedido/<int:id_pedido>/entregue", methods=["POST"])
 @login_requerido("entregador")
 def marcar_entregue(id_pedido):
+    """
+    Marca como entregue APENAS se o código informado bater com
+    pedido.codigo_entrega. É a validação de segurança da entrega.
+    """
+    codigo_digitado = (request.form.get("codigo") or "").strip()
+
+    if not codigo_digitado:
+        flash("Informe o código de entrega que o cliente passou.", "erro")
+        return redirect(url_for("entregador.painel"))
+
+    pedido = models.buscar_pedido(id_pedido)
+    if not pedido or pedido["id_entregador"] != session["user_id"]:
+        flash("Pedido não encontrado.", "erro")
+        return redirect(url_for("entregador.painel"))
+
+    if pedido["status"] != "saiu_para_entrega":
+        flash("Esse pedido não está em rota de entrega.", "erro")
+        return redirect(url_for("entregador.painel"))
+
+    codigo_correto = (pedido.get("codigo_entrega") or "").strip()
+    if not codigo_correto:
+        # fallback: 4 últimos dígitos do telefone do cliente
+        cliente = models.buscar_usuario_por_id(pedido["id_cliente"])
+        telefone = "".join(c for c in (cliente.get("telefone") or "") if c.isdigit())
+        codigo_correto = telefone[-4:] if len(telefone) >= 4 else ""
+
+    if codigo_digitado != codigo_correto:
+        flash("Código de entrega incorreto. Peça o código correto ao cliente.", "erro")
+        return redirect(url_for("entregador.painel"))
+
     sucesso = models.marcar_pedido_entregue(id_pedido, session["user_id"])
     if sucesso:
         models.atualizar_status_pagamento(id_pedido, "aprovado")
-        flash(f"Pedido #{id_pedido} marcado como entregue.", "sucesso")
+        flash(f"Pedido #{id_pedido} entregue com sucesso!", "sucesso")
     else:
         flash("Não foi possível concluir esse pedido.", "erro")
     return redirect(url_for("entregador.painel"))

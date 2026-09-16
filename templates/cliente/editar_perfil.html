@@ -16,6 +16,21 @@
         <label>E-mail
             <input type="email" value="{{ cliente.email }}" disabled>
         </label>
+
+        <fieldset class="fieldset-secao">
+            <legend>Código de entrega</legend>
+            <p class="muted" style="margin-top: 0;">
+                Você vai informar esse código ao entregador quando receber o pedido.
+                Use 4 dígitos que você lembre bem.
+            </p>
+            <label>Código (4 dígitos)
+                <input type="text" name="codigo_entrega" maxlength="4"
+                       pattern="\d{4}" inputmode="numeric"
+                       value="{{ cliente.codigo_entrega or '' }}"
+                       placeholder="Ex: 4321">
+            </label>
+        </fieldset>
+
         <button type="submit" class="btn btn--primary btn--full">Salvar alterações</button>
     </form>
 </div>
@@ -44,7 +59,7 @@
         <summary>+ Adicionar novo endereço</summary>
         <form method="post" action="{{ url_for('cliente.adicionar_endereco') }}" class="mini-form" style="margin-top: 12px;">
             <input type="hidden" name="origem" value="perfil">
-            
+
             <label>Buscar endereço
                 <input type="text" id="google-autocomplete" placeholder="Comece a digitar o nome da rua..." autocomplete="off">
             </label>
@@ -63,7 +78,6 @@
     </details>
 </div>
 
-<!-- Scripts de comportamento e busca de endereço -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script src="{{ url_for('static', filename='js/endereco.js') }}?v=3.0"></script>
 {% endblock %}

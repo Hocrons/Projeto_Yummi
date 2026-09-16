@@ -3,3 +3,101 @@
 .card-pedido {
     border-left: 4px solid #5b2fb5;
 }
+
+/* ---------- MODAL DE CÓDIGO DE ENTREGA ---------- */
+.modal-codigo {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 20px;
+    animation: fadeIn .15s ease;
+}
+
+.modal-codigo[hidden] { display: none; }
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.modal-codigo__box {
+    background: white;
+    border-radius: var(--raio);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    padding: 28px 26px 24px;
+    max-width: 440px;
+    width: 100%;
+    text-align: center;
+    animation: slideUp .2s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(12px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal-codigo__titulo {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+}
+
+.modal-codigo__desc {
+    color: var(--cor-muted);
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 22px 0;
+}
+
+.caixa-codigo-modal {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 22px;
+}
+
+.caixa-codigo-modal .digito-modal {
+    width: 56px;
+    height: 64px;
+    text-align: center;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--cor-texto);
+    border: 2px solid var(--cor-borda);
+    border-radius: 10px;
+    background: white;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .1s ease;
+}
+
+.caixa-codigo-modal .digito-modal:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(234, 29, 44, 0.15);
+    transform: translateY(-1px);
+}
+
+.modal-codigo__acoes {
+    display: flex;
+    gap: 12px;
+}
+
+.modal-codigo__acoes .btn {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 14px;
+}
+
+/* Responsivo */
+@media (max-width: 480px) {
+    .caixa-codigo-modal .digito-modal {
+        width: 46px;
+        height: 54px;
+        font-size: 22px;
+    }
+    .modal-codigo__box {
+        padding: 22px 18px 18px;
+    }
+}

@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from flask import Flask, session
 from dotenv import load_dotenv
 
@@ -16,14 +17,32 @@ load_dotenv()
 
 def create_app():
     app = Flask(__name__)
-    app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key-troque-isso")
+
+    # ---------- Configuração de sessão ----------
+    secret_key = os.getenv("SECRET_KEY")
+    if not secret_key or secret_key == "troque-esta-chave-em-producao":
+        import secrets
+        secret_key = secrets.token_urlsafe(64)
+        print("[AVISO] SECRET_KEY não definida no .env. Sessões vão cair a cada restart.")
+        print("[AVISO] Rode: python -c \"import secrets; print(secrets.token_urlsafe(64))\"")
+        print("[AVISO] e cole o resultado no .env como SECRET_KEY=...")
+
+    app.secret_key = secret_key
+
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=False,  # True só em produção com HTTPS
+        PERMANENT_SESSION_LIFETIME=timedelta(days=7),
+        SESSION_REFRESH_EACH_REQUEST=True,
+    )
 
     # OAuth (login social - Google / Facebook)
     oauth.init_app(app)
 
-    # Blueprints (Controllers)
-    app.register_blueprint(landing_bp)
-    app.register_blueprint(home_bp)
+    # Blueprints (Controllers) — ordem importa: landing primeiro
+    app.register_blueprint(landing_bp)   # pega "/"
+    app.register_blueprint(home_bp)      # pega "/cliente"
     app.register_blueprint(auth_bp)
     app.register_blueprint(cliente_bp)
     app.register_blueprint(restaurante_bp)

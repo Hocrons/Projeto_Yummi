@@ -6,21 +6,17 @@ cliente_bp = Blueprint("cliente", __name__, url_prefix="/cliente")
 
 
 def _carrinho():
-    """Garante que o carrinho existe na sessão e auto-repara a estrutura se estiver corrompida."""
     carrinho = session.get("carrinho")
-
     if not isinstance(carrinho, dict) or "itens" not in carrinho or "id_restaurante" not in carrinho:
         session["carrinho"] = {"id_restaurante": None, "itens": {}}
         session.modified = True
-
     return session["carrinho"]
 
 
 def _carrinho_totais(carrinho):
     total = 0
     qtd_total = 0
-    itens = carrinho.get("itens", {})
-    for item in itens.values():
+    for item in carrinho.get("itens", {}).values():
         total += item["preco"] * item["quantidade"]
         qtd_total += item["quantidade"]
     return {"total": round(total, 2), "qtd_total": qtd_total}
@@ -41,21 +37,16 @@ def ver_cardapio(id_restaurante):
 
 # ---------------------------------------------------------
 # CARRINHO
-# (a regra de "só um restaurante por carrinho" é aplicada aqui E de novo
-#  no models.criar_pedido_completo, como segunda camada de proteção)
 # ---------------------------------------------------------
 @cliente_bp.route("/carrinho")
 @login_requerido("cliente")
 def ver_carrinho():
     carrinho = _carrinho()
     restaurante = None
-
     if carrinho.get("id_restaurante"):
         restaurante = models.buscar_restaurante(carrinho["id_restaurante"])
-
     if not restaurante:
         restaurante = {"nome_fantasia": "Nenhum restaurante selecionado"}
-
     enderecos = models.listar_enderecos_cliente(session["user_id"])
     return render_template(
         "cliente/carrinho.html",
@@ -79,7 +70,6 @@ def adicionar_ao_carrinho():
 
     carrinho = _carrinho()
 
-    # Regra iFood: impede adicionar itens de restaurantes diferentes no mesmo carrinho
     if carrinho.get("itens") and carrinho.get("id_restaurante") != produto["id_restaurante"]:
         return jsonify({
             "erro": "Seu carrinho já tem itens de outro restaurante.",
@@ -132,7 +122,7 @@ def atualizar_carrinho():
 
 
 # ---------------------------------------------------------
-# ENDEREÇO - CRUD completo, usado tanto no perfil quanto no checkout
+# ENDEREÇO
 # ---------------------------------------------------------
 @cliente_bp.route("/endereco/adicionar", methods=["POST"])
 @login_requerido("cliente")
@@ -146,8 +136,6 @@ def adicionar_endereco():
         cep=request.form.get("cep"),
     )
     flash("Endereço adicionado.", "sucesso")
-
-    # 'origem' define para onde voltar depois de salvar (perfil ou checkout)
     if request.form.get("origem") == "perfil":
         return redirect(url_for("cliente.editar_perfil"))
     return redirect(url_for("cliente.ver_carrinho"))
@@ -213,7 +201,6 @@ def checkout():
                 forma_pagamento=request.form["forma_pagamento"],
             )
         except ValueError as e:
-            # Ex: itens de restaurantes diferentes, produto removido, etc.
             flash(str(e), "erro")
             return redirect(url_for("cliente.ver_carrinho"))
 
@@ -224,7 +211,6 @@ def checkout():
     restaurante = None
     if carrinho.get("id_restaurante"):
         restaurante = models.buscar_restaurante(carrinho["id_restaurante"])
-
     if not restaurante:
         restaurante = {"nome_fantasia": "Nenhum restaurante selecionado"}
 
@@ -256,7 +242,7 @@ def meus_pedidos():
 
 
 # ---------------------------------------------------------
-# PERFIL
+# PERFIL (com código de entrega)
 # ---------------------------------------------------------
 @cliente_bp.route("/perfil", methods=["GET", "POST"])
 @login_requerido("cliente")
@@ -266,6 +252,15 @@ def editar_perfil():
             session["user_id"], request.form["nome"], request.form.get("telefone")
         )
         models.atualizar_cliente(session["user_id"], request.form.get("apelido"))
+
+        # Código de entrega (opcional, exatamente 4 dígitos)
+        codigo_entrega = (request.form.get("codigo_entrega") or "").strip()
+        if codigo_entrega:
+            if len(codigo_entrega) != 4 or not codigo_entrega.isdigit():
+                flash("O código de entrega deve ter exatamente 4 dígitos.", "erro")
+                return redirect(url_for("cliente.editar_perfil"))
+            models.atualizar_codigo_entrega(session["user_id"], codigo_entrega)
+
         session["user_nome"] = request.form["nome"]
         flash("Perfil atualizado.", "sucesso")
         return redirect(url_for("cliente.editar_perfil"))

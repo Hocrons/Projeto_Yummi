@@ -4,6 +4,17 @@
 <div class="form-card" style="text-align:center;">
     <h2>🎉 Pedido #{{ pedido.id }} confirmado!</h2>
     <p class="muted">{{ pedido.nome_fantasia }}</p>
+
+    {% if pedido.codigo_entrega and pedido.status not in ('entregue', 'cancelado') %}
+        <div class="codigo-entrega-box">
+            <p class="codigo-entrega-box__titulo">Código de entrega</p>
+            <p class="codigo-entrega-box__numero">{{ pedido.codigo_entrega }}</p>
+            <p class="codigo-entrega-box__aviso">
+                Informe esse código ao entregador quando receber o pedido.
+            </p>
+        </div>
+    {% endif %}
+
     <p>Status atual: <strong id="status-pedido" data-id="{{ pedido.id }}">{{ pedido.status }}</strong></p>
     <p>Total: R$ {{ '%.2f' % pedido.valor_total }}</p>
 

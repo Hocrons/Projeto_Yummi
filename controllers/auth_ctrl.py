@@ -50,8 +50,13 @@ def _codigo_restaurante_valido(fluxo, chave_codigo, chave_gerado_em):
     return idade <= otp.CODIGO_VALIDADE_SEGUNDOS
 
 
+def _codigo_entrega_padrao(telefone_normalizado):
+    """Retorna os 4 últimos dígitos do telefone normalizado ou None."""
+    digitos = "".join(c for c in (telefone_normalizado or "") if c.isdigit())
+    return digitos[-4:] if len(digitos) >= 4 else None
+
+
 def _nominatim_query(endereco):
-    """Faz UMA consulta ao Nominatim. Retorna (lat, lon) ou (None, None)."""
     try:
         resp = requests.get(
             "https://nominatim.openstreetmap.org/search",
@@ -75,16 +80,8 @@ def _nominatim_query(endereco):
 
 
 def _buscar_coordenadas(rua, numero, bairro, cidade, uf):
-    """
-    Tenta várias combinações de endereço até o Nominatim achar.
-    Se nada funcionar com a rua, cai pro bairro e depois pra cidade.
-    Retorna (lat, lon, endereco_usado, precisao) ou (None, None, None, None).
-
-    precisao: 'rua' | 'bairro' | 'cidade' | None
-    """
     tentativas = []
 
-    # Tentativas com a rua (mais específicas primeiro)
     if rua and numero and bairro and cidade and uf:
         tentativas.append((f"{rua}, {numero}, {bairro}, {cidade}, {uf}, Brasil", "rua"))
     if rua and numero and cidade and uf:
@@ -96,7 +93,6 @@ def _buscar_coordenadas(rua, numero, bairro, cidade, uf):
     if rua and bairro and cidade:
         tentativas.append((f"{rua}, {bairro}, {cidade}, Brasil", "rua"))
 
-    # Fallbacks: bairro e cidade
     if bairro and cidade and uf:
         tentativas.append((f"{bairro}, {cidade}, {uf}, Brasil", "bairro"))
     if bairro and cidade:
@@ -106,7 +102,6 @@ def _buscar_coordenadas(rua, numero, bairro, cidade, uf):
     if cidade:
         tentativas.append((f"{cidade}, Brasil", "cidade"))
 
-    # Remove duplicatas
     vistas = set()
     unicas = []
     for t, p in tentativas:
@@ -116,7 +111,7 @@ def _buscar_coordenadas(rua, numero, bairro, cidade, uf):
 
     for i, (endereco, precisao) in enumerate(unicas):
         if i > 0:
-            time.sleep(1.1)  # respeita o rate limit
+            time.sleep(1.1)
         print(f"[Nominatim] Tentando ({precisao}): {endereco}")
         lat, lon = _nominatim_query(endereco)
         if lat is not None:
@@ -138,17 +133,19 @@ def cadastrar_cliente():
                 flash("Este e-mail já está cadastrado.", "erro")
                 return render_template("cliente/cadastrar.html")
 
+            telefone_raw = request.form.get("telefone")
             id_usuario = models.criar_usuario(
                 nome=request.form["nome"],
                 email=request.form["email"],
                 senha=request.form["senha"],
-                telefone=request.form.get("telefone"),
+                telefone=telefone_raw,
                 tipo="cliente",
             )
             models.criar_cliente(
                 id_usuario=id_usuario,
                 cpf=request.form["cpf"],
                 apelido=request.form.get("apelido"),
+                codigo_entrega=_codigo_entrega_padrao(normalizar_telefone(telefone_raw)),
             )
             flash("Cadastro realizado! Faça login para continuar.", "sucesso")
             return redirect(url_for("auth.login_cliente"))
@@ -162,6 +159,7 @@ def login_cliente():
     if request.method == "POST":
         usuario = models.validar_login(request.form["email"], request.form["senha"])
         if usuario and usuario["tipo"] == "cliente":
+            session.permanent = True
             session["user_id"] = usuario["id"]
             session["user_tipo"] = "cliente"
             session["user_nome"] = usuario["nome"]
@@ -172,6 +170,7 @@ def login_cliente():
 
 
 def _logar_usuario_cliente(usuario):
+    session.permanent = True
     session["user_id"] = usuario["id"]
     session["user_tipo"] = "cliente"
     session["user_nome"] = usuario["nome"]
@@ -479,7 +478,12 @@ def _finalizar_cadastro_rapido():
             telefone=fluxo["telefone"],
             tipo="cliente",
         )
-        models.criar_cliente(id_usuario=id_usuario, cpf=fluxo["cpf"], apelido=None)
+        models.criar_cliente(
+            id_usuario=id_usuario,
+            cpf=fluxo["cpf"],
+            apelido=None,
+            codigo_entrega=_codigo_entrega_padrao(fluxo.get("telefone")),
+        )
     except Exception as e:
         flash(f"Erro ao concluir o cadastro: {e}", "erro")
         return redirect(url_for("auth.cadastro_rapido"))
@@ -578,18 +582,20 @@ def completar_cadastro_social():
         nome_final = request.form.get("nome") or dados["nome"] or "Cliente"
         try:
             senha_aleatoria = secrets.token_urlsafe(24)
+            telefone_raw = request.form.get("telefone")
 
             id_usuario = models.criar_usuario(
                 nome=nome_final,
                 email=dados["email"],
                 senha=senha_aleatoria,
-                telefone=request.form.get("telefone"),
+                telefone=telefone_raw,
                 tipo="cliente",
             )
             models.criar_cliente(
                 id_usuario=id_usuario,
                 cpf=request.form["cpf"],
                 apelido=request.form.get("apelido"),
+                codigo_entrega=_codigo_entrega_padrao(normalizar_telefone(telefone_raw)),
             )
         except Exception as e:
             flash(f"Erro ao concluir o cadastro: {e}", "erro")
@@ -608,9 +614,6 @@ def completar_cadastro_social():
 # RESTAURANTE — CADASTRO EM 6 ETAPAS
 # =========================================================
 
-# ---------------------------------------------------------
-# ETAPA 1 — E-mail
-# ---------------------------------------------------------
 @auth_bp.route("/restaurante/cadastrar", methods=["GET", "POST"])
 def cadastrar_restaurante():
     if request.method == "POST":
@@ -651,9 +654,6 @@ def cadastrar_restaurante():
     return render_template("restaurante/cadastrar_email.html")
 
 
-# ---------------------------------------------------------
-# ETAPA 2 — Código do e-mail
-# ---------------------------------------------------------
 @auth_bp.route("/restaurante/cadastrar/email-codigo", methods=["GET", "POST"])
 def restaurante_email_codigo():
     fluxo = _fluxo_restaurante()
@@ -678,9 +678,6 @@ def restaurante_email_codigo():
                            voltar_url=url_for("auth.cadastrar_restaurante"))
 
 
-# ---------------------------------------------------------
-# ETAPA 3 — Nome + Telefone
-# ---------------------------------------------------------
 @auth_bp.route("/restaurante/cadastrar/dados", methods=["GET", "POST"])
 def restaurante_dados():
     fluxo = _fluxo_restaurante()
@@ -722,9 +719,6 @@ def restaurante_dados():
     return render_template("restaurante/cadastrar_dados.html", fluxo=fluxo)
 
 
-# ---------------------------------------------------------
-# ETAPA 4 — Código do WhatsApp
-# ---------------------------------------------------------
 @auth_bp.route("/restaurante/cadastrar/whatsapp-codigo", methods=["GET", "POST"])
 def restaurante_whatsapp_codigo():
     fluxo = _fluxo_restaurante()
@@ -749,9 +743,6 @@ def restaurante_whatsapp_codigo():
                            voltar_url=url_for("auth.restaurante_dados"))
 
 
-# ---------------------------------------------------------
-# ETAPA 5 — Formulário completo
-# ---------------------------------------------------------
 @auth_bp.route("/restaurante/cadastrar/completar", methods=["GET", "POST"])
 def restaurante_completar():
     fluxo = _fluxo_restaurante()
@@ -813,9 +804,6 @@ def restaurante_completar():
                            planos=models.listar_planos())
 
 
-# ---------------------------------------------------------
-# ETAPA 6 — Confirmação de localização com mapa
-# ---------------------------------------------------------
 @auth_bp.route("/restaurante/cadastrar/confirmar-local", methods=["GET", "POST"])
 def restaurante_confirmar_local():
     fluxo = _fluxo_restaurante()
@@ -885,6 +873,7 @@ def login_restaurante():
     if request.method == "POST":
         usuario = models.validar_login(request.form["email"], request.form["senha"])
         if usuario and usuario["tipo"] == "restaurante":
+            session.permanent = True
             session["user_id"] = usuario["id"]
             session["user_tipo"] = "restaurante"
             session["user_nome"] = usuario["nome"]
@@ -929,6 +918,7 @@ def login_entregador():
     if request.method == "POST":
         usuario = models.validar_login(request.form["email"], request.form["senha"])
         if usuario and usuario["tipo"] == "entregador":
+            session.permanent = True
             session["user_id"] = usuario["id"]
             session["user_tipo"] = "entregador"
             session["user_nome"] = usuario["nome"]
@@ -943,4 +933,4 @@ def login_entregador():
 @auth_bp.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("home.index"))
+    return redirect(url_for("landing.index"))
