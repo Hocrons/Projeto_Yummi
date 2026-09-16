@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Seja um Entregador Parceiro - Yummy{% endblock %}
+
+{% block content %}
+<section class="entregador-portal">
+    <div class="entregador-portal__conteudo">
+        <div class="entregador-portal__texto">
+            <p class="entregador-portal__eyebrow">Entregador Parceiro</p>
+            <h1 class="entregador-portal__titulo">
+                Seja um entregador<br>
+                <span class="entregador-portal__destaque">parceiro Yummy</span>
+            </h1>
+            <p class="entregador-portal__subtitulo">
+                Ganhe dinheiro extra fazendo entregas quando quiser.
+                Sem horário fixo, sem chefe.
+            </p>
+
+            <ul class="entregador-portal__beneficios">
+                <li>
+                    <span class="entregador-portal__check">✓</span>
+                    Você decide quando trabalhar
+                </li>
+                <li>
+                    <span class="entregador-portal__check">✓</span>
+                    Receba semanalmente direto na sua conta
+                </li>
+                <li>
+                    <span class="entregador-portal__check">✓</span>
+                    Suporte 24h pelo WhatsApp
+                </li>
+            </ul>
+
+            <div class="entregador-portal__acoes">
+                <a href="{{ url_for('auth.cadastrar_entregador') }}"
+                   class="btn btn--entregador">
+                    🛵 Comece a entregar
+                </a>
+                <a href="{{ url_for('auth.login_entregador') }}"
+                   class="entregador-portal__link">
+                    Já sou parceiro, quero entrar
+                </a>
+            </div>
+        </div>
+
+        <div class="entregador-portal__ilustracao">
+            <div class="entregador-portal__emoji">🛵</div>
+            <div class="entregador-portal__circulo"></div>
+        </div>
+    </div>
+</section>
+{% endblock %}

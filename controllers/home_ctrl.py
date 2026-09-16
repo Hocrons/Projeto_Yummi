@@ -4,7 +4,7 @@ from models import models
 home_bp = Blueprint("home", __name__)
 
 
-@home_bp.route("/cliente")
+@home_bp.route("/restaurantes")
 def index():
     categoria = request.args.get("categoria")
     busca = request.args.get("busca")

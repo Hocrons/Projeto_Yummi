@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Portal do Parceiro - Yummy{% endblock %}
+
+{% block content %}
+<section class="portal-parceiro">
+    <div class="portal-parceiro__card">
+        <div class="portal-parceiro__logo">Yummy<span>.</span></div>
+
+        <h1 class="portal-parceiro__titulo">Portal do Parceiro</h1>
+        <p class="portal-parceiro__subtitulo">
+            Gerencie sua loja de forma fácil e rápida
+        </p>
+
+        <a href="{{ url_for('auth.login_restaurante') }}"
+           class="btn btn--portal btn--full">
+            Acessar
+        </a>
+
+        <div class="portal-parceiro__divisor"></div>
+
+        <p class="portal-parceiro__rodape">
+            Ainda não tem cadastro?
+            <a href="{{ url_for('restaurante.cadastrar_landing') }}">Cadastre-se</a>
+        </p>
+    </div>
+</section>
+{% endblock %}

@@ -1,17 +1,29 @@
 {% extends "base.html" %}
-{% block title %}Login - Restaurante{% endblock %}
+{% block title %}Acessar - Portal do Parceiro{% endblock %}
+
 {% block content %}
-<div class="form-card">
-    <h2>Entrar como restaurante</h2>
-    <form method="post">
-        <label>E-mail
-            <input type="email" name="email" required>
-        </label>
-        <label>Senha
-            <input type="password" name="senha" required>
-        </label>
-        <button type="submit" class="btn btn--primary btn--full">Entrar</button>
-    </form>
-    <p class="muted">Ainda não tem loja no Yummy? <a href="{{ url_for('auth.cadastrar_restaurante') }}">Cadastre seu restaurante</a></p>
-</div>
+<section class="portal-parceiro">
+    <div class="portal-parceiro__card">
+        <div class="portal-parceiro__logo">Yummy<span>.</span></div>
+
+        <h2 class="portal-parceiro__titulo" style="text-align:left;">Entre na sua conta</h2>
+
+        <form method="post" class="portal-parceiro__form">
+            <label class="portal-parceiro__label">E-mail ou nome de usuário</label>
+            <input type="email" name="email" placeholder="nome@email.com.br"
+                   autocomplete="username" required autofocus
+                   class="portal-parceiro__input">
+
+            <button type="submit" class="btn btn--portal btn--full">
+                Continuar
+            </button>
+        </form>
+
+        <div class="portal-parceiro__divisor"></div>
+
+        <p class="portal-parceiro__rodape">
+            <a href="{{ url_for('restaurante.portal') }}">Preciso de ajuda para acessar</a>
+        </p>
+    </div>
+</section>
 {% endblock %}

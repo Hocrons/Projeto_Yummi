@@ -1,32 +1,67 @@
 {% extends "base.html" %}
 {% block title %}Cadastro - Entregador{% endblock %}
+
 {% block content %}
-<div class="form-card">
-    <h2>Cadastrar como entregador</h2>
+<div class="form-card form-card--wide">
+    <a href="{{ url_for('entregador.portal') }}" class="link-voltar">&lsaquo;</a>
+
+    <h2>Cadastro de entregador</h2>
+    <p class="muted" style="margin-top: 0;">
+        Preencha os dados abaixo para começar a fazer entregas no Yummy.
+    </p>
+
     <form method="post">
-        <label>Nome completo
-            <input type="text" name="nome" required>
-        </label>
-        <label>CPF (somente números)
-            <input type="text" name="cpf" maxlength="11" pattern="\d{11}" required>
-        </label>
-        <label>Veículo
-            <input type="text" name="veiculo" placeholder="Ex: Moto, Bicicleta, Carro">
-        </label>
-        <label>Placa
-            <input type="text" name="placa">
-        </label>
-        <label>E-mail
-            <input type="email" name="email" required>
-        </label>
-        <label>Telefone
-            <input type="text" name="telefone">
-        </label>
-        <label>Senha
-            <input type="password" name="senha" minlength="6" required>
-        </label>
-        <button type="submit" class="btn btn--primary btn--full">Cadastrar</button>
+        <fieldset class="fieldset-secao">
+            <legend>Dados pessoais</legend>
+
+            <label>Nome completo
+                <input type="text" name="nome" maxlength="100" required autofocus>
+            </label>
+
+            <div class="form-grid">
+                <label>CPF (somente números)
+                    <input type="text" name="cpf" maxlength="11" pattern="\d{11}"
+                           placeholder="00000000000" required>
+                </label>
+                <label>Telefone (com DDD)
+                    <input type="text" name="telefone" placeholder="(11) 99999-9999">
+                </label>
+            </div>
+        </fieldset>
+
+        <fieldset class="fieldset-secao">
+            <legend>Veículo</legend>
+
+            <div class="form-grid">
+                <label>Veículo
+                    <input type="text" name="veiculo"
+                           placeholder="Ex: Moto, Bicicleta, Carro">
+                </label>
+                <label>Placa (se aplicável)
+                    <input type="text" name="placa" maxlength="10">
+                </label>
+            </div>
+        </fieldset>
+
+        <fieldset class="fieldset-secao">
+            <legend>Acesso ao portal</legend>
+
+            <label>E-mail
+                <input type="email" name="email" maxlength="100" required>
+            </label>
+
+            <label>Senha
+                <input type="password" name="senha" minlength="6" required>
+            </label>
+        </fieldset>
+
+        <button type="submit" class="btn btn--entregador btn--full">
+            Quero me cadastrar
+        </button>
     </form>
-    <p class="muted">Já tem conta? <a href="{{ url_for('auth.login_entregador') }}">Entrar</a></p>
+
+    <p class="muted" style="text-align:center; margin-top: 16px;">
+        Já tem conta? <a href="{{ url_for('auth.login_entregador') }}">Entrar</a>
+    </p>
 </div>
 {% endblock %}

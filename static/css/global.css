@@ -2,6 +2,7 @@
    YUMMY — GLOBAL
    Variáveis de tema (light fofo rosa / dark Hello Kitty dark)
    + Reset + Componentes base (navbar, botões, forms, flash…)
+   + Portal do Parceiro + Landing do Parceiro
    ========================================================= */
 
 /* ---------- TEMA LIGHT (padrão) — Fofo Rosa ---------- */
@@ -706,9 +707,624 @@ html[data-theme="dark"] .theme-toggle__icon--moon { display: inline-block; }
     .form-card { padding: 22px 18px; }
 }
 
+/* =========================================================
+   PORTAL DO PARCEIRO (login / acesso)
+   ========================================================= */
+.portal-parceiro {
+    padding: 40px 20px 60px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 60vh;
+}
+
+.portal-parceiro__card {
+    background: var(--cor-branco);
+    border-radius: 20px;
+    box-shadow: var(--sombra-forte);
+    border: 2px solid var(--cor-borda);
+    padding: 40px 36px 28px;
+    max-width: 460px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.portal-parceiro__card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: var(--gradiente);
+}
+
+.portal-parceiro__logo {
+    font-size: 26px;
+    font-weight: 800;
+    background: var(--gradiente);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 26px;
+    display: inline-block;
+}
+.portal-parceiro__logo span {
+    color: var(--cor-primaria);
+    -webkit-text-fill-color: var(--cor-primaria);
+}
+
+.portal-parceiro__titulo {
+    font-size: 24px;
+    font-weight: 800;
+    margin: 0 0 6px 0;
+    color: var(--cor-texto);
+}
+
+.portal-parceiro__subtitulo {
+    color: var(--cor-muted);
+    margin: 0 0 26px 0;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.portal-parceiro__form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.portal-parceiro__label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cor-muted);
+    margin-bottom: 4px;
+}
+
+.portal-parceiro__input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid var(--cor-borda);
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    background: var(--cor-branco);
+    color: var(--cor-texto);
+    transition: all var(--transicao);
+}
+.portal-parceiro__input:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 4px rgba(255, 92, 157, 0.15);
+}
+.portal-parceiro__input--travado {
+    background: var(--cor-fundo-alt);
+    color: var(--cor-muted);
+    cursor: not-allowed;
+}
+
+.btn--portal {
+    background: #1a1a1a;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 15px 22px;
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 16px;
+    transition: all var(--transicao);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+.btn--portal:hover {
+    background: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+.btn--portal:active { transform: translateY(0); }
+
+[data-theme="dark"] .btn--portal {
+    background: var(--gradiente);
+    color: white;
+}
+[data-theme="dark"] .btn--portal:hover {
+    background: var(--gradiente-hover);
+}
+
+.portal-parceiro__divisor {
+    border-top: 1px solid var(--cor-borda);
+    margin: 26px -36px 20px;
+}
+
+.portal-parceiro__rodape {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cor-texto);
+    margin: 0;
+}
+.portal-parceiro__rodape a {
+    color: var(--cor-primaria);
+    font-weight: 800;
+    transition: opacity var(--transicao);
+}
+.portal-parceiro__rodape a:hover { opacity: 0.75; }
+
+.portal-parceiro__voltar-form {
+    display: flex;
+    justify-content: center;
+    margin-top: 14px;
+}
+.portal-parceiro__voltar {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cor-texto);
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: var(--raio-pill);
+    transition: all var(--transicao);
+}
+.portal-parceiro__voltar:hover {
+    background: var(--cor-primaria-suave);
+    color: var(--cor-primaria);
+}
+
+/* =========================================================
+   LANDING DO PARCEIRO (cadastro)
+   ========================================================= */
+.landing-parceiro {
+    padding: 20px 0 60px;
+}
+
+.landing-parceiro__header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+.landing-parceiro__header h1 {
+    font-size: 32px;
+    font-weight: 800;
+    margin: 0 0 10px 0;
+    color: var(--cor-texto);
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.2;
+}
+.landing-parceiro__header .muted {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.landing-parceiro__cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 900px;
+    margin: 0 auto 50px;
+}
+
+.landing-parceiro__card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 30px 26px;
+    border-radius: 20px;
+    color: white;
+    text-decoration: none;
+    box-shadow: var(--sombra-forte);
+    transition: all var(--transicao);
+    position: relative;
+    overflow: hidden;
+    min-height: 170px;
+}
+.landing-parceiro__card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 40px rgba(255, 92, 157, 0.35);
+}
+
+.landing-parceiro__card--restaurantes {
+    background: linear-gradient(135deg, #ff7eb3 0%, #ff4d8a 100%);
+}
+.landing-parceiro__card--multicategorias {
+    background: linear-gradient(135deg, #ffb3c9 0%, #ff7eb3 100%);
+    opacity: 0.9;
+}
+
+.landing-parceiro__card-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    text-align: left;
+    flex: 1;
+}
+
+.landing-parceiro__card-texto h2 {
+    font-size: 24px;
+    font-weight: 800;
+    margin: 0;
+    color: white;
+}
+
+.landing-parceiro__btn {
+    display: inline-block;
+    background: white;
+    color: #ff4d8a;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    align-self: flex-start;
+    transition: all var(--transicao);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.landing-parceiro__card:hover .landing-parceiro__btn {
+    background: #fff5f8;
+    transform: scale(1.05);
+}
+
+.landing-parceiro__card-icone {
+    font-size: 72px;
+    line-height: 1;
+    flex-shrink: 0;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.2));
+    transition: transform var(--transicao);
+}
+.landing-parceiro__card:hover .landing-parceiro__card-icone {
+    transform: scale(1.1) rotate(-6deg);
+}
+
+.landing-parceiro__subtitulo {
+    text-align: center;
+    margin-bottom: 30px;
+}
+.landing-parceiro__subtitulo h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--cor-texto);
+    margin: 0;
+}
+
+.landing-parceiro__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.landing-parceiro__chip {
+    background: var(--cor-primaria-suave);
+    color: var(--cor-texto);
+    border: 2px solid var(--cor-borda);
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all var(--transicao);
+    cursor: default;
+}
+.landing-parceiro__chip:hover {
+    background: var(--cor-branco);
+    border-color: var(--cor-primaria);
+    transform: translateY(-2px);
+    box-shadow: var(--sombra);
+}
+
+/* ---------- RESPONSIVO ---------- */
+@media (max-width: 800px) {
+    .landing-parceiro__header h1 { font-size: 24px; }
+    .landing-parceiro__cards {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+    .landing-parceiro__card {
+        min-height: 140px;
+        padding: 22px 20px;
+    }
+    .landing-parceiro__card-icone { font-size: 56px; }
+    .landing-parceiro__card-texto h2 { font-size: 20px; }
+}
+
+@media (max-width: 600px) {
+    .portal-parceiro__card {
+        padding: 30px 24px 22px;
+    }
+    .portal-parceiro__divisor {
+        margin-left: -24px;
+        margin-right: -24px;
+    }
+}
+
 /* ---------- TRANSIÇÃO SUAVE AO TROCAR TEMA ---------- */
 html, body, .navbar, .form-card, .card-pedido, .card-restaurante,
 .tabela, .resumo-pedido, .dropdown__menu, input, textarea, .btn {
     transition: background-color .25s ease, color .25s ease,
                 border-color .25s ease, box-shadow .25s ease;
+}
+
+/* =========================================================
+   PORTAL DO ENTREGADOR (landing + cadastro + sucesso)
+   ========================================================= */
+
+/* ---------- LANDING ---------- */
+.entregador-portal {
+    padding: 40px 0 60px;
+}
+
+.entregador-portal__conteudo {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 40px;
+    align-items: center;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.entregador-portal__texto {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.entregador-portal__eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--cor-primaria);
+    margin: 0;
+}
+
+.entregador-portal__titulo {
+    font-size: 40px;
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0;
+    color: var(--cor-texto);
+}
+
+.entregador-portal__destaque {
+    background: var(--gradiente);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.entregador-portal__subtitulo {
+    font-size: 16px;
+    color: var(--cor-muted);
+    line-height: 1.55;
+    margin: 0;
+    font-weight: 500;
+    max-width: 440px;
+}
+
+.entregador-portal__beneficios {
+    list-style: none;
+    padding: 0;
+    margin: 6px 0 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.entregador-portal__beneficios li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--cor-texto);
+}
+
+.entregador-portal__check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--gradiente);
+    color: white;
+    font-weight: 800;
+    font-size: 13px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(255, 92, 157, 0.35);
+}
+
+.entregador-portal__acoes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+    margin-top: 6px;
+}
+
+.btn--entregador {
+    background: #ea1d2c;
+    color: white;
+    border: none;
+    border-radius: var(--raio-pill);
+    padding: 15px 30px;
+    font-size: 16px;
+    font-weight: 800;
+    box-shadow: 0 6px 20px rgba(234, 29, 44, 0.35);
+    transition: all var(--transicao);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn--entregador:hover {
+    background: #c4141f;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 26px rgba(234, 29, 44, 0.45);
+}
+.btn--entregador:active { transform: translateY(0); }
+
+[data-theme="dark"] .btn--entregador {
+    background: var(--gradiente);
+    box-shadow: 0 6px 20px rgba(255, 61, 129, 0.4);
+}
+[data-theme="dark"] .btn--entregador:hover {
+    background: var(--gradiente-hover);
+}
+
+.entregador-portal__link {
+    font-size: 14px;
+    color: var(--cor-muted);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    transition: color var(--transicao);
+}
+.entregador-portal__link:hover {
+    color: var(--cor-primaria);
+}
+
+.entregador-portal__ilustracao {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 320px;
+}
+
+.entregador-portal__circulo {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: var(--gradiente);
+    opacity: 0.20;
+    animation: pulseCircle 3s ease-in-out infinite;
+}
+
+@keyframes pulseCircle {
+    0%, 100% { transform: scale(1); opacity: 0.20; }
+    50%      { transform: scale(1.08); opacity: 0.28; }
+}
+
+.entregador-portal__emoji {
+    font-size: 170px;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 12px 24px rgba(255, 92, 157, 0.35));
+    animation: floatEmoji 4s ease-in-out infinite;
+}
+
+@keyframes floatEmoji {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-12px); }
+}
+
+/* ---------- TELA DE SUCESSO ---------- */
+.sucesso-entregador {
+    text-align: center;
+}
+
+.sucesso-entregador__cabecalho {
+    margin-bottom: 26px;
+}
+
+.sucesso-entregador__check {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--cor-sucesso);
+    color: white;
+    font-size: 30px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    box-shadow: 0 6px 20px rgba(76, 175, 122, 0.35);
+}
+
+.sucesso-entregador__titulo {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--cor-texto);
+    margin: 0 0 6px 0;
+    background: none;
+    -webkit-text-fill-color: var(--cor-texto);
+}
+
+.sucesso-entregador__subtitulo {
+    margin: 0 auto;
+    max-width: 380px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.sucesso-entregador__qrcode {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    background: white;
+    padding: 16px;
+    border-radius: var(--raio);
+    border: 2px solid var(--cor-borda);
+    box-shadow: var(--sombra);
+    margin: 8px 0 20px;
+}
+
+.sucesso-entregador__qrcode img {
+    display: block;
+    border-radius: 8px;
+}
+
+.sucesso-entregador__qrcode-legenda {
+    margin: 10px 0 0 0;
+    font-size: 12px;
+}
+
+.sucesso-entregador__acoes {
+    max-width: 320px;
+    margin: 0 auto;
+}
+
+/* ---------- RESPONSIVO ---------- */
+@media (max-width: 800px) {
+    .entregador-portal__conteudo {
+        grid-template-columns: 1fr;
+        gap: 24px;
+        text-align: center;
+    }
+    .entregador-portal__titulo {
+        font-size: 30px;
+    }
+    .entregador-portal__subtitulo {
+        margin: 0 auto;
+    }
+    .entregador-portal__beneficios li {
+        justify-content: center;
+    }
+    .entregador-portal__acoes {
+        align-items: center;
+    }
+    .entregador-portal__ilustracao {
+        min-height: 220px;
+        order: -1;
+    }
+    .entregador-portal__circulo {
+        width: 200px;
+        height: 200px;
+    }
+    .entregador-portal__emoji {
+        font-size: 120px;
+    }
+    .sucesso-entregador__titulo {
+        font-size: 19px;
+    }
 }

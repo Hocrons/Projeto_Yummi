@@ -1,17 +1,29 @@
 {% extends "base.html" %}
-{% block title %}Login - Entregador{% endblock %}
+{% block title %}Entrar - Entregador{% endblock %}
+
 {% block content %}
 <div class="form-card">
+    <a href="{{ url_for('entregador.portal') }}" class="link-voltar">&lsaquo;</a>
+
     <h2>Entrar como entregador</h2>
+    <p class="muted" style="margin-top: 0;">
+        Acesse o portal para ver as corridas disponíveis.
+    </p>
+
     <form method="post">
         <label>E-mail
-            <input type="email" name="email" required>
+            <input type="email" name="email" required autofocus>
         </label>
         <label>Senha
             <input type="password" name="senha" required>
         </label>
-        <button type="submit" class="btn btn--primary btn--full">Entrar</button>
+
+        <button type="submit" class="btn btn--entregador btn--full">Entrar</button>
     </form>
-    <p class="muted">Ainda não é entregador parceiro? <a href="{{ url_for('auth.cadastrar_entregador') }}">Cadastre-se</a></p>
+
+    <p class="muted" style="text-align:center; margin-top: 16px;">
+        Ainda não é parceiro?
+        <a href="{{ url_for('auth.cadastrar_entregador') }}">Cadastre-se</a>
+    </p>
 </div>
 {% endblock %}

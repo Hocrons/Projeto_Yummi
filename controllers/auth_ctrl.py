@@ -51,7 +51,6 @@ def _codigo_restaurante_valido(fluxo, chave_codigo, chave_gerado_em):
 
 
 def _codigo_entrega_padrao(telefone_normalizado):
-    """Retorna os 4 últimos dígitos do telefone normalizado ou None."""
     digitos = "".join(c for c in (telefone_normalizado or "") if c.isdigit())
     return digitos[-4:] if len(digitos) >= 4 else None
 
@@ -81,7 +80,6 @@ def _nominatim_query(endereco):
 
 def _buscar_coordenadas(rua, numero, bairro, cidade, uf):
     tentativas = []
-
     if rua and numero and bairro and cidade and uf:
         tentativas.append((f"{rua}, {numero}, {bairro}, {cidade}, {uf}, Brasil", "rua"))
     if rua and numero and cidade and uf:
@@ -92,7 +90,6 @@ def _buscar_coordenadas(rua, numero, bairro, cidade, uf):
         tentativas.append((f"{rua}, {cidade}, Brasil", "rua"))
     if rua and bairro and cidade:
         tentativas.append((f"{rua}, {bairro}, {cidade}, Brasil", "rua"))
-
     if bairro and cidade and uf:
         tentativas.append((f"{bairro}, {cidade}, {uf}, Brasil", "bairro"))
     if bairro and cidade:
@@ -613,7 +610,6 @@ def completar_cadastro_social():
 # =========================================================
 # RESTAURANTE — CADASTRO EM 6 ETAPAS
 # =========================================================
-
 @auth_bp.route("/restaurante/cadastrar", methods=["GET", "POST"])
 def cadastrar_restaurante():
     if request.method == "POST":
@@ -868,18 +864,63 @@ def restaurante_confirmar_local():
                            voltar_url=url_for("auth.restaurante_completar"))
 
 
+# =========================================================
+# LOGIN DO RESTAURANTE (2 ETAPAS)
+# =========================================================
 @auth_bp.route("/restaurante/login", methods=["GET", "POST"])
 def login_restaurante():
+    """Passo 1 — pede o e-mail."""
+    fluxo = session.get("fluxo_login_restaurante")
+    if fluxo and request.method == "GET":
+        return redirect(url_for("auth.login_restaurante_senha"))
+
     if request.method == "POST":
-        usuario = models.validar_login(request.form["email"], request.form["senha"])
-        if usuario and usuario["tipo"] == "restaurante":
-            session.permanent = True
-            session["user_id"] = usuario["id"]
-            session["user_tipo"] = "restaurante"
-            session["user_nome"] = usuario["nome"]
-            return redirect(url_for("restaurante.painel"))
-        flash("E-mail ou senha inválidos.", "erro")
+        email = (request.form.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            flash("Informe um e-mail válido.", "erro")
+            return render_template("restaurante/login.html")
+
+        usuario = models.buscar_usuario_por_email(email)
+        if not usuario or usuario["tipo"] != "restaurante":
+            flash("E-mail ou senha inválidos.", "erro")
+            return render_template("restaurante/login.html")
+
+        session["fluxo_login_restaurante"] = {"email": email}
+        return redirect(url_for("auth.login_restaurante_senha"))
+
     return render_template("restaurante/login.html")
+
+
+@auth_bp.route("/restaurante/login/senha", methods=["GET", "POST"])
+def login_restaurante_senha():
+    """Passo 2 — pede a senha."""
+    fluxo = session.get("fluxo_login_restaurante")
+    if not fluxo:
+        return redirect(url_for("auth.login_restaurante"))
+
+    if request.method == "POST":
+        senha = request.form.get("senha") or ""
+        usuario = models.validar_login(fluxo["email"], senha)
+
+        if not usuario or usuario["tipo"] != "restaurante":
+            flash("Senha incorreta. Tente novamente.", "erro")
+            return render_template("restaurante/login_senha.html", email=fluxo["email"])
+
+        session.permanent = True
+        session["user_id"] = usuario["id"]
+        session["user_tipo"] = "restaurante"
+        session["user_nome"] = usuario["nome"]
+        session.pop("fluxo_login_restaurante", None)
+        return redirect(url_for("restaurante.painel"))
+
+    return render_template("restaurante/login_senha.html", email=fluxo["email"])
+
+
+@auth_bp.route("/restaurante/login/voltar", methods=["POST"])
+def login_restaurante_voltar():
+    """Botão 'Voltar' do passo 2 — limpa o fluxo e volta pro passo 1."""
+    session.pop("fluxo_login_restaurante", None)
+    return redirect(url_for("auth.login_restaurante"))
 
 
 # =========================================================
@@ -906,11 +947,17 @@ def cadastrar_entregador():
                 veiculo=request.form.get("veiculo"),
                 placa=request.form.get("placa"),
             )
-            flash("Cadastro realizado! Faça login para continuar.", "sucesso")
-            return redirect(url_for("auth.login_entregador"))
+            flash("Pré-cadastro realizado! Faça login para começar.", "sucesso")
+            return redirect(url_for("auth.cadastro_sucesso_entregador"))
         except Exception as e:
             flash(f"Erro ao cadastrar: {e}", "erro")
     return render_template("entregador/cadastrar.html")
+
+
+@auth_bp.route("/entregador/cadastro-sucesso")
+def cadastro_sucesso_entregador():
+    """Tela de confirmação pós-cadastro com QR Code."""
+    return render_template("entregador/cadastro_sucesso.html", base_url=BASE_URL)
 
 
 @auth_bp.route("/entregador/login", methods=["GET", "POST"])

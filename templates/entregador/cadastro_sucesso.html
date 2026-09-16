@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Pré-cadastro realizado - Yummy{% endblock %}
+
+{% block content %}
+<div class="form-card form-card--wide sucesso-entregador">
+    <div class="sucesso-entregador__cabecalho">
+        <div class="sucesso-entregador__check">✓</div>
+        <h2 class="sucesso-entregador__titulo">Seu pré-cadastro foi realizado.</h2>
+        <p class="muted sucesso-entregador__subtitulo">
+            Escaneie o QR Code abaixo ou faça login para começar a receber corridas.
+        </p>
+    </div>
+
+    <div class="sucesso-entregador__qrcode">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data={{ base_url }}/auth/entregador/login"
+             alt="QR Code do portal do entregador Yummy"
+             width="240" height="240">
+        <p class="muted sucesso-entregador__qrcode-legenda">
+            Em breve: app Yummy Entregador
+        </p>
+    </div>
+
+    <div class="sucesso-entregador__acoes">
+        <a href="{{ url_for('auth.login_entregador') }}" class="btn btn--entregador btn--full">
+            Fazer login agora
+        </a>
+    </div>
+</div>
+{% endblock %}

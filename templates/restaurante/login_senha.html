@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Acessar - Portal do Parceiro{% endblock %}
+
+{% block content %}
+<section class="portal-parceiro">
+    <div class="portal-parceiro__card">
+        <div class="portal-parceiro__logo">Yummy<span>.</span></div>
+
+        <h2 class="portal-parceiro__titulo" style="text-align:left;">Entrar na sua conta</h2>
+
+        <form method="post" class="portal-parceiro__form">
+            <input type="email" value="{{ email }}" disabled
+                   class="portal-parceiro__input portal-parceiro__input--travado">
+
+            <input type="password" name="senha" placeholder="Senha"
+                   autocomplete="current-password" required autofocus
+                   class="portal-parceiro__input" style="margin-top: 12px;">
+
+            <button type="submit" class="btn btn--portal btn--full">
+                Continuar
+            </button>
+        </form>
+
+        <form method="post" action="{{ url_for('auth.login_restaurante_voltar') }}"
+              class="portal-parceiro__voltar-form">
+            <button type="submit" class="portal-parceiro__voltar">
+                Voltar
+            </button>
+        </form>
+
+        <div class="portal-parceiro__divisor"></div>
+
+        <p class="portal-parceiro__rodape">
+            <a href="#" onclick="alert('Em breve!'); return false;">Esqueci minha senha</a>
+        </p>
+    </div>
+</section>
+{% endblock %}

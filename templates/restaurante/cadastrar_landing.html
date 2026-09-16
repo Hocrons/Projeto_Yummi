@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Cadastre sua loja no Yummy{% endblock %}
+
+{% block content %}
+<section class="landing-parceiro">
+    <div class="landing-parceiro__header">
+        <h1>Cadastre sua loja e comece a vender no Yummy</h1>
+        <p class="muted">Tem Yummy para todo tipo de negócio, inclusive o seu</p>
+    </div>
+
+    <div class="landing-parceiro__cards">
+        {# ---------- RESTAURANTES ---------- #}
+        <a href="{{ url_for('auth.cadastrar_restaurante') }}"
+           class="landing-parceiro__card landing-parceiro__card--restaurantes">
+            <div class="landing-parceiro__card-texto">
+                <h2>Restaurantes</h2>
+                <span class="landing-parceiro__btn">Cadastrar agora</span>
+            </div>
+            <div class="landing-parceiro__card-icone">🍔</div>
+        </a>
+
+        {# ---------- MULTICATEGORIAS ---------- #}
+        <a href="{{ url_for('auth.cadastrar_restaurante') }}"
+           class="landing-parceiro__card landing-parceiro__card--multicategorias">
+            <div class="landing-parceiro__card-texto">
+                <h2>Multicategorias</h2>
+                <span class="landing-parceiro__btn">Cadastrar agora</span>
+            </div>
+            <div class="landing-parceiro__card-icone">🛒</div>
+        </a>
+    </div>
+
+    <div class="landing-parceiro__subtitulo">
+        <h2>Ideal para qualquer tamanho e segmento</h2>
+    </div>
+
+    {# ---------- CHIPS DE CATEGORIAS ---------- #}
+    {% set emojis_cat = {
+        'Brasileira': '🍲', 'Doces & Bolos': '🍰', 'Casa de Lanches': '🍔',
+        'Açaí': '🍇', 'Marmita': '🍱', 'Pizzaria': '🍕', 'Salgados': '🥟',
+        'Fit / Saudável': '🥗', 'Sorvetes': '🍦', 'Japonesa': '🍣',
+        'Hamburgueria': '🍔', 'Italiana': '🍝', 'Mexicana': '🌮', 'Árabe': '🥙',
+        'Chinesa': '🥡', 'Pastelaria': '🥟', 'Padaria': '🥐', 'Cafeteria': '☕',
+        'Bebidas': '🥤', 'Peixes': '🐟', 'Carnes': '🥩', 'Vegana': '🥗',
+        'Vegetariana': '🥗', 'Tapiocaria': '🫓', 'Crepe': '🥞'
+    } %}
+
+    <div class="landing-parceiro__chips">
+        {% for cat in [
+            'Brasileira', 'Doces & Bolos', 'Casa de Lanches', 'Açaí', 'Marmita',
+            'Pizzaria', 'Salgados', 'Fit / Saudável', 'Sorvetes', 'Japonesa',
+            'Hamburgueria', 'Italiana', 'Mexicana', 'Árabe', 'Chinesa',
+            'Pastelaria', 'Padaria', 'Cafeteria', 'Bebidas', 'Carnes',
+            'Vegana', 'Tapiocaria'
+        ] %}
+            <span class="landing-parceiro__chip">
+                {{ cat }} {{ emojis_cat.get(cat, '🍽️') }}
+            </span>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

@@ -6,14 +6,15 @@ entregador_bp = Blueprint("entregador", __name__, url_prefix="/entregador")
 
 
 # ---------------------------------------------------------
-# PORTAL (ponto de entrada)
+# PORTAL DO ENTREGADOR
 # ---------------------------------------------------------
 @entregador_bp.route("")
 @entregador_bp.route("/")
 def portal():
+    """Ponto de entrada do portal do entregador."""
     if session.get("user_tipo") == "entregador":
         return redirect(url_for("entregador.painel"))
-    return redirect(url_for("auth.login_entregador"))
+    return render_template("entregador/portal.html")
 
 
 # ---------------------------------------------------------
@@ -88,7 +89,7 @@ def marcar_entregue(id_pedido):
 
     codigo_correto = (pedido.get("codigo_entrega") or "").strip()
     if not codigo_correto:
-        # fallback: 4 últimos dígitos do telefone do cliente
+        # Fallback: 4 últimos dígitos do telefone do cliente
         cliente = models.buscar_usuario_por_id(pedido["id_cliente"])
         telefone = "".join(c for c in (cliente.get("telefone") or "") if c.isdigit())
         codigo_correto = telefone[-4:] if len(telefone) >= 4 else ""

@@ -1,6 +1,6 @@
 /* =========================================================
    YUMMY — PORTAL DO RESTAURANTE
-   (painel de pedidos, produtos, perfil com foto)
+   (portal do parceiro, painel, produtos, perfil)
    ========================================================= */
 
 /* ---------- CARD DE PEDIDO (painel) ---------- */
@@ -22,14 +22,13 @@
     background: var(--cor-fundo-alt);
 }
 
-/* ---------- FILTROS (chips de status no painel) ---------- */
+/* ---------- FILTROS (chips de status) ---------- */
 .categorias {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     margin: 16px 0 22px;
 }
-
 .chip {
     background: var(--cor-branco);
     border: 2px solid var(--cor-borda);
@@ -54,14 +53,13 @@
     box-shadow: 0 4px 12px rgba(255, 92, 157, 0.35);
 }
 
-/* ---------- FOTO DO RESTAURANTE (no perfil) ---------- */
+/* ---------- FOTO DO RESTAURANTE (perfil) ---------- */
 .foto-perfil-wrapper {
     display: flex;
     gap: 22px;
     align-items: flex-start;
     flex-wrap: wrap;
 }
-
 .foto-perfil-preview {
     width: 170px;
     height: 170px;
@@ -74,16 +72,13 @@
     justify-content: center;
     box-shadow: var(--sombra-forte);
     border: 3px solid var(--cor-branco);
-    position: relative;
 }
-
 .foto-perfil-preview img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
 }
-
 .foto-perfil-fallback {
     font-size: 68px;
     font-weight: 800;
@@ -93,18 +88,8 @@
     justify-content: center;
     width: 100%;
     height: 100%;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
-
-.foto-perfil-info {
-    flex: 1;
-    min-width: 260px;
-}
-
-.foto-perfil-info label {
-    margin-bottom: 4px;
-}
-
+.foto-perfil-info { flex: 1; min-width: 260px; }
 .foto-perfil-info code {
     background: var(--cor-primaria-suave);
     color: var(--cor-primaria);
@@ -114,28 +99,350 @@
     font-weight: 700;
 }
 
-/* ---------- PRODUTOS (tabela) ---------- */
-.cabecalho-lista .btn {
-    padding: 10px 20px;
+/* =========================================================
+   PORTAL DO PARCEIRO (login / acesso)
+   ========================================================= */
+.portal-parceiro {
+    padding: 40px 20px 60px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 60vh;
+}
+
+.portal-parceiro__card {
+    background: var(--cor-branco);
+    border-radius: 20px;
+    box-shadow: var(--sombra-forte);
+    border: 2px solid var(--cor-borda);
+    padding: 40px 36px 28px;
+    max-width: 460px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.portal-parceiro__card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: var(--gradiente);
+}
+
+.portal-parceiro__logo {
+    font-size: 26px;
+    font-weight: 800;
+    background: var(--gradiente);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 26px;
+    display: inline-block;
+}
+.portal-parceiro__logo span {
+    color: var(--cor-primaria);
+    -webkit-text-fill-color: var(--cor-primaria);
+}
+
+.portal-parceiro__titulo {
+    font-size: 24px;
+    font-weight: 800;
+    margin: 0 0 6px 0;
+    color: var(--cor-texto);
+}
+
+.portal-parceiro__subtitulo {
+    color: var(--cor-muted);
+    margin: 0 0 26px 0;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.portal-parceiro__form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.portal-parceiro__label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cor-muted);
+    margin-bottom: 4px;
+}
+
+.portal-parceiro__input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid var(--cor-borda);
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    background: var(--cor-branco);
+    color: var(--cor-texto);
+    transition: all var(--transicao);
+}
+.portal-parceiro__input:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 4px rgba(255, 92, 157, 0.15);
+}
+.portal-parceiro__input--travado {
+    background: var(--cor-fundo-alt);
+    color: var(--cor-muted);
+    cursor: not-allowed;
+}
+
+/* Botão "Acessar" / "Continuar" — estilo iFood: fundo preto */
+.btn--portal {
+    background: #1a1a1a;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 15px 22px;
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 16px;
+    transition: all var(--transicao);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+.btn--portal:hover {
+    background: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+.btn--portal:active { transform: translateY(0); }
+
+[data-theme="dark"] .btn--portal {
+    background: var(--gradiente);
+    color: white;
+}
+[data-theme="dark"] .btn--portal:hover {
+    background: var(--gradiente-hover);
+}
+
+/* Divisor */
+.portal-parceiro__divisor {
+    border-top: 1px solid var(--cor-borda);
+    margin: 26px -36px 20px;
+}
+
+.portal-parceiro__rodape {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cor-texto);
+    margin: 0;
+}
+.portal-parceiro__rodape a {
+    color: var(--cor-primaria);
+    font-weight: 800;
+    transition: opacity var(--transicao);
+}
+.portal-parceiro__rodape a:hover { opacity: 0.75; }
+
+/* Botão "Voltar" (texto) */
+.portal-parceiro__voltar-form {
+    display: flex;
+    justify-content: center;
+    margin-top: 14px;
+}
+.portal-parceiro__voltar {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cor-texto);
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: var(--raio-pill);
+    transition: all var(--transicao);
+}
+.portal-parceiro__voltar:hover {
+    background: var(--cor-primaria-suave);
+    color: var(--cor-primaria);
+}
+
+/* =========================================================
+   LANDING DO PARCEIRO (cadastro)
+   ========================================================= */
+.landing-parceiro {
+    padding: 20px 0 60px;
+}
+
+.landing-parceiro__header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+.landing-parceiro__header h1 {
+    font-size: 32px;
+    font-weight: 800;
+    margin: 0 0 10px 0;
+    color: var(--cor-texto);
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.2;
+}
+.landing-parceiro__header .muted {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* Cards grandes (Restaurantes / Multicategorias) */
+.landing-parceiro__cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 900px;
+    margin: 0 auto 50px;
+}
+
+.landing-parceiro__card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 30px 26px;
+    border-radius: 20px;
+    color: white;
+    text-decoration: none;
+    box-shadow: var(--sombra-forte);
+    transition: all var(--transicao);
+    position: relative;
+    overflow: hidden;
+    min-height: 170px;
+}
+.landing-parceiro__card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 40px rgba(255, 92, 157, 0.35);
+}
+
+.landing-parceiro__card--restaurantes {
+    background: linear-gradient(135deg, #ff7eb3 0%, #ff4d8a 100%);
+}
+.landing-parceiro__card--multicategorias {
+    background: linear-gradient(135deg, #ffb3c9 0%, #ff7eb3 100%);
+    opacity: 0.9;
+}
+
+.landing-parceiro__card-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    text-align: left;
+    flex: 1;
+}
+
+.landing-parceiro__card-texto h2 {
+    font-size: 24px;
+    font-weight: 800;
+    margin: 0;
+    color: white;
+}
+
+.landing-parceiro__btn {
+    display: inline-block;
+    background: white;
+    color: #ff4d8a;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    align-self: flex-start;
+    transition: all var(--transicao);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.landing-parceiro__card:hover .landing-parceiro__btn {
+    background: #fff5f8;
+    transform: scale(1.05);
+}
+
+.landing-parceiro__card-icone {
+    font-size: 72px;
+    line-height: 1;
+    flex-shrink: 0;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.2));
+    transition: transform var(--transicao);
+}
+.landing-parceiro__card:hover .landing-parceiro__card-icone {
+    transform: scale(1.1) rotate(-6deg);
+}
+
+/* Subtítulo "Ideal para..." */
+.landing-parceiro__subtitulo {
+    text-align: center;
+    margin-bottom: 30px;
+}
+.landing-parceiro__subtitulo h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--cor-texto);
+    margin: 0;
+}
+
+/* Chips de categorias */
+.landing-parceiro__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.landing-parceiro__chip {
+    background: var(--cor-primaria-suave);
+    color: var(--cor-texto);
+    border: 2px solid var(--cor-borda);
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all var(--transicao);
+    cursor: default;
+}
+.landing-parceiro__chip:hover {
+    background: var(--cor-branco);
+    border-color: var(--cor-primaria);
+    transform: translateY(-2px);
+    box-shadow: var(--sombra);
 }
 
 /* ---------- RESPONSIVO ---------- */
+@media (max-width: 800px) {
+    .landing-parceiro__header h1 { font-size: 24px; }
+    .landing-parceiro__cards {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+    .landing-parceiro__card {
+        min-height: 140px;
+        padding: 22px 20px;
+    }
+    .landing-parceiro__card-icone { font-size: 56px; }
+    .landing-parceiro__card-texto h2 { font-size: 20px; }
+}
+
 @media (max-width: 600px) {
-    .foto-perfil-wrapper {
-        flex-direction: column;
-        align-items: stretch;
+    .portal-parceiro__card {
+        padding: 30px 24px 22px;
     }
-    .foto-perfil-preview {
-        width: 100%;
-        height: 220px;
+    .portal-parceiro__divisor {
+        margin-left: -24px;
+        margin-right: -24px;
     }
-    .foto-perfil-fallback {
-        font-size: 80px;
-    }
-    .acoes-pedido {
-        align-items: stretch;
-    }
-    .acoes-pedido .btn {
-        width: 100%;
-    }
+    .foto-perfil-wrapper { flex-direction: column; }
+    .foto-perfil-preview { width: 100%; height: 220px; }
+    .foto-perfil-fallback { font-size: 80px; }
+    .acoes-pedido { align-items: stretch; }
+    .acoes-pedido .btn { width: 100%; }
 }

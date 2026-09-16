@@ -16,21 +16,27 @@ def _url_foto_valida(url):
     if not url:
         return None
     if not (url.startswith("http://") or url.startswith("https://")):
-        return False  # sinaliza "inválida"
+        return False
     if len(url) > 500:
         return False
     return url
 
 
 # ---------------------------------------------------------
-# PORTAL (ponto de entrada)
+# PORTAL DO PARCEIRO
 # ---------------------------------------------------------
 @restaurante_bp.route("")
 @restaurante_bp.route("/")
 def portal():
     if session.get("user_tipo") == "restaurante":
         return redirect(url_for("restaurante.painel"))
-    return redirect(url_for("auth.login_restaurante"))
+    return render_template("restaurante/portal.html")
+
+
+@restaurante_bp.route("/cadastrar/landing")
+def cadastrar_landing():
+    """Landing do parceiro — 2 cards + categorias."""
+    return render_template("restaurante/cadastrar_landing.html")
 
 
 # ---------------------------------------------------------
@@ -140,22 +146,18 @@ def produto_excluir(id_produto):
 @login_requerido("restaurante")
 def editar_perfil():
     if request.method == "POST":
-        # ----- Foto -----
         foto_raw = request.form.get("foto_url")
         foto_url = _url_foto_valida(foto_raw)
         if foto_url is False:
             flash("URL da foto inválida. Use http:// ou https://", "erro")
             return redirect(url_for("restaurante.editar_perfil"))
-        # foto_url aqui é None (campo vazio) ou string válida
 
-        # ----- Dados do usuário -----
         models.atualizar_usuario(
             session["user_id"],
             request.form["nome_responsavel"],
             request.form.get("telefone"),
         )
 
-        # ----- Dados do restaurante -----
         models.atualizar_restaurante(
             session["user_id"],
             nome_fantasia=request.form["nome_fantasia"],
