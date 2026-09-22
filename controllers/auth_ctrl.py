@@ -51,7 +51,6 @@ def _codigo_restaurante_valido(fluxo, chave_codigo, chave_gerado_em):
 
 
 def _codigo_entrega_padrao(telefone_normalizado):
-    """Retorna os 4 últimos dígitos do telefone normalizado ou None."""
     digitos = "".join(c for c in (telefone_normalizado or "") if c.isdigit())
     return digitos[-4:] if len(digitos) >= 4 else None
 
@@ -180,12 +179,12 @@ def _logar_usuario_cliente(usuario):
 # ---------------------------------------------------------
 # ENTRADA UNIFICADA (cliente)
 # ---------------------------------------------------------
-@auth_bp.route("/entrar")
+@auth_bp.route("/cliente/entrar")
 def entrar():
     return render_template("cliente/entrar.html")
 
 
-@auth_bp.route("/celular", methods=["GET", "POST"])
+@auth_bp.route("/cliente/celular", methods=["GET", "POST"])
 def entrada_celular():
     if request.method == "POST":
         telefone = normalizar_telefone(request.form.get("telefone", ""))
@@ -211,7 +210,7 @@ def entrada_celular():
     return render_template("cliente/celular.html")
 
 
-@auth_bp.route("/celular/codigo", methods=["GET", "POST"])
+@auth_bp.route("/cliente/celular/codigo", methods=["GET", "POST"])
 def entrada_celular_codigo():
     fluxo = _fluxo_atual()
     if not fluxo or fluxo.get("metodo") != "celular":
@@ -247,7 +246,7 @@ def entrada_celular_codigo():
                             canal="WhatsApp", voltar_url=url_for("auth.entrada_celular"))
 
 
-@auth_bp.route("/celular/confirmar-email", methods=["GET", "POST"])
+@auth_bp.route("/cliente/celular/confirmar-email", methods=["GET", "POST"])
 def entrada_celular_confirmar_email():
     fluxo = _fluxo_atual()
     if not fluxo or "email_cadastrado" not in fluxo:
@@ -268,7 +267,7 @@ def entrada_celular_confirmar_email():
                             email_mascarado=mascarar_email(fluxo["email_cadastrado"]))
 
 
-@auth_bp.route("/email", methods=["GET", "POST"])
+@auth_bp.route("/cliente/email", methods=["GET", "POST"])
 def entrada_email():
     if request.method == "POST":
         email = (request.form.get("email") or "").strip().lower()
@@ -294,7 +293,7 @@ def entrada_email():
     return render_template("cliente/email.html")
 
 
-@auth_bp.route("/email/codigo", methods=["GET", "POST"])
+@auth_bp.route("/cliente/email/codigo", methods=["GET", "POST"])
 def entrada_email_codigo():
     fluxo = _fluxo_atual()
     if not fluxo or fluxo.get("metodo") != "email":
@@ -336,7 +335,7 @@ def entrada_email_codigo():
                             canal="e-mail", voltar_url=url_for("auth.entrada_email"))
 
 
-@auth_bp.route("/email/confirmar-celular", methods=["GET", "POST"])
+@auth_bp.route("/cliente/email/confirmar-celular", methods=["GET", "POST"])
 def entrada_email_confirmar_celular():
     fluxo = _fluxo_atual()
     if not fluxo or "telefone_cadastrado" not in fluxo:
@@ -360,7 +359,7 @@ def entrada_email_confirmar_celular():
                             telefone_mascarado=mascarar_telefone(fluxo["telefone_cadastrado"]))
 
 
-@auth_bp.route("/email/confirmar-celular/codigo", methods=["GET", "POST"])
+@auth_bp.route("/cliente/email/confirmar-celular/codigo", methods=["GET", "POST"])
 def entrada_email_confirmar_celular_codigo():
     fluxo = _fluxo_atual()
     if not fluxo or "telefone_cadastrado" not in fluxo or "codigo_esperado" not in fluxo:
@@ -387,7 +386,7 @@ def entrada_email_confirmar_celular_codigo():
                             voltar_url=url_for("auth.entrada_email_confirmar_celular"))
 
 
-@auth_bp.route("/cadastro-rapido", methods=["GET", "POST"])
+@auth_bp.route("/cliente/cadastro-rapido", methods=["GET", "POST"])
 def cadastro_rapido():
     fluxo = _fluxo_atual()
     if not fluxo or fluxo.get("metodo") not in ("celular", "email"):
@@ -444,7 +443,7 @@ def cadastro_rapido():
     return render_template("cliente/cadastro_rapido.html", fluxo=fluxo, veio_do_celular=veio_do_celular)
 
 
-@auth_bp.route("/cadastro-rapido/verificar-celular", methods=["GET", "POST"])
+@auth_bp.route("/cliente/cadastro-rapido/verificar-celular", methods=["GET", "POST"])
 def cadastro_rapido_verificar_celular():
     fluxo = _fluxo_atual()
     if not fluxo or "telefone" not in fluxo or "nome" not in fluxo:
@@ -571,7 +570,7 @@ def callback_facebook():
     return _login_ou_cadastrar_social(email, nome, "facebook")
 
 
-@auth_bp.route("/completar-cadastro", methods=["GET", "POST"])
+@auth_bp.route("/cliente/completar-cadastro", methods=["GET", "POST"])
 def completar_cadastro_social():
     dados = session.get("cadastro_social")
     if not dados:

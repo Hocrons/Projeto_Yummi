@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Yummy - Delivery{% endblock %}</title>
 
-    <!-- Aplica o tema ANTES do CSS carregar (evita flash de cor) -->
     <script>
         (function () {
             var tema = localStorage.getItem("tema");
@@ -16,7 +15,6 @@
         })();
     </script>
 
-    <!-- Fonte fofa -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -35,12 +33,39 @@
 </head>
 <body>
 
+{# ---------- DETECÇÃO DO PORTAL ATUAL PELA URL ---------- #}
+{% set path = request.path %}
+{% set portal_atual =
+    'cliente'     if path.startswith('/cliente')
+    else 'restaurante' if path.startswith('/restaurante')
+    else 'entregador'  if path.startswith('/entregador')
+    else None
+%}
+
+{% if portal_atual == 'cliente' %}
+    {% set url_login    = url_for('auth.login_cliente') %}
+    {% set url_cadastro = url_for('auth.cadastrar_cliente') %}
+    {% set url_entrar   = url_for('auth.entrar') %}
+{% elif portal_atual == 'restaurante' %}
+    {% set url_login    = url_for('auth.login_restaurante') %}
+    {% set url_cadastro = url_for('auth.cadastrar_restaurante') %}
+    {% set url_entrar   = url_for('auth.login_restaurante') %}
+{% elif portal_atual == 'entregador' %}
+    {% set url_login    = url_for('auth.login_entregador') %}
+    {% set url_cadastro = url_for('auth.cadastrar_entregador') %}
+    {% set url_entrar   = url_for('auth.login_entregador') %}
+{% else %}
+    {% set url_login    = None %}
+    {% set url_cadastro = None %}
+    {% set url_entrar   = None %}
+{% endif %}
+
 <header class="navbar">
     <div class="navbar__inner container">
         <a href="{{ url_for('landing.index') }}" class="navbar__logo">Yummy<span>.</span></a>
 
         <nav class="navbar__links">
-            {% if logado and user_tipo == 'cliente' %}
+            {% if portal_atual == 'cliente' and user_tipo == 'cliente' %}
                 <a href="{{ url_for('home.index') }}">Restaurantes</a>
                 <a href="{{ url_for('cliente.meus_pedidos') }}">Meus pedidos</a>
                 <a href="{{ url_for('cliente.editar_perfil') }}">Perfil</a>
@@ -50,39 +75,29 @@
                         <span class="badge">{{ qtd_carrinho }}</span>
                     {% endif %}
                 </a>
-                <a href="{{ url_for('auth.logout') }}" class="btn btn--ghost">Sair ({{ user_nome }})</a>
 
-            {% elif logado and user_tipo == 'restaurante' %}
+            {% elif portal_atual == 'restaurante' and user_tipo == 'restaurante' %}
                 <a href="{{ url_for('restaurante.painel') }}">Pedidos</a>
                 <a href="{{ url_for('restaurante.produtos') }}">Cardápio</a>
                 <a href="{{ url_for('restaurante.editar_perfil') }}">Perfil</a>
-                <a href="{{ url_for('auth.logout') }}" class="btn btn--ghost">Sair ({{ user_nome }})</a>
 
-            {% elif logado and user_tipo == 'entregador' %}
+            {% elif portal_atual == 'entregador' and user_tipo == 'entregador' %}
                 <a href="{{ url_for('entregador.painel') }}">Painel de entregas</a>
-                <a href="{{ url_for('auth.logout') }}" class="btn btn--ghost">Sair ({{ user_nome }})</a>
-
-            {% else %}
-                <div class="dropdown">
-                    <button class="btn btn--ghost dropdown__toggle" type="button">Entrar ▾</button>
-                    <div class="dropdown__menu">
-                        <a href="{{ url_for('auth.entrar') }}">Sou Cliente</a>
-                        <a href="{{ url_for('auth.login_restaurante') }}">Sou Restaurante</a>
-                        <a href="{{ url_for('auth.login_entregador') }}">Sou Entregador</a>
-                    </div>
-                </div>
-
-                <div class="dropdown">
-                    <button class="btn btn--primary dropdown__toggle" type="button">Criar conta ▾</button>
-                    <div class="dropdown__menu">
-                        <a href="{{ url_for('auth.cadastrar_cliente') }}">Sou Cliente</a>
-                        <a href="{{ url_for('auth.cadastrar_restaurante') }}">Sou Restaurante</a>
-                        <a href="{{ url_for('auth.cadastrar_entregador') }}">Sou Entregador</a>
-                    </div>
-                </div>
             {% endif %}
 
-            {# ---------- BOTÃO DE TEMA ---------- #}
+            {% if user_tipo == portal_atual and user_tipo %}
+                <span class="muted" style="font-size:13px;">{{ user_nome }}</span>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn--ghost">Sair</a>
+            {% elif portal_atual %}
+                <a href="{{ url_entrar }}" class="btn btn--ghost">Entrar</a>
+                <a href="{{ url_cadastro }}" class="btn btn--primary">Criar conta</a>
+            {% endif %}
+
+            <a href="{{ url_for('landing.escolher_portal') }}" class="btn btn--ghost"
+               title="Voltar para a escolha de portal (faz logout)">
+                🏠 Escolha seu portal
+            </a>
+
             <button type="button" id="theme-toggle" class="theme-toggle"
                     title="Alternar tema" aria-label="Alternar tema claro/escuro">
                 <span class="theme-toggle__icon theme-toggle__icon--sun">☀️</span>

@@ -1,6 +1,3 @@
-// Usado em templates/cliente/pedido_sucesso.html
-// Consulta /pedido/<id>/status a cada 5s para simular acompanhamento em tempo real.
-
 document.addEventListener("DOMContentLoaded", () => {
     const elStatus = document.getElementById("status-pedido");
     if (!elStatus) return;

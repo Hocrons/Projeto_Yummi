@@ -16,9 +16,19 @@
 
         <label>Celular (com DDD)
             <div class="campo-telefone">
-                <span class="prefixo-pais">🇧🇷 +55</span>
-                <input type="text" name="telefone" placeholder="(11) 99999-9999"
-                       value="{{ fluxo.telefone or '' }}" required>
+                <span class="prefixo-pais">
+                    <span class="prefixo-pais__flag">🇧🇷</span>
+                    <span class="prefixo-pais__codigo">+55</span>
+                </span>
+                <span class="campo-telefone__divisor"></span>
+                <input type="tel"
+                       name="telefone"
+                       placeholder="(11) 99999-9999"
+                       inputmode="numeric"
+                       autocomplete="tel-national"
+                       maxlength="15"
+                       value="{{ fluxo.telefone or '' }}"
+                       required>
             </div>
         </label>
 

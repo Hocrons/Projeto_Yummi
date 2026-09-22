@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Entrar - Yummy{% endblock %}
+{% block title %}Entrar - Cliente{% endblock %}
 {% block content %}
 <div class="form-card entrada-card">
     <h2 class="entrada-titulo">Falta pouco para matar sua fome!</h2>
@@ -24,6 +24,9 @@
     <hr class="entrada-separador">
     <p class="muted" style="text-align:center;">
         Prefere usar e-mail e senha? <a href="{{ url_for('auth.login_cliente') }}">Entrar assim</a>
+    </p>
+    <p class="muted" style="text-align:center;">
+        Não tem conta? <a href="{{ url_for('auth.cadastrar_cliente') }}">Cadastre-se</a>
     </p>
 </div>
 {% endblock %}

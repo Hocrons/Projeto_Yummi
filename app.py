@@ -18,7 +18,6 @@ load_dotenv()
 def create_app():
     app = Flask(__name__)
 
-    # ---------- Configuração de sessão ----------
     secret_key = os.getenv("SECRET_KEY")
     if not secret_key or secret_key == "troque-esta-chave-em-producao":
         import secrets
@@ -32,26 +31,23 @@ def create_app():
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=False,  # True só em produção com HTTPS
+        SESSION_COOKIE_SECURE=False,
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
         SESSION_REFRESH_EACH_REQUEST=True,
     )
 
-    # OAuth (login social - Google / Facebook)
     oauth.init_app(app)
 
-    # Blueprints (Controllers) — ordem importa: landing primeiro
-    app.register_blueprint(landing_bp)   # pega "/"
-    app.register_blueprint(home_bp)      # pega "/cliente"
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(cliente_bp)
-    app.register_blueprint(restaurante_bp)
-    app.register_blueprint(entregador_bp)
-    app.register_blueprint(pedido_bp)
+    app.register_blueprint(landing_bp)      # "/"
+    app.register_blueprint(home_bp)         # "/cliente" (home do cliente)
+    app.register_blueprint(auth_bp)         # "/auth"
+    app.register_blueprint(cliente_bp)      # "/cliente/..."
+    app.register_blueprint(restaurante_bp)  # "/restaurante/..."
+    app.register_blueprint(entregador_bp)   # "/entregador/..."
+    app.register_blueprint(pedido_bp)       # "/pedido/..."
 
     @app.context_processor
     def variaveis_globais():
-        """Disponibiliza dados de sessão em todos os templates automaticamente."""
         carrinho = session.get("carrinho", {"id_restaurante": None, "itens": {}})
         qtd_carrinho = sum(i["quantidade"] for i in carrinho.get("itens", {}).values())
         return {

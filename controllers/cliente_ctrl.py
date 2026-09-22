@@ -253,7 +253,6 @@ def editar_perfil():
         )
         models.atualizar_cliente(session["user_id"], request.form.get("apelido"))
 
-        # Código de entrega (opcional, exatamente 4 dígitos)
         codigo_entrega = (request.form.get("codigo_entrega") or "").strip()
         if codigo_entrega:
             if len(codigo_entrega) != 4 or not codigo_entrega.isdigit():

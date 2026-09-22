@@ -1,7 +1,8 @@
 // Usado em: templates/cliente/ver_cardapio.html e templates/cliente/carrinho.html
 
+const BASE_CLIENTE = "/cliente";
+
 document.addEventListener("DOMContentLoaded", () => {
-    // ---------- Botões "Adicionar" no cardápio ----------
     document.querySelectorAll(".btn-adicionar").forEach((botao) => {
         botao.addEventListener("click", async () => {
             const idProduto = botao.dataset.id;
@@ -9,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             botao.disabled = true;
             try {
-                const resposta = await fetch("/cliente/carrinho/adicionar", {
+                const resposta = await fetch(`${BASE_CLIENTE}/carrinho/adicionar`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ id_produto: idProduto }),
@@ -19,8 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!resposta.ok) {
                     if (dados.conflito_restaurante) {
                         if (confirm(dados.erro + " Deseja esvaziar o carrinho e adicionar este item?")) {
-                            await fetch("/cliente/carrinho/limpar", { method: "POST" });
-                            botao.click(); // tenta adicionar de novo
+                            await fetch(`${BASE_CLIENTE}/carrinho/limpar`, { method: "POST" });
+                            botao.click();
                         }
                     } else {
                         mostrarToast(dados.erro || "Não foi possível adicionar o produto.");
@@ -39,7 +40,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // ---------- Botões +/- na página do carrinho ----------
     document.querySelectorAll(".btn-qtd").forEach((botao) => {
         botao.addEventListener("click", async () => {
             const linha = botao.closest(".linha-carrinho");
@@ -48,7 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const spanQtd = linha.querySelector(".qtd-valor");
             const novaQuantidade = parseInt(spanQtd.textContent, 10) + delta;
 
-            const resposta = await fetch("/cliente/carrinho/atualizar", {
+            const resposta = await fetch(`${BASE_CLIENTE}/carrinho/atualizar`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id_produto: idProduto, quantidade: novaQuantidade }),
@@ -62,7 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 totalCarrinhoEl.textContent = `R$ ${dados.totais.total.toFixed(2)}`;
             }
 
-            // Se o item foi removido (quantidade <= 0) ou o carrinho esvaziou, recarrega a página
             if (novaQuantidade <= 0 || dados.totais.qtd_total === 0) {
                 location.reload();
             } else {

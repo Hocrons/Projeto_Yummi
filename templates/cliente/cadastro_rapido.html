@@ -25,7 +25,20 @@
             </label>
         {% else %}
             <label>Celular (com DDD)
-                <input type="text" name="telefone" placeholder="Ex: (11) 99999-9999" required>
+                <div class="campo-telefone">
+                    <span class="prefixo-pais">
+                        <span class="prefixo-pais__flag">🇧🇷</span>
+                        <span class="prefixo-pais__codigo">+55</span>
+                    </span>
+                    <span class="campo-telefone__divisor"></span>
+                    <input type="tel"
+                           name="telefone"
+                           placeholder="(11) 99999-9999"
+                           inputmode="numeric"
+                           autocomplete="tel-national"
+                           maxlength="15"
+                           required>
+                </div>
             </label>
             <p class="muted">Enviaremos um código por WhatsApp para confirmar esse número.</p>
         {% endif %}

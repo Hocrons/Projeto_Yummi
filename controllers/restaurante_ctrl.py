@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from models import models
 from controllers.decorators import login_requerido
 
-restaurante_bp = Blueprint("restaurante", __name__, url_prefix="/restaurante")
+restaurante_bp = Blueprint("restaurante", __name__, url_prefix="/portal/restaurante")
 
 TRANSICOES_PERMITIDAS = {
     "pendente": ["preparando", "cancelado"],

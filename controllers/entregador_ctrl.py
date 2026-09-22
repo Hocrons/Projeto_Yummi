@@ -67,10 +67,6 @@ def marcar_retirado(id_pedido):
 @entregador_bp.route("/pedido/<int:id_pedido>/entregue", methods=["POST"])
 @login_requerido("entregador")
 def marcar_entregue(id_pedido):
-    """
-    Marca como entregue APENAS se o código informado bater com
-    pedido.codigo_entrega. É a validação de segurança da entrega.
-    """
     codigo_digitado = (request.form.get("codigo") or "").strip()
 
     if not codigo_digitado:
@@ -88,7 +84,6 @@ def marcar_entregue(id_pedido):
 
     codigo_correto = (pedido.get("codigo_entrega") or "").strip()
     if not codigo_correto:
-        # fallback: 4 últimos dígitos do telefone do cliente
         cliente = models.buscar_usuario_por_id(pedido["id_cliente"])
         telefone = "".join(c for c in (cliente.get("telefone") or "") if c.isdigit())
         codigo_correto = telefone[-4:] if len(telefone) >= 4 else ""

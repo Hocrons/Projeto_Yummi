@@ -1,7 +1,3 @@
-/**
- * Modal de confirmação de entrega com código (4 dígitos).
- * Usado em templates/entregador/painel.html
- */
 (function () {
     "use strict";
 
@@ -19,7 +15,6 @@
     }
 
     function abrir(idPedido) {
-        // action do form: /entregador/pedido/<id>/entregue
         form.action = "/entregador/pedido/" + idPedido + "/entregue";
         limparCaixas();
         modal.hidden = false;
@@ -31,18 +26,15 @@
         limparCaixas();
     }
 
-    // Botões "Cheguei no local"
     document.querySelectorAll(".btn-abrir-modal-codigo").forEach((btn) => {
         btn.addEventListener("click", () => abrir(btn.dataset.id));
     });
 
-    // Fechar
     btnFechar.addEventListener("click", fechar);
     modal.addEventListener("click", (e) => {
         if (e.target === modal) fechar();
     });
 
-    // Navegação entre as caixinhas
     caixas.forEach((caixa, i) => {
         caixa.addEventListener("input", () => {
             caixa.value = caixa.value.replace(/\D/g, "").slice(0, 1);
@@ -56,7 +48,6 @@
             }
         });
 
-        // Colar 4 dígitos de uma vez
         caixa.addEventListener("paste", (e) => {
             e.preventDefault();
             const colado = (e.clipboardData || window.clipboardData).getData("text").replace(/\D/g, "");
@@ -70,7 +61,6 @@
         });
     });
 
-    // Garante que o campo oculto é preenchido no submit
     form.addEventListener("submit", () => {
         campoOculto.value = Array.from(caixas).map((c) => c.value).join("");
     });

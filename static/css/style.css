@@ -1,6 +1,7 @@
 /* =========================================================
    YUMMY — COMPONENTES DA HOME
-   (hero, categorias em círculos, cards de restaurante horizontais)
+   (hero, categorias em círculos, cards de restaurante horizontais,
+    abas de busca e grid de itens estilo iFood)
    ========================================================= */
 
 /* ---------- HERO ---------- */
@@ -131,6 +132,70 @@
 }
 .cat-item--ativo .cat-item__nome {
     color: var(--cor-primaria);
+}
+
+/* ---------- RESULTADOS (busca) ---------- */
+.resultados {
+    margin-top: 10px;
+}
+
+.resultados__titulo {
+    font-size: 24px;
+    font-weight: 800;
+    margin: 0 0 16px 0;
+    color: var(--cor-texto);
+}
+
+.resultados__termo {
+    color: var(--cor-primaria);
+}
+
+/* ---------- ABAS LOJAS / ITENS (estilo iFood) ---------- */
+.abas-busca {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--cor-borda);
+    margin-bottom: 22px;
+}
+
+.aba {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cor-muted);
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all var(--transicao);
+    cursor: pointer;
+}
+
+.aba:hover {
+    color: var(--cor-primaria);
+}
+
+.aba--ativa {
+    color: var(--cor-primaria);
+    border-bottom-color: var(--cor-primaria);
+}
+
+.aba__contador {
+    display: inline-block;
+    background: var(--cor-primaria-suave);
+    color: var(--cor-primaria);
+    font-size: 11px;
+    font-weight: 800;
+    border-radius: var(--raio-pill);
+    padding: 2px 8px;
+    min-width: 22px;
+    text-align: center;
+}
+
+.aba--ativa .aba__contador {
+    background: var(--cor-primaria);
+    color: white;
 }
 
 /* ---------- LISTA DE RESTAURANTES ---------- */
@@ -272,6 +337,129 @@
     gap: 4px;
 }
 
+/* ---------- GRID DE ITENS (resultado de busca) ---------- */
+.grid-itens {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.item-card {
+    display: flex;
+    gap: 14px;
+    padding: 14px;
+    background: var(--cor-branco);
+    border: 2px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+    transition: all var(--transicao);
+    color: var(--cor-texto);
+    position: relative;
+    overflow: hidden;
+}
+
+.item-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--cor-primaria);
+    box-shadow: var(--sombra-forte);
+}
+
+.item-card__thumb {
+    width: 96px;
+    height: 96px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: var(--gradiente);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(255, 92, 157, 0.20);
+}
+
+.item-card__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.item-card__thumb-fallback {
+    color: white;
+    font-size: 40px;
+    font-weight: 800;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.item-card__info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.item-card__nome {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--cor-texto);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.item-card__desc {
+    margin: 0;
+    font-size: 12px;
+    color: var(--cor-muted);
+    font-weight: 500;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.item-card__preco {
+    margin: 4px 0 0 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--cor-primaria);
+}
+
+.item-card__restaurante {
+    margin: 4px 0 0 0;
+    font-size: 12px;
+    color: var(--cor-secundaria);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.item-card__restaurante-nome {
+    font-weight: 800;
+}
+
+.item-card__taxa {
+    margin: 2px 0 0 0;
+    font-size: 11px;
+    color: var(--cor-muted);
+    font-weight: 600;
+}
+
+.item-card__taxa--gratis {
+    color: var(--cor-sucesso);
+    font-weight: 700;
+}
+
 /* ---------- ESTADO VAZIO ---------- */
 .estado-vazio {
     text-align: center;
@@ -287,7 +475,8 @@
 
 /* ---------- RESPONSIVO ---------- */
 @media (max-width: 800px) {
-    .grid-restaurantes {
+    .grid-restaurantes,
+    .grid-itens {
         grid-template-columns: 1fr;
     }
     .hero h1 {
@@ -318,6 +507,16 @@
     .rest-card__nome {
         font-size: 15px;
     }
+    .resultados__titulo {
+        font-size: 20px;
+    }
+    .item-card__thumb {
+        width: 80px;
+        height: 80px;
+    }
+    .item-card__thumb-fallback {
+        font-size: 32px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -344,5 +543,9 @@
     .rest-card__meta,
     .rest-card__taxa {
         font-size: 12px;
+    }
+    .aba {
+        padding: 10px 14px;
+        font-size: 14px;
     }
 }

@@ -252,12 +252,12 @@ def atualizar_disponibilidade_entregador(id_usuario, disponivel):
 # =========================================================
 # PRODUTO
 # =========================================================
-def criar_produto(id_restaurante, nome, descricao, preco, disponivel=True):
+def criar_produto(id_restaurante, nome, descricao, preco, disponivel=True, foto_url=None):
     with DB() as db:
         db.cursor.execute(
-            """INSERT INTO produto (id_restaurante, nome, descricao, preco, disponivel)
-               VALUES (%s,%s,%s,%s,%s)""",
-            (id_restaurante, nome, descricao, preco, disponivel),
+            """INSERT INTO produto (id_restaurante, nome, descricao, preco, disponivel, foto_url)
+               VALUES (%s,%s,%s,%s,%s,%s)""",
+            (id_restaurante, nome, descricao, preco, disponivel, foto_url),
         )
         return db.cursor.lastrowid
 
@@ -278,18 +278,109 @@ def buscar_produto(id_produto):
         return db.cursor.fetchone()
 
 
-def atualizar_produto(id_produto, nome, descricao, preco, disponivel):
+def atualizar_produto(id_produto, nome, descricao, preco, disponivel, foto_url=None):
     with DB() as db:
         db.cursor.execute(
-            """UPDATE produto SET nome=%s, descricao=%s, preco=%s, disponivel=%s
+            """UPDATE produto SET nome=%s, descricao=%s, preco=%s, disponivel=%s, foto_url=%s
                WHERE id=%s""",
-            (nome, descricao, preco, disponivel, id_produto),
+            (nome, descricao, preco, disponivel, foto_url, id_produto),
         )
 
 
 def deletar_produto(id_produto):
     with DB() as db:
         db.cursor.execute("DELETE FROM produto WHERE id=%s", (id_produto,))
+
+
+def _query_produtos_com_restaurante(where_sql, params, limite=200):
+    """
+    Helper interno: roda a SELECT base dos produtos + dados do restaurante
+    e devolve uma lista de dicts.
+    """
+    query = f"""
+        SELECT
+            p.id              AS id_produto,
+            p.nome            AS nome_produto,
+            p.descricao       AS descricao_produto,
+            p.preco           AS preco_produto,
+            p.disponivel      AS disponivel_produto,
+            p.foto_url        AS foto_produto,
+            r.id_usuario      AS id_restaurante,
+            r.nome_fantasia   AS nome_restaurante,
+            r.categoria       AS categoria_restaurante,
+            r.taxa_entrega    AS taxa_entrega,
+            r.foto_url        AS foto_restaurante,
+            r.bairro          AS bairro_restaurante,
+            r.cidade          AS cidade_restaurante
+        FROM produto p
+        JOIN restaurante r ON r.id_usuario = p.id_restaurante
+        WHERE p.disponivel = TRUE {where_sql}
+        ORDER BY p.nome ASC
+        LIMIT %s
+    """
+    with DB() as db:
+        db.cursor.execute(query, params + [limite])
+        return db.cursor.fetchall()
+
+
+def buscar_produtos_por_nome(termo, limite=60):
+    """
+    Busca produtos por nome OU descrição, tolerando erros de digitação.
+
+    Estratégia em duas camadas:
+    1) LIKE tradicional no banco (rápido e preciso quando bate exato).
+    2) Se o LIKE trouxe menos que 'limite', faz uma varredura mais ampla
+       (limitada) e usa fuzzy matching em Python pra pescar produtos
+       parecidos ("yakisoba" -> "Yakissoba").
+
+    O resultado é deduplicado por id_produto.
+    """
+    from services import fuzzy
+
+    termo = (termo or "").strip()
+    if not termo:
+        return []
+
+    like = f"%{termo}%"
+
+    # ---- Camada 1: LIKE exato ----
+    exatos = _query_produtos_com_restaurante(
+        "AND (p.nome LIKE %s OR p.descricao LIKE %s)",
+        [like, like],
+        limite=limite,
+    )
+
+    if len(exatos) >= limite:
+        return exatos[:limite]
+
+    # ---- Camada 2: fuzzy sobre candidatos mais amplos ----
+    palavras = [p for p in termo.split() if len(p) >= 2]
+    if not palavras:
+        palavras = [termo]
+
+    condicoes = []
+    params_candidatos = []
+    for palavra in palavras[:3]:
+        condicoes.append("(p.nome LIKE %s OR p.descricao LIKE %s)")
+        params_candidatos.extend([f"%{palavra[:3]}%", f"%{palavra[:3]}%"])
+
+    where_candidatos = "AND (" + " OR ".join(condicoes) + ")" if condicoes else ""
+    candidatos = _query_produtos_com_restaurante(
+        where_candidatos,
+        params_candidatos,
+        limite=200,
+    )
+
+    pool = {p["id_produto"]: p for p in exatos}
+    for p in candidatos:
+        pool.setdefault(p["id_produto"], p)
+
+    ranqueados = fuzzy.ranquear_produtos(termo, list(pool.values()), limiar=fuzzy.LIMIAR_PADRAO, limite=limite)
+
+    if not ranqueados:
+        return exatos[:limite]
+
+    return ranqueados
 
 
 # =========================================================
