@@ -18,7 +18,17 @@
     <div class="lista-pedidos">
         {% for p in disponiveis %}
         <div class="card-pedido">
-            <div>
+            <div class="card-pedido__thumb">
+                {% if p.restaurante_foto_url %}
+                    <img src="{{ p.restaurante_foto_url }}"
+                         alt="{{ p.nome_fantasia }}"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <span class="card-pedido__thumb-fallback" style="display:none;">{{ p.nome_fantasia[:1]|upper }}</span>
+                {% else %}
+                    <span class="card-pedido__thumb-fallback">{{ p.nome_fantasia[:1]|upper }}</span>
+                {% endif %}
+            </div>
+            <div class="card-pedido__texto">
                 <strong>#{{ p.id }} - {{ p.nome_fantasia }}</strong>
                 <p class="muted">Retirar em: {{ p.rua_restaurante }}, {{ p.bairro_restaurante }}</p>
                 <p class="muted">Entregar em: {{ p.rua_entrega or '-' }}, {{ p.bairro_entrega or '' }}</p>
@@ -38,7 +48,17 @@
     <div class="lista-pedidos">
         {% for p in minhas_entregas %}
         <div class="card-pedido">
-            <div>
+            <div class="card-pedido__thumb">
+                {% if p.restaurante_foto_url %}
+                    <img src="{{ p.restaurante_foto_url }}"
+                         alt="{{ p.nome_fantasia }}"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <span class="card-pedido__thumb-fallback" style="display:none;">{{ p.nome_fantasia[:1]|upper }}</span>
+                {% else %}
+                    <span class="card-pedido__thumb-fallback">{{ p.nome_fantasia[:1]|upper }}</span>
+                {% endif %}
+            </div>
+            <div class="card-pedido__texto">
                 <strong>#{{ p.id }} - {{ p.nome_fantasia }}</strong>
                 <span class="status-badge status-badge--{{ p.status }}">{{ p.status.replace('_', ' ') }}</span>
                 {% if p.status == 'indo_ao_restaurante' %}

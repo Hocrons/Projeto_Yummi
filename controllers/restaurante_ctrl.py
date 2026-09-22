@@ -10,20 +10,31 @@ TRANSICOES_PERMITIDAS = {
 }
 
 
+def _url_foto_valida(url):
+    """Aceita só http:// ou https://. Vazio vira None."""
+    url = (url or "").strip()
+    if not url:
+        return None
+    if not (url.startswith("http://") or url.startswith("https://")):
+        return False  # sinaliza "inválida"
+    if len(url) > 500:
+        return False
+    return url
+
+
 # ---------------------------------------------------------
-# PORTAL (ponto de entrada — decide entre painel e login)
+# PORTAL (ponto de entrada)
 # ---------------------------------------------------------
 @restaurante_bp.route("")
 @restaurante_bp.route("/")
 def portal():
-    """Ponto de entrada do portal do parceiro."""
     if session.get("user_tipo") == "restaurante":
         return redirect(url_for("restaurante.painel"))
     return redirect(url_for("auth.login_restaurante"))
 
 
 # ---------------------------------------------------------
-# PAINEL (pedidos recebidos)
+# PAINEL
 # ---------------------------------------------------------
 @restaurante_bp.route("/painel")
 @login_requerido("restaurante")
@@ -123,15 +134,28 @@ def produto_excluir(id_produto):
 
 
 # ---------------------------------------------------------
-# PERFIL
+# PERFIL (com foto)
 # ---------------------------------------------------------
 @restaurante_bp.route("/perfil", methods=["GET", "POST"])
 @login_requerido("restaurante")
 def editar_perfil():
     if request.method == "POST":
+        # ----- Foto -----
+        foto_raw = request.form.get("foto_url")
+        foto_url = _url_foto_valida(foto_raw)
+        if foto_url is False:
+            flash("URL da foto inválida. Use http:// ou https://", "erro")
+            return redirect(url_for("restaurante.editar_perfil"))
+        # foto_url aqui é None (campo vazio) ou string válida
+
+        # ----- Dados do usuário -----
         models.atualizar_usuario(
-            session["user_id"], request.form["nome_responsavel"], request.form.get("telefone")
+            session["user_id"],
+            request.form["nome_responsavel"],
+            request.form.get("telefone"),
         )
+
+        # ----- Dados do restaurante -----
         models.atualizar_restaurante(
             session["user_id"],
             nome_fantasia=request.form["nome_fantasia"],
@@ -143,7 +167,9 @@ def editar_perfil():
             bairro=request.form.get("bairro"),
             cidade=request.form.get("cidade"),
             cep=request.form.get("cep"),
+            foto_url=foto_url,
         )
+
         flash("Perfil do restaurante atualizado.", "sucesso")
         return redirect(url_for("restaurante.editar_perfil"))
 

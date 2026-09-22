@@ -1,10 +1,18 @@
 {% extends "base.html" %}
 {% block title %}{{ restaurante.nome_fantasia }} - Cardápio{% endblock %}
 {% block content %}
-<section class="cabecalho-restaurante">
-    <h1>{{ restaurante.nome_fantasia }}</h1>
-    <p class="muted">{{ restaurante.categoria or 'Diversos' }} · {{ restaurante.bairro }}, {{ restaurante.cidade }}</p>
-    <p class="muted">Taxa de entrega: R$ {{ '%.2f' % restaurante.taxa_entrega }} · {{ restaurante.horario_funcionamento or '' }}</p>
+<section class="cabecalho-restaurante cabecalho-restaurante--com-foto">
+    {% if restaurante.foto_url %}
+        <img src="{{ restaurante.foto_url }}"
+             alt="{{ restaurante.nome_fantasia }}"
+             class="cabecalho-restaurante__foto"
+             onerror="this.style.display='none';">
+    {% endif %}
+    <div class="cabecalho-restaurante__texto">
+        <h1>{{ restaurante.nome_fantasia }}</h1>
+        <p class="muted">{{ restaurante.categoria or 'Diversos' }} · {{ restaurante.bairro }}, {{ restaurante.cidade }}</p>
+        <p class="muted">Taxa de entrega: R$ {{ '%.2f' % restaurante.taxa_entrega }} · {{ restaurante.horario_funcionamento or '' }}</p>
+    </div>
 </section>
 
 <section class="grid-produtos">

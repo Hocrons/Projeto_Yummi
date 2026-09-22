@@ -1,86 +1,138 @@
-/* ---------- LANDING PAGE (escolha do portal) ---------- */
+/* =========================================================
+   YUMMY — LANDING PAGE (escolha do portal)
+   ========================================================= */
+
 .landing {
     padding: 40px 0 60px;
 }
 
 .landing__header {
     text-align: center;
-    margin-bottom: 40px;
+    margin-bottom: 44px;
 }
 
 .landing__header h1 {
-    font-size: 32px;
-    margin: 0 0 6px 0;
+    font-size: 34px;
+    margin: 0 0 8px 0;
+    font-weight: 800;
+    background: var(--gradiente);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.landing__header .muted {
+    font-size: 15px;
+    font-weight: 600;
 }
 
 .landing__cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    max-width: 960px;
+    gap: 22px;
+    max-width: 1000px;
     margin: 0 auto;
 }
 
+/* ---------- CARD DO PORTAL ---------- */
 .landing-card {
-    background: white;
-    border: 1px solid var(--cor-borda);
+    background: var(--cor-branco);
+    border: 2px solid var(--cor-borda);
     border-radius: var(--raio);
-    padding: 28px 22px;
+    padding: 32px 24px;
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    transition: all var(--transicao);
     color: var(--cor-texto);
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--sombra);
+}
+
+/* Brilho que aparece no hover */
+.landing-card::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 92, 157, 0.15) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity var(--transicao);
+    pointer-events: none;
 }
 
 .landing-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.10);
+    transform: translateY(-6px);
     border-color: var(--cor-primaria);
+    box-shadow: var(--sombra-forte);
+}
+
+.landing-card:hover::before {
+    opacity: 1;
 }
 
 .landing-card__icone {
-    font-size: 52px;
+    font-size: 58px;
     line-height: 1;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    transition: transform var(--transicao);
+}
+
+.landing-card:hover .landing-card__icone {
+    transform: scale(1.15) rotate(-4deg);
 }
 
 .landing-card__titulo {
-    font-size: 20px;
+    font-size: 22px;
     margin: 0;
+    font-weight: 800;
+    color: var(--cor-texto);
 }
 
 .landing-card__desc {
     font-size: 14px;
     color: var(--cor-muted);
-    line-height: 1.45;
-    margin: 0 0 8px 0;
-    min-height: 60px;
+    line-height: 1.5;
+    margin: 0 0 14px 0;
+    min-height: 63px;
+    font-weight: 500;
 }
 
 .landing-card .btn {
     margin-top: auto;
+    width: 100%;
+    position: relative;
+    z-index: 1;
 }
 
 .landing__rodape {
     text-align: center;
-    margin-top: 40px;
-    font-size: 13px;
+    margin-top: 44px;
+    font-size: 12px;
+    color: var(--cor-muted);
+    font-weight: 500;
 }
 
 /* ---------- RESPONSIVO ---------- */
-@media (max-width: 800px) {
+@media (max-width: 900px) {
     .landing__cards {
         grid-template-columns: 1fr;
-        max-width: 380px;
+        max-width: 400px;
+        gap: 18px;
     }
     .landing__header h1 {
-        font-size: 24px;
+        font-size: 26px;
+    }
+    .landing-card {
+        padding: 26px 20px;
     }
     .landing-card__icone {
-        font-size: 44px;
+        font-size: 48px;
     }
     .landing-card__desc {
         min-height: auto;

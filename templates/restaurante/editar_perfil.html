@@ -4,37 +4,95 @@
 <div class="form-card form-card--wide">
     <h2>Perfil do restaurante</h2>
     <form method="post">
-        <div class="form-grid">
-            <label>Nome do responsável
-                <input type="text" name="nome_responsavel" value="{{ restaurante.nome }}" required>
-            </label>
-            <label>Nome fantasia
-                <input type="text" name="nome_fantasia" value="{{ restaurante.nome_fantasia }}" required>
-            </label>
-            <label>Categoria
-                <input type="text" name="categoria" value="{{ restaurante.categoria or '' }}">
-            </label>
-            <label>Taxa de entrega (R$)
-                <input type="number" step="0.01" name="taxa_entrega" value="{{ restaurante.taxa_entrega }}">
-            </label>
-            <label>Horário de funcionamento
-                <input type="text" name="horario_funcionamento" value="{{ restaurante.horario_funcionamento or '' }}">
-            </label>
-            <label>Telefone
-                <input type="text" name="telefone" value="{{ restaurante.telefone or '' }}">
-            </label>
-        </div>
 
-        <h3>Endereço</h3>
-        <div class="form-grid">
-            <label>Rua <input type="text" name="rua" value="{{ restaurante.rua or '' }}"></label>
-            <label>Número <input type="text" name="numero" value="{{ restaurante.numero or '' }}"></label>
-            <label>Bairro <input type="text" name="bairro" value="{{ restaurante.bairro or '' }}"></label>
-            <label>Cidade <input type="text" name="cidade" value="{{ restaurante.cidade or '' }}"></label>
-            <label>CEP <input type="text" name="cep" value="{{ restaurante.cep or '' }}"></label>
-        </div>
+        {# ========================= #}
+        {# FOTO DO RESTAURANTE       #}
+        {# ========================= #}
+        <fieldset class="fieldset-secao">
+            <legend>Foto do restaurante</legend>
+
+            <div class="foto-perfil-wrapper">
+                <div class="foto-perfil-preview" id="foto-preview-box">
+                    {% if restaurante.foto_url %}
+                        <img src="{{ restaurante.foto_url }}"
+                             alt="Foto do restaurante"
+                             id="foto-preview"
+                             onerror="this.style.display='none'; document.getElementById('foto-fallback').style.display='flex';">
+                        <div id="foto-fallback" class="foto-perfil-fallback" style="display:none;">
+                            {{ restaurante.nome_fantasia[:1]|upper }}
+                        </div>
+                    {% else %}
+                        <div id="foto-fallback" class="foto-perfil-fallback">
+                            {{ restaurante.nome_fantasia[:1]|upper }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="foto-perfil-info">
+                    <label>URL da foto
+                        <input type="url" name="foto_url" id="foto-url-input"
+                               placeholder="https://exemplo.com/foto.jpg"
+                               value="{{ restaurante.foto_url or '' }}"
+                               maxlength="500">
+                    </label>
+                    <p class="muted" style="font-size: 13px; margin-top: -8px;">
+                        Cole o link <strong>direto</strong> de uma imagem
+                        (<code>.jpg</code>, <code>.png</code>, <code>.webp</code>).
+                        Pode ser do Instagram, Google Drive público, Imgur, etc.
+                        Deixe vazio para remover a foto.
+                    </p>
+                    <p id="foto-status" class="cep-status"></p>
+                </div>
+            </div>
+        </fieldset>
+
+        {# ========================= #}
+        {# DADOS BÁSICOS             #}
+        {# ========================= #}
+        <fieldset class="fieldset-secao">
+            <legend>Dados do restaurante</legend>
+
+            <div class="form-grid">
+                <label>Nome do responsável
+                    <input type="text" name="nome_responsavel" value="{{ restaurante.nome }}" required>
+                </label>
+                <label>Nome fantasia
+                    <input type="text" name="nome_fantasia" value="{{ restaurante.nome_fantasia }}" required>
+                </label>
+                <label>Categoria
+                    <input type="text" name="categoria" value="{{ restaurante.categoria or '' }}">
+                </label>
+                <label>Taxa de entrega (R$)
+                    <input type="number" step="0.01" name="taxa_entrega" value="{{ restaurante.taxa_entrega }}">
+                </label>
+                <label>Horário de funcionamento
+                    <input type="text" name="horario_funcionamento" value="{{ restaurante.horario_funcionamento or '' }}">
+                </label>
+                <label>Telefone
+                    <input type="text" name="telefone" value="{{ restaurante.telefone or '' }}">
+                </label>
+            </div>
+        </fieldset>
+
+        {# ========================= #}
+        {# ENDEREÇO                  #}
+        {# ========================= #}
+        <fieldset class="fieldset-secao">
+            <legend>Endereço</legend>
+            <div class="form-grid">
+                <label>Rua <input type="text" name="rua" value="{{ restaurante.rua or '' }}"></label>
+                <label>Número <input type="text" name="numero" value="{{ restaurante.numero or '' }}"></label>
+                <label>Bairro <input type="text" name="bairro" value="{{ restaurante.bairro or '' }}"></label>
+                <label>Cidade <input type="text" name="cidade" value="{{ restaurante.cidade or '' }}"></label>
+                <label>CEP <input type="text" name="cep" value="{{ restaurante.cep or '' }}"></label>
+            </div>
+        </fieldset>
 
         <button type="submit" class="btn btn--primary btn--full">Salvar alterações</button>
     </form>
 </div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/foto_preview.js') }}"></script>
 {% endblock %}

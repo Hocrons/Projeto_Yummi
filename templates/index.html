@@ -31,7 +31,7 @@
     </form>
 </section>
 
-{# ---------- CATEGORIAS EM CÍRCULOS (scroll horizontal) ---------- #}
+{# ---------- CATEGORIAS EM CÍRCULOS ---------- #}
 <section class="categorias-secao">
     <h2 class="categorias-secao__titulo">Conheça as categorias</h2>
 
@@ -56,24 +56,58 @@
     </div>
 </section>
 
-{# ---------- LISTA DE RESTAURANTES ---------- #}
+{# ---------- LISTA DE RESTAURANTES (cards horizontais estilo iFood) ---------- #}
 <section class="lista-restaurantes">
+    <h2 class="lista-restaurantes__titulo">
+        {% if categoria_selecionada %}
+            {{ categoria_selecionada }}
+        {% elif busca %}
+            Resultados para "{{ busca }}"
+        {% else %}
+            Lojas
+        {% endif %}
+    </h2>
+
     {% if restaurantes %}
-        <div class="grid">
+        <div class="grid-restaurantes">
             {% for r in restaurantes %}
                 <a href="{{ url_for('cliente.ver_cardapio', id_restaurante=r.id) }}"
-                   class="card-restaurante">
-                    <div class="card-restaurante__banner card-restaurante__banner--grande">
-                        {{ r.nome_fantasia[:1]|upper }}
+                   class="rest-card">
+
+                    <div class="rest-card__thumb">
+                        {% if r.foto_url %}
+                            <img src="{{ r.foto_url }}"
+                                 alt="{{ r.nome_fantasia }}"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <span class="rest-card__thumb-fallback" style="display:none;">
+                                {{ r.nome_fantasia[:1]|upper }}
+                            </span>
+                        {% else %}
+                            <span class="rest-card__thumb-fallback">
+                                {{ r.nome_fantasia[:1]|upper }}
+                            </span>
+                        {% endif %}
                     </div>
-                    <div class="card-restaurante__info">
-                        <h3>{{ r.nome_fantasia }}</h3>
-                        <p class="muted card-restaurante__linha">
+
+                    <div class="rest-card__info">
+                        <div class="rest-card__linha-titulo">
+                            <h3 class="rest-card__nome">{{ r.nome_fantasia }}</h3>
+                            <span class="rest-card__dot"></span>
+                        </div>
+
+                        <p class="rest-card__meta">
                             {{ r.categoria or 'Diversos' }}{% if r.bairro %} · {{ r.bairro }}{% endif %}
                         </p>
-                        <p class="card-restaurante__taxa">
-                            Taxa de entrega: R$ {{ '%.2f'|format(r.taxa_entrega|float) }}
-                        </p>
+
+                        {% if r.taxa_entrega and r.taxa_entrega|float > 0 %}
+                            <p class="rest-card__taxa">
+                                Taxa de entrega: R$ {{ '%.2f'|format(r.taxa_entrega|float) }}
+                            </p>
+                        {% else %}
+                            <p class="rest-card__taxa rest-card__taxa--gratis">
+                                🚚 Entrega grátis
+                            </p>
+                        {% endif %}
                     </div>
                 </a>
             {% endfor %}
