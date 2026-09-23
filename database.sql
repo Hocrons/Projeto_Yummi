@@ -24,9 +24,9 @@ CREATE TABLE plano (
 ) ENGINE=InnoDB;
 
 INSERT INTO plano (nome, descricao, mensalidade, comissao_pct, taxa_cartao_pct, entrega_propria, ativo) VALUES
-('Básico',   'Ideal pra quem está começando. Comissão maior, sem mensalidade.',          0.00,  12.00, 3.20, FALSE, TRUE),
-('Crescimento', 'Mais pedidos, menos comissão. Pra quem já vende bem.',                  69.90,  8.00,  3.20, FALSE, TRUE),
-('Pro',      'Entrega própria + comissão reduzida. Você gerencia seus entregadores.',    149.90, 5.00,  2.80, TRUE,  TRUE);
+('Básico',      'Ideal pra quem está começando. Comissão maior, sem mensalidade.',              0.00,  12.00, 3.20, FALSE, TRUE),
+('Crescimento', 'Mais pedidos, menos comissão. Pra quem já vende bem.',                          69.90,  8.00,  3.20, FALSE, TRUE),
+('Pro',         'Entrega própria + comissão reduzida. Você gerencia seus entregadores.',        149.90, 5.00,  2.80, TRUE,  TRUE);
 
 -- ---------------------------------------------------------
 -- usuario (tabela mãe: cliente, restaurante e entregador

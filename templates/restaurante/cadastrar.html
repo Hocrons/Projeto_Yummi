@@ -137,55 +137,154 @@
 
         <fieldset class="fieldset-secao">
             <legend>Contratação de plano</legend>
-            <p class="muted">
+            <p style="margin: 0 0 16px 0; font-size: 13px; color: var(--cor-muted); line-height: 1.5;">
                 Escolha um plano para começar. Você poderá trocar depois sem custos.
             </p>
 
-            <div class="planos-grid">
+            <div style="
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 12px;
+                align-items: stretch;
+            ">
                 {% for p in planos %}
-                <label class="plano-card">
+                <label style="
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    cursor: pointer;
+                    background: var(--cor-branco);
+                    border: 2px solid var(--cor-borda);
+                    border-radius: 14px;
+                    padding: 14px 14px 16px;
+                    transition: border-color .2s ease, box-shadow .2s ease;
+                    min-width: 0;
+                "
+                onmouseover="if(!this.querySelector('input').checked) this.style.borderColor='var(--cor-primaria)'"
+                onmouseout="if(!this.querySelector('input').checked) this.style.borderColor='var(--cor-borda)'">
+
                     <input type="radio" name="id_plano" value="{{ p.id }}" required
-                           class="plano-card__radio"
+                           style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;"
                            {% if form_dados.id_plano|string == p.id|string %}checked{% endif %}>
-                    <div class="plano-card__conteudo">
-                        <div class="plano-card__cabecalho">
-                            {% if p.entrega_propria %}
-                                <svg class="plano-card__icone" viewBox="0 0 24 24" fill="none"
-                                     stroke="currentColor" stroke-width="2"
-                                     stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                                    <polyline points="9 22 9 12 15 12 15 22"/>
-                                </svg>
-                            {% else %}
-                                <svg class="plano-card__icone" viewBox="0 0 24 24" fill="none"
-                                     stroke="currentColor" stroke-width="2"
-                                     stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="5.5" cy="17.5" r="3.5"/>
-                                    <circle cx="18.5" cy="17.5" r="3.5"/>
-                                    <path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
-                                    <path d="M5.5 17.5V14l3-3 3 3 2-2 3 3v2.5"/>
-                                </svg>
-                            {% endif %}
-                            <h3 class="plano-card__nome">{{ p.nome }}</h3>
+
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 6px;
+                        margin-bottom: 8px;
+                    ">
+                        <span style="
+                            font-size: 15px;
+                            font-weight: 800;
+                            color: var(--cor-texto);
+                            letter-spacing: -0.2px;
+                        ">{{ p.nome }}</span>
+
+                        {% if p.entrega_propria %}
+                        <span style="
+                            font-size: 9px;
+                            font-weight: 800;
+                            text-transform: uppercase;
+                            letter-spacing: 0.4px;
+                            background: var(--cor-primaria-suave);
+                            color: var(--cor-primaria);
+                            padding: 2px 7px;
+                            border-radius: 999px;
+                            white-space: nowrap;
+                        ">Entrega própria</span>
+                        {% endif %}
+                    </div>
+
+                    <p style="
+                        margin: 0 0 10px 0;
+                        font-size: 11.5px;
+                        line-height: 1.45;
+                        color: var(--cor-muted);
+                        font-weight: 500;
+                        min-height: 32px;
+                    ">{{ p.descricao }}</p>
+
+                    <div style="
+                        display: flex;
+                        align-items: baseline;
+                        gap: 3px;
+                        margin-bottom: 4px;
+                    ">
+                        <span style="
+                            font-size: 22px;
+                            font-weight: 800;
+                            color: var(--cor-primaria);
+                            letter-spacing: -0.5px;
+                        ">R$ {{ '%.0f'|format(p.mensalidade) }}</span>
+                        <span style="
+                            font-size: 12px;
+                            color: var(--cor-muted);
+                            font-weight: 600;
+                        ">/mês</span>
+                    </div>
+
+                    <p style="
+                        margin: 0 0 12px 0;
+                        font-size: 10.5px;
+                        font-weight: 800;
+                        color: var(--cor-sucesso);
+                    ">✨ Grátis por 3 meses</p>
+
+                    <div style="
+                        border-top: 1px dashed var(--cor-borda);
+                        padding-top: 10px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 5px;
+                    ">
+                        <div style="
+                            display: flex;
+                            align-items: flex-start;
+                            gap: 5px;
+                            font-size: 11px;
+                            line-height: 1.35;
+                            color: var(--cor-texto);
+                        ">
+                            <span style="color: var(--cor-sucesso); font-weight: 900; flex-shrink: 0;">✓</span>
+                            <span><strong style="color: var(--cor-primaria); font-weight: 800;">{{ '%.0f'|format(p.comissao_pct) }}%</strong> de comissão Yummy</span>
                         </div>
-
-                        <p class="muted plano-card__desc">{{ p.descricao }}</p>
-
-                        <p class="plano-card__preco">
-                            R$ {{ '%.0f'|format(p.mensalidade) }}<span>/mês*</span>
-                        </p>
-                        <p class="plano-card__promo">Grátis por 3 meses!</p>
-
-                        <ul class="plano-card__lista">
-                            <li><strong>{{ '%.0f'|format(p.comissao_pct) }}%</strong> Comissão Yummy sobre cada pedido</li>
-                            <li><strong>{{ '%.1f'|format(p.taxa_cartao_pct) }}%</strong> Cobrança da operadora de cartão</li>
-                        </ul>
+                        <div style="
+                            display: flex;
+                            align-items: flex-start;
+                            gap: 5px;
+                            font-size: 11px;
+                            line-height: 1.35;
+                            color: var(--cor-texto);
+                        ">
+                            <span style="color: var(--cor-sucesso); font-weight: 900; flex-shrink: 0;">✓</span>
+                            <span><strong style="color: var(--cor-primaria); font-weight: 800;">{{ '%.1f'|format(p.taxa_cartao_pct) }}%</strong> taxa de cartão</span>
+                        </div>
+                        {% if p.entrega_propria %}
+                        <div style="
+                            display: flex;
+                            align-items: flex-start;
+                            gap: 5px;
+                            font-size: 11px;
+                            line-height: 1.35;
+                            color: var(--cor-texto);
+                        ">
+                            <span style="color: var(--cor-sucesso); font-weight: 900; flex-shrink: 0;">✓</span>
+                            <span>Sua própria entrega</span>
+                        </div>
+                        {% endif %}
                     </div>
                 </label>
                 {% endfor %}
             </div>
 
-            <p class="muted" style="font-size: 13px; margin-top: 12px;">
+            <p style="
+                font-size: 11.5px;
+                font-style: italic;
+                margin: 12px 0 0 0;
+                line-height: 1.5;
+                color: var(--cor-muted);
+            ">
                 * A mensalidade só será cobrada se faturar mais que R$ 1.800 no mês,
                 após o período promocional.
             </p>
@@ -200,4 +299,31 @@
 
 {% block js %}
 <script src="{{ url_for('static', filename='js/viacep.js') }}"></script>
+<script>
+(function () {
+    "use strict";
+
+    function atualizarPlanos() {
+        document.querySelectorAll('input[name="id_plano"]').forEach((radio) => {
+            const card = radio.closest("label");
+            if (!card) return;
+            if (radio.checked) {
+                card.style.borderColor = "var(--cor-primaria)";
+                card.style.boxShadow = "0 0 0 3px rgba(255, 92, 157, 0.18)";
+                card.style.background = "linear-gradient(180deg, var(--cor-primaria-suave) 0%, var(--cor-branco) 55%)";
+            } else {
+                card.style.borderColor = "var(--cor-borda)";
+                card.style.boxShadow = "none";
+                card.style.background = "var(--cor-branco)";
+            }
+        });
+    }
+
+    document.querySelectorAll('input[name="id_plano"]').forEach((radio) => {
+        radio.addEventListener("change", atualizarPlanos);
+    });
+
+    atualizarPlanos();
+})();
+</script>
 {% endblock %}

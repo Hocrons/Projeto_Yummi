@@ -22,25 +22,28 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
-    {% if user_tipo == 'cliente' %}
+
+    {# ---------- DETECÇÃO DO PORTAL PELA URL ---------- #}
+    {% set path = request.path %}
+    {% set portal_atual =
+        'cliente'     if path.startswith('/cliente') or path.startswith('/auth/cliente')
+        else 'restaurante' if path.startswith('/restaurante') or path.startswith('/auth/restaurante')
+        else 'entregador'  if path.startswith('/entregador') or path.startswith('/auth/entregador')
+        else None
+    %}
+
+    {# Carrega o CSS do portal certo, mesmo sem login (ex: durante o cadastro) #}
+    {% if portal_atual == 'cliente' %}
         <link rel="stylesheet" href="{{ url_for('static', filename='css/cliente.css') }}">
-    {% elif user_tipo == 'restaurante' %}
+    {% elif portal_atual == 'restaurante' %}
         <link rel="stylesheet" href="{{ url_for('static', filename='css/restaurante.css') }}">
-    {% elif user_tipo == 'entregador' %}
+    {% elif portal_atual == 'entregador' %}
         <link rel="stylesheet" href="{{ url_for('static', filename='css/entregador.css') }}">
     {% endif %}
+
     {% block css %}{% endblock %}
 </head>
 <body>
-
-{# ---------- DETECÇÃO DO PORTAL ATUAL PELA URL ---------- #}
-{% set path = request.path %}
-{% set portal_atual =
-    'cliente'     if path.startswith('/cliente')
-    else 'restaurante' if path.startswith('/restaurante')
-    else 'entregador'  if path.startswith('/entregador')
-    else None
-%}
 
 {% if portal_atual == 'cliente' %}
     {% set url_login    = url_for('auth.login_cliente') %}

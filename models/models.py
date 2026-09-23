@@ -39,8 +39,31 @@ def buscar_usuario_por_id(id_usuario):
 
 
 def buscar_usuario_por_telefone(telefone_normalizado):
+    """
+    Busca QUALQUER usuário com esse telefone (independente do tipo).
+    Usada no fluxo de login por celular, onde precisamos saber se o número
+    já existe em qualquer tipo de conta.
+    """
     with DB() as db:
-        db.cursor.execute("SELECT * FROM usuario WHERE telefone=%s", (telefone_normalizado,))
+        db.cursor.execute(
+            "SELECT * FROM usuario WHERE telefone=%s",
+            (telefone_normalizado,),
+        )
+        return db.cursor.fetchone()
+
+
+def buscar_usuario_por_telefone_e_tipo(telefone_normalizado, tipo):
+    """
+    Busca um usuário com esse telefone E esse tipo específico.
+    Usada na hora do cadastro pra impedir duplicata DENTRO do mesmo tipo
+    (ex: 2 clientes com o mesmo telefone), mas permitindo que o mesmo
+    telefone exista em tipos diferentes (cliente + restaurante + entregador).
+    """
+    with DB() as db:
+        db.cursor.execute(
+            "SELECT * FROM usuario WHERE telefone=%s AND tipo=%s",
+            (telefone_normalizado, tipo),
+        )
         return db.cursor.fetchone()
 
 
@@ -293,10 +316,6 @@ def deletar_produto(id_produto):
 
 
 def _query_produtos_com_restaurante(where_sql, params, limite=200):
-    """
-    Helper interno: roda a SELECT base dos produtos + dados do restaurante
-    e devolve uma lista de dicts.
-    """
     query = f"""
         SELECT
             p.id              AS id_produto,
@@ -324,17 +343,6 @@ def _query_produtos_com_restaurante(where_sql, params, limite=200):
 
 
 def buscar_produtos_por_nome(termo, limite=60):
-    """
-    Busca produtos por nome OU descrição, tolerando erros de digitação.
-
-    Estratégia em duas camadas:
-    1) LIKE tradicional no banco (rápido e preciso quando bate exato).
-    2) Se o LIKE trouxe menos que 'limite', faz uma varredura mais ampla
-       (limitada) e usa fuzzy matching em Python pra pescar produtos
-       parecidos ("yakisoba" -> "Yakissoba").
-
-    O resultado é deduplicado por id_produto.
-    """
     from services import fuzzy
 
     termo = (termo or "").strip()
@@ -343,7 +351,6 @@ def buscar_produtos_por_nome(termo, limite=60):
 
     like = f"%{termo}%"
 
-    # ---- Camada 1: LIKE exato ----
     exatos = _query_produtos_com_restaurante(
         "AND (p.nome LIKE %s OR p.descricao LIKE %s)",
         [like, like],
@@ -353,7 +360,6 @@ def buscar_produtos_por_nome(termo, limite=60):
     if len(exatos) >= limite:
         return exatos[:limite]
 
-    # ---- Camada 2: fuzzy sobre candidatos mais amplos ----
     palavras = [p for p in termo.split() if len(p) >= 2]
     if not palavras:
         palavras = [termo]

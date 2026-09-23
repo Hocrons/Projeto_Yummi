@@ -133,6 +133,14 @@ def cadastrar_cliente():
                 return render_template("cliente/cadastrar.html")
 
             telefone_raw = request.form.get("telefone")
+            telefone_norm = normalizar_telefone(telefone_raw)
+
+            # Regra: 1 cliente por telefone (mas o mesmo telefone pode estar
+            # em contas de restaurante/entregador).
+            if telefone_norm and models.buscar_usuario_por_telefone_e_tipo(telefone_norm, "cliente"):
+                flash("Este celular já está cadastrado em outra conta de cliente.", "erro")
+                return render_template("cliente/cadastrar.html")
+
             id_usuario = models.criar_usuario(
                 nome=request.form["nome"],
                 email=request.form["email"],
@@ -144,7 +152,7 @@ def cadastrar_cliente():
                 id_usuario=id_usuario,
                 cpf=request.form["cpf"],
                 apelido=request.form.get("apelido"),
-                codigo_entrega=_codigo_entrega_padrao(normalizar_telefone(telefone_raw)),
+                codigo_entrega=_codigo_entrega_padrao(telefone_norm),
             )
             flash("Cadastro realizado! Faça login para continuar.", "sucesso")
             return redirect(url_for("auth.login_cliente"))
@@ -227,8 +235,16 @@ def entrada_celular_codigo():
         else:
             usuario = models.buscar_usuario_por_telefone(fluxo["telefone"])
 
+            # Se esse telefone existe apenas como restaurante/entregador,
+            # bloqueia o login como cliente (ele pode ter uma conta de cliente
+            # separada com esse mesmo número, mas precisa se cadastrar pelo
+            # formulário normal).
             if usuario and usuario["tipo"] != "cliente":
-                flash(f"Esse celular já está associado a uma conta de {usuario['tipo']}.", "erro")
+                flash(
+                    f"Esse celular pertence a uma conta de {usuario['tipo']}. "
+                    f"Para entrar como cliente com esse número, cadastre-se primeiro.",
+                    "erro",
+                )
                 session.pop("fluxo_entrada", None)
                 return redirect(url_for("auth.entrar"))
 
@@ -424,8 +440,10 @@ def cadastro_rapido():
             if not telefone:
                 flash("Informe um celular válido.", "erro")
                 return render_template("cliente/cadastro_rapido.html", fluxo=fluxo, veio_do_celular=veio_do_celular)
-            if models.buscar_usuario_por_telefone(telefone):
-                flash("Este celular já está cadastrado em outra conta.", "erro")
+
+            # Regra: 1 cliente por telefone
+            if models.buscar_usuario_por_telefone_e_tipo(telefone, "cliente"):
+                flash("Este celular já está cadastrado em outra conta de cliente.", "erro")
                 return render_template("cliente/cadastro_rapido.html", fluxo=fluxo, veio_do_celular=veio_do_celular)
 
             codigo = otp.gerar_codigo()
@@ -582,6 +600,12 @@ def completar_cadastro_social():
         try:
             senha_aleatoria = secrets.token_urlsafe(24)
             telefone_raw = request.form.get("telefone")
+            telefone_norm = normalizar_telefone(telefone_raw)
+
+            # Regra: 1 cliente por telefone
+            if telefone_norm and models.buscar_usuario_por_telefone_e_tipo(telefone_norm, "cliente"):
+                flash("Este celular já está cadastrado em outra conta de cliente.", "erro")
+                return render_template("cliente/completar_cadastro_social.html", dados=dados)
 
             id_usuario = models.criar_usuario(
                 nome=nome_final,
@@ -594,7 +618,7 @@ def completar_cadastro_social():
                 id_usuario=id_usuario,
                 cpf=request.form["cpf"],
                 apelido=request.form.get("apelido"),
-                codigo_entrega=_codigo_entrega_padrao(normalizar_telefone(telefone_raw)),
+                codigo_entrega=_codigo_entrega_padrao(telefone_norm),
             )
         except Exception as e:
             flash(f"Erro ao concluir o cadastro: {e}", "erro")
@@ -697,8 +721,10 @@ def restaurante_dados():
             flash("Informe um celular válido com DDD.", "erro")
             return render_template("restaurante/cadastrar_dados.html", fluxo=fluxo)
 
-        if models.buscar_usuario_por_telefone(telefone):
-            flash("Este celular já está cadastrado em outra conta.", "erro")
+        # Regra: 1 restaurante por telefone (mas o mesmo telefone pode estar
+        # em contas de cliente/entregador).
+        if models.buscar_usuario_por_telefone_e_tipo(telefone, "restaurante"):
+            flash("Este celular já está cadastrado em outra conta de restaurante.", "erro")
             return render_template("restaurante/cadastrar_dados.html", fluxo=fluxo)
 
         codigo = otp.gerar_codigo()
@@ -892,11 +918,20 @@ def cadastrar_entregador():
                 flash("Este e-mail já está cadastrado.", "erro")
                 return render_template("entregador/cadastrar.html")
 
+            telefone_raw = request.form.get("telefone")
+            telefone_norm = normalizar_telefone(telefone_raw)
+
+            # Regra: 1 entregador por telefone (mas o mesmo telefone pode estar
+            # em contas de cliente/restaurante).
+            if telefone_norm and models.buscar_usuario_por_telefone_e_tipo(telefone_norm, "entregador"):
+                flash("Este celular já está cadastrado em outra conta de entregador.", "erro")
+                return render_template("entregador/cadastrar.html")
+
             id_usuario = models.criar_usuario(
                 nome=request.form["nome"],
                 email=request.form["email"],
                 senha=request.form["senha"],
-                telefone=request.form.get("telefone"),
+                telefone=telefone_raw,
                 tipo="entregador",
             )
             models.criar_entregador(
