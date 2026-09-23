@@ -46,7 +46,7 @@ def ver_carrinho():
     if carrinho.get("id_restaurante"):
         restaurante = models.buscar_restaurante(carrinho["id_restaurante"])
     if not restaurante:
-        restaurante = {"nome_fantasia": "Nenhum restaurante selecionado"}
+        restaurante = {"nome_fantasia": "Nenhum restaurante selecionado", "foto_url": None}
     enderecos = models.listar_enderecos_cliente(session["user_id"])
     return render_template(
         "cliente/carrinho.html",
@@ -70,6 +70,7 @@ def adicionar_ao_carrinho():
 
     carrinho = _carrinho()
 
+    # Regra: só um restaurante por carrinho
     if carrinho.get("itens") and carrinho.get("id_restaurante") != produto["id_restaurante"]:
         return jsonify({
             "erro": "Seu carrinho já tem itens de outro restaurante.",
@@ -86,6 +87,7 @@ def adicionar_ao_carrinho():
             "nome": produto["nome"],
             "preco": float(produto["preco"]),
             "quantidade": 1,
+            "foto_url": produto.get("foto_url"),  # pode ser None
         }
 
     session.modified = True

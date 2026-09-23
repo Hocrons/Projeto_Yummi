@@ -1,35 +1,36 @@
 /* =========================================================
    YUMMY — PORTAL DO ENTREGADOR
-   (painel de corridas, thumb do restaurante, modal de código)
    ========================================================= */
 
-/* ---------- CARD DE PEDIDO ---------- */
 .card-pedido {
     border-left: 5px solid var(--cor-secundaria);
     border-radius: var(--raio);
     align-items: center;
 }
 
-/* ---------- THUMB DO RESTAURANTE ---------- */
 .card-pedido__thumb {
     width: 60px;
     height: 60px;
+    aspect-ratio: 1 / 1;
     border-radius: 12px;
     overflow: hidden;
-    background: var(--gradiente);
+    background: var(--cor-fundo-alt);
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(255, 92, 157, 0.20);
+    box-shadow: inset 0 0 0 1px var(--cor-borda);
     border: 2px solid var(--cor-branco);
+    position: relative;
 }
 
 .card-pedido__thumb img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     display: block;
+    padding: 2px;
 }
 
 .card-pedido__thumb-fallback {
@@ -42,6 +43,7 @@
     width: 100%;
     height: 100%;
     text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    background: var(--gradiente);
 }
 
 .card-pedido__texto {
@@ -49,7 +51,6 @@
     min-width: 0;
 }
 
-/* ---------- MODAL DE CÓDIGO DE ENTREGA ---------- */
 .modal-codigo {
     position: fixed;
     inset: 0;
@@ -83,7 +84,6 @@
     animation: slideUp .22s ease;
 }
 
-/* Faixa gradiente no topo do modal */
 .modal-codigo__box::before {
     content: "";
     position: absolute;
@@ -122,7 +122,6 @@
     font-weight: 800;
 }
 
-/* ---------- CAIXA DE CÓDIGO (4 dígitos) ---------- */
 .caixa-codigo-modal {
     display: flex;
     justify-content: center;
@@ -152,7 +151,6 @@
     transform: translateY(-3px);
 }
 
-/* ---------- AÇÕES DO MODAL ---------- */
 .modal-codigo__acoes {
     display: flex;
     gap: 12px;
@@ -164,7 +162,6 @@
     font-size: 14px;
 }
 
-/* ---------- RESPONSIVO ---------- */
 @media (max-width: 480px) {
     .caixa-codigo-modal {
         gap: 8px;

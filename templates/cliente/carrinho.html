@@ -1,37 +1,126 @@
 {% extends "base.html" %}
 {% block title %}Meu carrinho{% endblock %}
 {% block content %}
-<h2>Meu carrinho</h2>
 
-{% if restaurante %}
-    <p class="muted">Pedido de: <strong>{{ restaurante.nome_fantasia }}</strong></p>
-{% endif %}
+<div class="carrinho-page">
 
-<div id="itens-carrinho">
+    <div class="carrinho-page__cabecalho">
+        <h2 class="carrinho-page__titulo">🛒 Meu carrinho</h2>
+        {% if restaurante.id %}
+            <p class="carrinho-page__restaurante">
+                Pedido de
+                <a href="{{ url_for('cliente.ver_cardapio', id_restaurante=restaurante.id) }}"
+                   class="carrinho-page__restaurante-link">
+                    <strong>{{ restaurante.nome_fantasia }}</strong>
+                </a>
+            </p>
+        {% endif %}
+    </div>
+
     {% if carrinho.itens %}
-        {% for id_produto, item in carrinho.itens.items() %}
-        <div class="linha-carrinho" data-id="{{ id_produto }}">
-            <span class="linha-carrinho__nome">{{ item.nome }}</span>
-            <div class="linha-carrinho__qtd">
-                <button class="btn-qtd" data-id="{{ id_produto }}" data-delta="-1">-</button>
-                <span class="qtd-valor">{{ item.quantidade }}</span>
-                <button class="btn-qtd" data-id="{{ id_produto }}" data-delta="1">+</button>
+
+    <div class="carrinho-layout">
+
+        {# ---------- LISTA DE ITENS ---------- #}
+        <div class="carrinho-lista">
+
+            {% for id_produto, item in carrinho.itens.items() %}
+            <div class="carrinho-item" data-id="{{ id_produto }}">
+
+                <div class="carrinho-item__thumb">
+                    {% if item.foto_url %}
+                        <img src="{{ item.foto_url }}"
+                             alt="{{ item.nome }}"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <span class="carrinho-item__thumb-fallback" style="display:none;">{{ item.nome[:1]|upper }}</span>
+                    {% elif restaurante.foto_url %}
+                        <img src="{{ restaurante.foto_url }}"
+                             alt="{{ item.nome }}"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <span class="carrinho-item__thumb-fallback" style="display:none;">{{ item.nome[:1]|upper }}</span>
+                    {% else %}
+                        <span class="carrinho-item__thumb-fallback">{{ item.nome[:1]|upper }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="carrinho-item__info">
+                    <h3 class="carrinho-item__nome">{{ item.nome }}</h3>
+                    <p class="carrinho-item__preco-unit">
+                        R$ {{ '%.2f' % item.preco }} <span class="carrinho-item__preco-unit-label">cada</span>
+                    </p>
+                </div>
+
+                <div class="carrinho-item__qtd">
+                    <button class="btn-qtd" data-id="{{ id_produto }}" data-delta="-1" aria-label="Diminuir">−</button>
+                    <span class="qtd-valor">{{ item.quantidade }}</span>
+                    <button class="btn-qtd" data-id="{{ id_produto }}" data-delta="1" aria-label="Aumentar">+</button>
+                </div>
+
+                <div class="carrinho-item__subtotal">
+                    R$ {{ '%.2f' % (item.preco * item.quantidade) }}
+                </div>
             </div>
-            <span class="linha-carrinho__preco">R$ {{ '%.2f' % (item.preco * item.quantidade) }}</span>
+            {% endfor %}
+
+            <div class="carrinho-lista__acoes">
+                {% if restaurante.id %}
+                    <a href="{{ url_for('cliente.ver_cardapio', id_restaurante=restaurante.id) }}"
+                       class="btn btn--ghost">
+                        + Adicionar mais itens
+                    </a>
+                {% endif %}
+                <button type="button" class="btn btn--perigo" id="btn-limpar-carrinho">
+                    🗑 Limpar carrinho
+                </button>
+            </div>
         </div>
-        {% endfor %}
+
+        {# ---------- RESUMO ---------- #}
+        <aside class="carrinho-resumo">
+            <h3 class="carrinho-resumo__titulo">Resumo do pedido</h3>
+
+            <div class="carrinho-resumo__linhas">
+                {% for id_produto, item in carrinho.itens.items() %}
+                <div class="carrinho-resumo__linha">
+                    <span class="carrinho-resumo__linha-qtd">{{ item.quantidade }}×</span>
+                    <span class="carrinho-resumo__linha-nome">{{ item.nome }}</span>
+                    <span class="carrinho-resumo__linha-preco">R$ {{ '%.2f' % (item.preco * item.quantidade) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <hr class="carrinho-resumo__separador">
+
+            <div class="carrinho-resumo__total">
+                <span>Subtotal</span>
+                <strong id="total-carrinho">R$ {{ '%.2f' % totais.total }}</strong>
+            </div>
+
+            <p class="carrinho-resumo__aviso">
+                A taxa de entrega será calculada no checkout.
+            </p>
+
+            <a href="{{ url_for('cliente.checkout') }}" class="btn btn--primary btn--full carrinho-resumo__btn">
+                Ir para o checkout
+            </a>
+        </aside>
+
+    </div>
+
     {% else %}
-        <p class="muted">Seu carrinho está vazio. <a href="{{ url_for('home.index') }}">Ver restaurantes</a></p>
+
+    <div class="carrinho-vazio">
+        <div class="carrinho-vazio__icone">🛒</div>
+        <h3>Seu carrinho está vazio</h3>
+        <p class="muted">Adicione itens de um restaurante para começar.</p>
+        <a href="{{ url_for('home.index') }}" class="btn btn--primary">Ver restaurantes</a>
+    </div>
+
     {% endif %}
+
 </div>
 
-{% if carrinho.itens %}
-<div class="resumo-carrinho">
-    <p>Subtotal: <strong id="total-carrinho">R$ {{ '%.2f' % totais.total }}</strong></p>
-    <a href="{{ url_for('cliente.checkout') }}" class="btn btn--primary btn--full">Ir para o checkout</a>
-</div>
-{% endif %}
-
+<div id="toast" class="toast" hidden></div>
 {% endblock %}
 
 {% block js %}

@@ -7,7 +7,7 @@
         Recebemos seus dados do {{ dados.provider.capitalize() }}
         ({{ dados.email }}). Precisamos só do seu CPF para concluir o cadastro.
     </p>
-    <form method="post">
+    <form method="post" id="form-completar-cadastro" novalidate>
         <label>Nome completo
             <input type="text" name="nome" value="{{ dados.nome }}" required>
         </label>
@@ -17,10 +17,74 @@
         <label>CPF (somente números)
             <input type="text" name="cpf" maxlength="11" pattern="\d{11}" required>
         </label>
-        <label>Telefone
-            <input type="text" name="telefone">
+
+        <label>Celular (com DDD)
+            <div class="campo-telefone">
+                <span class="prefixo-pais">
+                    <span class="prefixo-pais__flag">🇧🇷</span>
+                    <span class="prefixo-pais__codigo">+55</span>
+                </span>
+                <span class="campo-telefone__divisor"></span>
+                <input type="tel"
+                       name="telefone"
+                       id="campo-telefone-input"
+                       placeholder="(11) 99999-9999"
+                       inputmode="numeric"
+                       autocomplete="tel-national"
+                       maxlength="15"
+                       required>
+            </div>
         </label>
+        <p class="campo-telefone__ajuda" id="campo-telefone-ajuda">
+            Digite DDD + número. Ex: <strong>(11) 99999-9999</strong>
+        </p>
+
         <button type="submit" class="btn btn--primary btn--full">Concluir cadastro</button>
     </form>
 </div>
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+    "use strict";
+
+    const input = document.getElementById("campo-telefone-input");
+    const ajuda = document.getElementById("campo-telefone-ajuda");
+    const form = document.getElementById("form-completar-cadastro");
+
+    if (!input) return;
+
+    function aplicarMascara(valor) {
+        const d = valor.replace(/\D/g, "").slice(0, 11);
+        if (d.length === 0) return "";
+        if (d.length <= 2) return "(" + d;
+        if (d.length <= 6) return "(" + d.slice(0, 2) + ") " + d.slice(2);
+        if (d.length <= 10) return "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6);
+        return "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7);
+    }
+
+    input.addEventListener("input", (e) => {
+        const cursorNoFim = e.target.selectionStart === e.target.value.length;
+        e.target.value = aplicarMascara(e.target.value);
+        if (cursorNoFim) {
+            e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+        }
+        input.classList.remove("campo-telefone__input--erro");
+        ajuda.classList.remove("campo-telefone__ajuda--erro");
+        ajuda.innerHTML = 'Digite DDD + número. Ex: <strong>(11) 99999-9999</strong>';
+    });
+
+    form.addEventListener("submit", (e) => {
+        const digitos = input.value.replace(/\D/g, "");
+        if (digitos.length !== 10 && digitos.length !== 11) {
+            e.preventDefault();
+            input.classList.add("campo-telefone__input--erro");
+            ajuda.classList.add("campo-telefone__ajuda--erro");
+            ajuda.innerHTML = "Número inválido. Use <strong>DDD + número</strong>, ex: (11) 99999-9999";
+            input.focus();
+        }
+    });
+})();
+</script>
 {% endblock %}

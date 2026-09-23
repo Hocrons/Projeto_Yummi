@@ -1,9 +1,7 @@
 /* =========================================================
    YUMMY — PORTAL DO RESTAURANTE
-   (painel de pedidos, produtos, perfil com foto)
    ========================================================= */
 
-/* ---------- CARD DE PEDIDO (painel) ---------- */
 .card-pedido--restaurante {
     border-left: 5px solid var(--cor-primaria);
     border-radius: var(--raio);
@@ -26,20 +24,24 @@
 .tabela-thumb {
     width: 52px;
     height: 52px;
+    aspect-ratio: 1 / 1;
     border-radius: 10px;
     overflow: hidden;
-    background: var(--gradiente);
+    background: var(--cor-fundo-alt);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(255, 92, 157, 0.20);
+    box-shadow: inset 0 0 0 1px var(--cor-borda);
+    position: relative;
 }
 
 .tabela-thumb img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     display: block;
+    padding: 2px;
 }
 
 .tabela-thumb__fallback {
@@ -51,9 +53,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--gradiente);
 }
 
-/* ---------- FILTROS (chips de status no painel) ---------- */
+/* ---------- FILTROS (chips de status) ---------- */
 .categorias {
     display: flex;
     flex-wrap: wrap;
@@ -96,8 +99,9 @@
 .foto-perfil-preview {
     width: 170px;
     height: 170px;
+    aspect-ratio: 1 / 1;
     border-radius: var(--raio);
-    background: var(--gradiente);
+    background: var(--cor-fundo-alt);
     overflow: hidden;
     flex-shrink: 0;
     display: flex;
@@ -111,8 +115,10 @@
 .foto-perfil-preview img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     display: block;
+    padding: 6px;
 }
 
 .foto-perfil-fallback {
@@ -125,6 +131,7 @@
     width: 100%;
     height: 100%;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    background: var(--gradiente);
 }
 
 .foto-perfil-info {
@@ -150,7 +157,6 @@
     padding: 10px 20px;
 }
 
-/* ---------- RESPONSIVO ---------- */
 @media (max-width: 600px) {
     .foto-perfil-wrapper {
         flex-direction: column;
