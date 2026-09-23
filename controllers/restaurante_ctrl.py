@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from models import models
 from controllers.decorators import login_requerido
 
-restaurante_bp = Blueprint("restaurante", __name__, url_prefix="/portal/restaurante")
+restaurante_bp = Blueprint("restaurante", __name__, url_prefix="/restaurante")
 
 TRANSICOES_PERMITIDAS = {
     "pendente": ["preparando", "cancelado"],
@@ -10,13 +10,13 @@ TRANSICOES_PERMITIDAS = {
 }
 
 
-def _url_foto_valida(url):
-    """Aceita só http:// ou https://. Vazio vira None."""
+def _url_valida(url):
+    """Aceita só http:// ou https://. Vazio vira None. Inválido vira False."""
     url = (url or "").strip()
     if not url:
         return None
     if not (url.startswith("http://") or url.startswith("https://")):
-        return False  # sinaliza "inválida"
+        return False
     if len(url) > 500:
         return False
     return url
@@ -89,16 +89,22 @@ def produtos():
 @login_requerido("restaurante")
 def produto_novo():
     if request.method == "POST":
+        foto_url = _url_valida(request.form.get("foto_url"))
+        if foto_url is False:
+            flash("URL da foto inválida. Use http:// ou https://", "erro")
+            return render_template("restaurante/produto_novo.html", form=request.form)
+
         models.criar_produto(
             id_restaurante=session["user_id"],
             nome=request.form["nome"],
             descricao=request.form.get("descricao"),
             preco=request.form["preco"],
             disponivel=bool(request.form.get("disponivel")),
+            foto_url=foto_url,
         )
         flash("Produto cadastrado.", "sucesso")
         return redirect(url_for("restaurante.produtos"))
-    return render_template("restaurante/produto_novo.html")
+    return render_template("restaurante/produto_novo.html", form={})
 
 
 @restaurante_bp.route("/produtos/<int:id_produto>/editar", methods=["GET", "POST"])
@@ -110,12 +116,18 @@ def produto_editar(id_produto):
         return redirect(url_for("restaurante.produtos"))
 
     if request.method == "POST":
+        foto_url = _url_valida(request.form.get("foto_url"))
+        if foto_url is False:
+            flash("URL da foto inválida. Use http:// ou https://", "erro")
+            return render_template("restaurante/produto_editar.html", produto=produto)
+
         models.atualizar_produto(
             id_produto,
             nome=request.form["nome"],
             descricao=request.form.get("descricao"),
             preco=request.form["preco"],
             disponivel=bool(request.form.get("disponivel")),
+            foto_url=foto_url,
         )
         flash("Produto atualizado.", "sucesso")
         return redirect(url_for("restaurante.produtos"))
@@ -140,22 +152,18 @@ def produto_excluir(id_produto):
 @login_requerido("restaurante")
 def editar_perfil():
     if request.method == "POST":
-        # ----- Foto -----
         foto_raw = request.form.get("foto_url")
-        foto_url = _url_foto_valida(foto_raw)
+        foto_url = _url_valida(foto_raw)
         if foto_url is False:
             flash("URL da foto inválida. Use http:// ou https://", "erro")
             return redirect(url_for("restaurante.editar_perfil"))
-        # foto_url aqui é None (campo vazio) ou string válida
 
-        # ----- Dados do usuário -----
         models.atualizar_usuario(
             session["user_id"],
             request.form["nome_responsavel"],
             request.form.get("telefone"),
         )
 
-        # ----- Dados do restaurante -----
         models.atualizar_restaurante(
             session["user_id"],
             nome_fantasia=request.form["nome_fantasia"],

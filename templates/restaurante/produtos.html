@@ -9,12 +9,35 @@
 {% if produtos %}
 <table class="tabela">
     <thead>
-        <tr><th>Nome</th><th>Preço</th><th>Disponível</th><th>Ações</th></tr>
+        <tr>
+            <th style="width:64px;"></th>
+            <th>Nome</th>
+            <th>Preço</th>
+            <th>Disponível</th>
+            <th>Ações</th>
+        </tr>
     </thead>
     <tbody>
         {% for p in produtos %}
         <tr>
-            <td>{{ p.nome }}</td>
+            <td>
+                <div class="tabela-thumb">
+                    {% if p.foto_url %}
+                        <img src="{{ p.foto_url }}"
+                             alt="{{ p.nome }}"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <span class="tabela-thumb__fallback" style="display:none;">{{ p.nome[:1]|upper }}</span>
+                    {% else %}
+                        <span class="tabela-thumb__fallback">{{ p.nome[:1]|upper }}</span>
+                    {% endif %}
+                </div>
+            </td>
+            <td>
+                <strong>{{ p.nome }}</strong>
+                {% if p.descricao %}
+                    <p class="muted" style="margin:2px 0 0 0; font-size:12px;">{{ p.descricao }}</p>
+                {% endif %}
+            </td>
             <td>R$ {{ '%.2f' % p.preco }}</td>
             <td>{{ '✅' if p.disponivel else '❌' }}</td>
             <td class="acoes">

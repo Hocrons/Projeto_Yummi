@@ -209,7 +209,6 @@
     color: var(--cor-secundaria);
 }
 
-/* Grid: 2 colunas no desktop, 1 no mobile */
 .grid-restaurantes {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -232,23 +231,12 @@
     overflow: hidden;
 }
 
-.rest-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: var(--gradiente);
-    opacity: 0;
-    transition: opacity var(--transicao);
-    pointer-events: none;
-}
-
 .rest-card:hover {
     transform: translateY(-3px);
     border-color: var(--cor-primaria);
     box-shadow: var(--sombra-forte);
 }
 
-/* Thumb 80x80 arredondado */
 .rest-card__thumb {
     width: 80px;
     height: 80px;
@@ -280,7 +268,6 @@
     justify-content: center;
 }
 
-/* Info */
 .rest-card__info {
     flex: 1;
     min-width: 0;
@@ -303,7 +290,6 @@
     text-overflow: ellipsis;
 }
 
-/* Bolinha vermelha (indicando "aberto") */
 .rest-card__dot {
     width: 8px;
     height: 8px;
