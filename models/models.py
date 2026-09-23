@@ -39,11 +39,6 @@ def buscar_usuario_por_id(id_usuario):
 
 
 def buscar_usuario_por_telefone(telefone_normalizado):
-    """
-    Busca QUALQUER usuário com esse telefone (independente do tipo).
-    Usada no fluxo de login por celular, onde precisamos saber se o número
-    já existe em qualquer tipo de conta.
-    """
     with DB() as db:
         db.cursor.execute(
             "SELECT * FROM usuario WHERE telefone=%s",
@@ -53,12 +48,6 @@ def buscar_usuario_por_telefone(telefone_normalizado):
 
 
 def buscar_usuario_por_telefone_e_tipo(telefone_normalizado, tipo):
-    """
-    Busca um usuário com esse telefone E esse tipo específico.
-    Usada na hora do cadastro pra impedir duplicata DENTRO do mesmo tipo
-    (ex: 2 clientes com o mesmo telefone), mas permitindo que o mesmo
-    telefone exista em tipos diferentes (cliente + restaurante + entregador).
-    """
     with DB() as db:
         db.cursor.execute(
             "SELECT * FROM usuario WHERE telefone=%s AND tipo=%s",
@@ -536,6 +525,25 @@ def listar_pedidos_cliente(id_cliente):
             """SELECT p.*, r.nome_fantasia, r.foto_url AS restaurante_foto_url
                FROM pedido p JOIN restaurante r ON r.id_usuario = p.id_restaurante
                WHERE p.id_cliente=%s ORDER BY p.data_hora DESC""",
+            (id_cliente,),
+        )
+        return db.cursor.fetchall()
+
+
+def listar_pedidos_ativos_cliente(id_cliente):
+    """
+    Retorna só os pedidos EM ANDAMENTO (status diferente de 'entregue'
+    e 'cancelado'). Usado pelo endpoint de notificação em tempo real.
+    """
+    with DB() as db:
+        db.cursor.execute(
+            """SELECT p.id, p.status, p.valor_total, p.data_hora,
+                      r.nome_fantasia
+               FROM pedido p
+               JOIN restaurante r ON r.id_usuario = p.id_restaurante
+               WHERE p.id_cliente=%s
+                 AND p.status NOT IN ('entregue', 'cancelado')
+               ORDER BY p.data_hora DESC""",
             (id_cliente,),
         )
         return db.cursor.fetchall()

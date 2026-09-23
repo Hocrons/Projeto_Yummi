@@ -70,7 +70,6 @@ def adicionar_ao_carrinho():
 
     carrinho = _carrinho()
 
-    # Regra: só um restaurante por carrinho
     if carrinho.get("itens") and carrinho.get("id_restaurante") != produto["id_restaurante"]:
         return jsonify({
             "erro": "Seu carrinho já tem itens de outro restaurante.",
@@ -87,7 +86,7 @@ def adicionar_ao_carrinho():
             "nome": produto["nome"],
             "preco": float(produto["preco"]),
             "quantidade": 1,
-            "foto_url": produto.get("foto_url"),  # pode ser None
+            "foto_url": produto.get("foto_url"),
         }
 
     session.modified = True
@@ -241,6 +240,31 @@ def pedido_sucesso(id_pedido):
 def meus_pedidos():
     pedidos = models.listar_pedidos_cliente(session["user_id"])
     return render_template("cliente/meus_pedidos.html", pedidos=pedidos)
+
+
+# ---------------------------------------------------------
+# API — PEDIDOS ATIVOS (usado pelo notificacoes.js)
+# ---------------------------------------------------------
+@cliente_bp.route("/api/pedidos-ativos")
+@login_requerido("cliente")
+def api_pedidos_ativos():
+    """
+    Endpoint polled pelo static/js/notificacoes.js a cada 10s.
+    Retorna SÓ os pedidos em andamento (status != entregue e != cancelado)
+    do cliente logado. O JS compara com o estado anterior (sessionStorage)
+    e dispara o banner quando algum status muda.
+    """
+    pedidos = models.listar_pedidos_ativos_cliente(session["user_id"])
+    return jsonify({
+        "pedidos": [
+            {
+                "id": p["id"],
+                "status": p["status"],
+                "nome_fantasia": p["nome_fantasia"],
+            }
+            for p in pedidos
+        ]
+    })
 
 
 # ---------------------------------------------------------

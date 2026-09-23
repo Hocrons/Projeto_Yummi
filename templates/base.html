@@ -132,6 +132,12 @@
 
 <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+{# ---------- Notificações globais de status de pedido (só cliente logado) ---------- #}
+{% if user_tipo == 'cliente' %}
+    <script src="{{ url_for('static', filename='js/notificacoes.js') }}"></script>
+{% endif %}
+
 {% block js %}{% endblock %}
 </body>
 </html>

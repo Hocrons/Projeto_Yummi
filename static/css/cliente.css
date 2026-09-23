@@ -1,6 +1,6 @@
 /* =========================================================
    YUMMY — PORTAL DO CLIENTE
-   (cardápio, carrinho, checkout, código de entrega)
+   (cardápio, carrinho, checkout, código de entrega, notificações)
    ========================================================= */
 
 /* ---------- CABEÇALHO DO RESTAURANTE (cardápio) ---------- */
@@ -93,7 +93,6 @@
     opacity: 1;
 }
 
-/* Thumb do produto no cardápio — retangular 16:9 fixa */
 .card-produto__thumb {
     width: 100%;
     aspect-ratio: 16 / 9;
@@ -232,7 +231,6 @@
     box-shadow: var(--sombra-forte);
 }
 
-/* Thumb quadrada 80x80 fixa */
 .carrinho-item__thumb {
     width: 80px;
     height: 80px;
@@ -558,6 +556,144 @@
     color: var(--cor-primaria);
 }
 
+/* =========================================================
+   NOTIFICAÇÕES GLOBAIS (banners de status do pedido)
+   ========================================================= */
+
+.notif-container {
+    position: fixed;
+    top: 84px; /* abaixo da navbar */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 480px;
+    padding: 0 16px;
+    pointer-events: none;
+}
+
+.notif-banner {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--cor-branco);
+    border: 2px solid var(--cor-primaria);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra-forte);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    animation: notifIn .35s cubic-bezier(.2, .8, .3, 1);
+    transition: transform var(--transicao), box-shadow var(--transicao);
+}
+
+.notif-banner::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+    background: var(--gradiente);
+}
+
+.notif-banner:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-forte), 0 0 0 4px rgba(255, 92, 157, 0.12);
+}
+
+.notif-banner__icone {
+    font-size: 26px;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--cor-primaria-suave);
+    border-radius: 50%;
+}
+
+.notif-banner__texto {
+    flex: 1;
+    min-width: 0;
+}
+
+.notif-banner__titulo {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--cor-texto);
+    margin-bottom: 2px;
+    letter-spacing: -0.2px;
+}
+
+.notif-banner__desc {
+    font-size: 12.5px;
+    color: var(--cor-muted);
+    font-weight: 600;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.notif-banner__desc strong {
+    color: var(--cor-primaria);
+    font-weight: 800;
+}
+
+.notif-banner__status {
+    display: block;
+    font-weight: 500;
+    color: var(--cor-secundaria);
+    margin-top: 1px;
+    white-space: normal;
+}
+
+.notif-banner__fechar {
+    background: transparent;
+    border: none;
+    color: var(--cor-muted);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 50%;
+    transition: all var(--transicao);
+    flex-shrink: 0;
+    font-family: inherit;
+}
+
+.notif-banner__fechar:hover {
+    background: var(--cor-primaria-suave);
+    color: var(--cor-primaria);
+}
+
+/* Animações */
+@keyframes notifIn {
+    from {
+        opacity: 0;
+        transform: translateY(-16px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.notif-banner--saindo {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+    transition: opacity .25s ease, transform .25s ease;
+}
+
+/* ---------- RESPONSIVO ---------- */
 @media (max-width: 800px) {
     .carrinho-layout {
         grid-template-columns: 1fr;
@@ -601,6 +737,28 @@
         font-size: 38px;
         letter-spacing: 8px;
         text-indent: 8px;
+    }
+
+    .notif-container {
+        top: 74px;
+        max-width: 100%;
+        padding: 0 12px;
+    }
+
+    .notif-banner {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+    .notif-banner__icone {
+        width: 36px;
+        height: 36px;
+        font-size: 22px;
+    }
+    .notif-banner__titulo {
+        font-size: 13px;
+    }
+    .notif-banner__desc {
+        font-size: 12px;
     }
 }
 
