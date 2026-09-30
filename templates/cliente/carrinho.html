@@ -21,7 +21,6 @@
 
     <div class="carrinho-layout">
 
-        {# ---------- LISTA DE ITENS ---------- #}
         <div class="carrinho-lista">
 
             {% for id_produto, item in carrinho.itens.items() %}
@@ -75,7 +74,6 @@
             </div>
         </div>
 
-        {# ---------- RESUMO ---------- #}
         <aside class="carrinho-resumo">
             <h3 class="carrinho-resumo__titulo">Resumo do pedido</h3>
 
@@ -91,8 +89,48 @@
 
             <hr class="carrinho-resumo__separador">
 
+            {# ---------- CUPOM DE DESCONTO ---------- #}
+            <div class="cupom-box" id="cupom-box">
+                <div class="cupom-box__cabecalho">
+                    <span class="cupom-box__icone">🎟️</span>
+                    <span class="cupom-box__titulo">Cupom de desconto</span>
+                </div>
+
+                <div class="cupom-box__aplicado" id="cupom-aplicado" {% if not cupom_codigo %}hidden{% endif %}>
+                    <span class="cupom-box__tag" id="cupom-tag">{{ cupom_codigo or '' }}</span>
+                    <button type="button" class="cupom-box__remover" id="btn-remover-cupom" title="Remover cupom">×</button>
+                </div>
+
+                <div class="cupom-box__form" id="cupom-form" {% if cupom_codigo %}hidden{% endif %}>
+                    <input type="text"
+                           id="cupom-input"
+                           placeholder="Digite o código"
+                           autocomplete="off"
+                           maxlength="30">
+                    <button type="button" class="btn btn--ghost" id="btn-aplicar-cupom">Aplicar</button>
+                </div>
+
+                <p class="cupom-box__msg" id="cupom-msg"></p>
+            </div>
+
+            <hr class="carrinho-resumo__separador">
+
             <div class="carrinho-resumo__total">
                 <span>Subtotal</span>
+                <strong id="subtotal-carrinho">R$ {{ '%.2f' % totais.subtotal }}</strong>
+            </div>
+
+            <div class="carrinho-resumo__total cupom-desconto-linha"
+                 id="linha-desconto"
+                 {% if not totais.desconto %}hidden{% endif %}>
+                <span>Desconto</span>
+                <strong id="desconto-carrinho" class="cupom-desconto-valor">
+                    − R$ {{ '%.2f' % totais.desconto }}
+                </strong>
+            </div>
+
+            <div class="carrinho-resumo__total carrinho-resumo__total--final">
+                <span>Total</span>
                 <strong id="total-carrinho">R$ {{ '%.2f' % totais.total }}</strong>
             </div>
 
@@ -125,4 +163,5 @@
 
 {% block js %}
 <script src="{{ url_for('static', filename='js/carrinho.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cupom.js') }}"></script>
 {% endblock %}

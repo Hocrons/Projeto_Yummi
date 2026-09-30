@@ -82,6 +82,7 @@
             {% elif portal_atual == 'restaurante' and user_tipo == 'restaurante' %}
                 <a href="{{ url_for('restaurante.painel') }}">Pedidos</a>
                 <a href="{{ url_for('restaurante.produtos') }}">Cardápio</a>
+                <a href="{{ url_for('restaurante.cupons') }}">Cupons</a>
                 <a href="{{ url_for('restaurante.editar_perfil') }}">Perfil</a>
 
             {% elif portal_atual == 'entregador' and user_tipo == 'entregador' %}

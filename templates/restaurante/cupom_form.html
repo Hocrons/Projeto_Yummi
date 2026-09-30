@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar cupom' if cupom else 'Novo cupom' }}{% endblock %}
+{% block content %}
+
+<div class="form-card form-card--wide">
+    <a href="{{ url_for('restaurante.cupons') }}" class="link-voltar">&lsaquo;</a>
+    <h2>{{ 'Editar cupom' if cupom else 'Novo cupom de desconto' }}</h2>
+
+    {% set v = form if form else (cupom or {}) %}
+
+    <form method="post" id="form-cupom" novalidate>
+
+        <fieldset class="fieldset-secao">
+            <legend>Informações básicas</legend>
+
+            <label>Código do cupom
+                <input type="text"
+                       name="codigo"
+                       id="campo-codigo"
+                       maxlength="30"
+                       placeholder="Ex: BEMVINDO10"
+                       autocomplete="off"
+                       style="text-transform: uppercase; font-weight: 700; letter-spacing: 2px;"
+                       value="{{ v.codigo if v.codigo else '' }}"
+                       required>
+            </label>
+            <p class="muted" style="margin-top: -10px; font-size: 12px;">
+                Só letras, números, hífen e underline. O cliente vai digitar isso no carrinho.
+            </p>
+
+            <label>Tipo de desconto
+                <span class="radio-inline">
+                    <label class="radio-linha">
+                        <input type="radio" name="tipo" value="percentual"
+                            {% if not v.tipo or v.tipo == 'percentual' %}checked{% endif %}>
+                        Percentual (%)
+                    </label>
+                    <label class="radio-linha">
+                        <input type="radio" name="tipo" value="fixo"
+                            {% if v.tipo == 'fixo' %}checked{% endif %}>
+                        Valor fixo (R$)
+                    </label>
+                </span>
+            </label>
+
+            <label>Valor do desconto
+                <input type="number"
+                       name="valor"
+                       id="campo-valor"
+                       step="0.01"
+                       min="0.01"
+                       placeholder="Ex: 10"
+                       value="{{ v.valor if v.valor is not none else '' }}"
+                       required>
+            </label>
+            <p class="muted" id="preview-valor" style="margin-top: -10px; font-size: 12px;"></p>
+
+            <label>Descrição (opcional)
+                <input type="text"
+                       name="descricao"
+                       maxlength="150"
+                       placeholder="Ex: 10% na primeira compra"
+                       value="{{ v.descricao if v.descricao else '' }}">
+            </label>
+
+            <label class="checkbox-linha">
+                <input type="checkbox"
+                       name="ativo"
+                       value="1"
+                       {% if v.ativo is not defined or v.ativo %}checked{% endif %}>
+                Cupom ativo (clientes podem usar agora)
+            </label>
+        </fieldset>
+
+        <fieldset class="fieldset-secao">
+            <legend>Regras de uso (opcional)</legend>
+            <p class="muted" style="margin-top: 0; font-size: 12px;">
+                Deixe em branco o que não quiser restringir.
+            </p>
+
+            <div class="form-grid">
+                <label>Valor mínimo do pedido (R$)
+                    <input type="number"
+                           name="valor_minimo_pedido"
+                           step="0.01"
+                           min="0"
+                           placeholder="0.00"
+                           value="{{ v.valor_minimo_pedido if v.valor_minimo_pedido is not none else '' }}">
+                </label>
+
+                <label>Teto do desconto (R$)
+                    <input type="number"
+                           name="valor_maximo_desconto"
+                           step="0.01"
+                           min="0"
+                           placeholder="Sem teto"
+                           value="{{ v.valor_maximo_desconto if v.valor_maximo_desconto is not none else '' }}">
+                </label>
+
+                <label>Válido a partir de
+                    <input type="datetime-local"
+                           name="data_inicio"
+                           value="{{ v.data_inicio.strftime('%Y-%m-%dT%H:%M') if v.data_inicio else '' }}">
+                </label>
+
+                <label>Válido até
+                    <input type="datetime-local"
+                           name="data_fim"
+                           value="{{ v.data_fim.strftime('%Y-%m-%dT%H:%M') if v.data_fim else '' }}">
+                </label>
+
+                <label>Limite total de usos
+                    <input type="number"
+                           name="limite_usos_total"
+                           min="1"
+                           placeholder="Ilimitado"
+                           value="{{ v.limite_usos_total if v.limite_usos_total is not none else '' }}">
+                </label>
+
+                <label>Limite por cliente
+                    <input type="number"
+                           name="limite_usos_por_cliente"
+                           min="1"
+                           placeholder="Ilimitado"
+                           value="{{ v.limite_usos_por_cliente if v.limite_usos_por_cliente is not none else '' }}">
+                </label>
+            </div>
+        </fieldset>
+
+        <button type="submit" class="btn btn--primary btn--full">
+            {{ 'Salvar alterações' if cupom else 'Criar cupom' }}
+        </button>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+    "use strict";
+
+    const inputCodigo = document.getElementById("campo-codigo");
+    const radiosTipo = document.querySelectorAll('input[name="tipo"]');
+    const inputValor = document.getElementById("campo-valor");
+    const preview = document.getElementById("preview-valor");
+
+    // Força código em maiúsculas e só caracteres válidos
+    if (inputCodigo) {
+        inputCodigo.addEventListener("input", (e) => {
+            e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+        });
+    }
+
+    function atualizarPreview() {
+        if (!preview || !inputValor) return;
+        const tipo = document.querySelector('input[name="tipo"]:checked')?.value || "percentual";
+        const valor = parseFloat(inputValor.value);
+
+        if (!valor || valor <= 0) {
+            preview.textContent = "";
+            return;
+        }
+
+        if (tipo === "percentual") {
+            if (valor > 100) {
+                preview.textContent = "⚠️ Um percentual não pode passar de 100%.";
+                preview.style.color = "var(--cor-erro)";
+                return;
+            }
+            preview.textContent = `O cliente ganha ${valor}% de desconto no carrinho.`;
+        } else {
+            preview.textContent = `O cliente ganha R$ ${valor.toFixed(2)} de desconto no carrinho.`;
+        }
+        preview.style.color = "var(--cor-muted)";
+    }
+
+    radiosTipo.forEach(r => r.addEventListener("change", atualizarPreview));
+    if (inputValor) inputValor.addEventListener("input", atualizarPreview);
+    atualizarPreview();
+})();
+</script>
+{% endblock %}

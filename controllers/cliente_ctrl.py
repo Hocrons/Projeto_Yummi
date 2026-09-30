@@ -13,13 +13,21 @@ def _carrinho():
     return session["carrinho"]
 
 
-def _carrinho_totais(carrinho):
-    total = 0
+def _carrinho_totais(carrinho, desconto=0.0):
+    subtotal = 0
     qtd_total = 0
     for item in carrinho.get("itens", {}).values():
-        total += item["preco"] * item["quantidade"]
+        subtotal += item["preco"] * item["quantidade"]
         qtd_total += item["quantidade"]
-    return {"total": round(total, 2), "qtd_total": qtd_total}
+    subtotal = round(subtotal, 2)
+    desconto = round(float(desconto or 0), 2)
+    total = round(max(subtotal - desconto, 0), 2)
+    return {
+        "subtotal": subtotal,
+        "desconto": desconto,
+        "total": total,
+        "qtd_total": qtd_total,
+    }
 
 
 # ---------------------------------------------------------
@@ -48,12 +56,28 @@ def ver_carrinho():
     if not restaurante:
         restaurante = {"nome_fantasia": "Nenhum restaurante selecionado", "foto_url": None}
     enderecos = models.listar_enderecos_cliente(session["user_id"])
+
+    desconto = 0.0
+    cupom_codigo = session.get("cupom")
+    if cupom_codigo and carrinho.get("itens"):
+        subtotal = _carrinho_totais(carrinho)["subtotal"]
+        cupom, valor, erro = models.validar_cupom(
+            cupom_codigo, session["user_id"], carrinho["id_restaurante"], subtotal
+        )
+        if erro:
+            session.pop("cupom", None)
+            session.modified = True
+            cupom_codigo = None
+        else:
+            desconto = valor
+
     return render_template(
         "cliente/carrinho.html",
         carrinho=carrinho,
-        totais=_carrinho_totais(carrinho),
+        totais=_carrinho_totais(carrinho, desconto),
         restaurante=restaurante,
         enderecos=enderecos,
+        cupom_codigo=cupom_codigo,
     )
 
 
@@ -97,6 +121,7 @@ def adicionar_ao_carrinho():
 @login_requerido("cliente")
 def limpar_carrinho():
     session["carrinho"] = {"id_restaurante": None, "itens": {}}
+    session.pop("cupom", None)
     session.modified = True
     return jsonify({"ok": True})
 
@@ -117,9 +142,70 @@ def atualizar_carrinho():
 
     if not carrinho.get("itens"):
         carrinho["id_restaurante"] = None
+        session.pop("cupom", None)
 
     session.modified = True
-    return jsonify({"ok": True, "carrinho": carrinho, "totais": _carrinho_totais(carrinho)})
+
+    desconto = 0.0
+    cupom_codigo = session.get("cupom")
+    if cupom_codigo and carrinho.get("itens"):
+        subtotal = _carrinho_totais(carrinho)["subtotal"]
+        cupom, valor, erro = models.validar_cupom(
+            cupom_codigo, session["user_id"], carrinho["id_restaurante"], subtotal
+        )
+        if erro:
+            session.pop("cupom", None)
+            session.modified = True
+        else:
+            desconto = valor
+
+    return jsonify({
+        "ok": True,
+        "carrinho": carrinho,
+        "totais": _carrinho_totais(carrinho, desconto),
+    })
+
+
+# ---------------------------------------------------------
+# CUPOM
+# ---------------------------------------------------------
+@cliente_bp.route("/carrinho/cupom", methods=["POST"])
+@login_requerido("cliente")
+def aplicar_cupom():
+    dados = request.get_json() or {}
+    codigo = (dados.get("codigo") or "").strip()
+    carrinho = _carrinho()
+
+    if not carrinho.get("itens"):
+        return jsonify({"ok": False, "erro": "Seu carrinho está vazio."}), 400
+    if not codigo:
+        return jsonify({"ok": False, "erro": "Informe o código do cupom."}), 400
+
+    subtotal = _carrinho_totais(carrinho)["subtotal"]
+    cupom, valor, erro = models.validar_cupom(
+        codigo, session["user_id"], carrinho["id_restaurante"], subtotal
+    )
+    if erro:
+        return jsonify({"ok": False, "erro": erro}), 400
+
+    session["cupom"] = codigo.upper()
+    session.modified = True
+    totais = _carrinho_totais(carrinho, valor)
+    return jsonify({
+        "ok": True,
+        "cupom": codigo.upper(),
+        "totais": totais,
+        "descricao": cupom.get("descricao") or "",
+    })
+
+
+@cliente_bp.route("/carrinho/cupom/remover", methods=["POST"])
+@login_requerido("cliente")
+def remover_cupom():
+    session.pop("cupom", None)
+    session.modified = True
+    carrinho = _carrinho()
+    return jsonify({"ok": True, "totais": _carrinho_totais(carrinho)})
 
 
 # ---------------------------------------------------------
@@ -189,23 +275,31 @@ def checkout():
         return redirect(url_for("home.index"))
 
     if request.method == "POST":
+        id_endereco = request.form.get("id_endereco")
+        if not id_endereco:
+            flash("Selecione um endereço de entrega.", "erro")
+            return redirect(url_for("cliente.checkout"))
+
         itens = [
-            {"id_produto": int(pid), "quantidade": item["quantidade"], "preco_unitario": item["preco"]}
+            {"id_produto": int(pid), "quantidade": item["quantidade"],
+             "preco_unitario": item["preco"]}
             for pid, item in carrinho["itens"].items()
         ]
         try:
             id_pedido = models.criar_pedido_completo(
                 id_cliente=session["user_id"],
                 id_restaurante=carrinho["id_restaurante"],
-                id_endereco=request.form.get("id_endereco") or None,
+                id_endereco=id_endereco,
                 itens=itens,
                 forma_pagamento=request.form["forma_pagamento"],
+                codigo_cupom=session.get("cupom"),
             )
         except ValueError as e:
             flash(str(e), "erro")
             return redirect(url_for("cliente.ver_carrinho"))
 
         session["carrinho"] = {"id_restaurante": None, "itens": {}}
+        session.pop("cupom", None)
         session.modified = True
         return redirect(url_for("cliente.pedido_sucesso", id_pedido=id_pedido))
 
@@ -216,12 +310,28 @@ def checkout():
         restaurante = {"nome_fantasia": "Nenhum restaurante selecionado"}
 
     enderecos = models.listar_enderecos_cliente(session["user_id"])
+
+    desconto = 0.0
+    cupom_codigo = session.get("cupom")
+    if cupom_codigo:
+        subtotal = _carrinho_totais(carrinho)["subtotal"]
+        cupom, valor, erro = models.validar_cupom(
+            cupom_codigo, session["user_id"], carrinho["id_restaurante"], subtotal
+        )
+        if erro:
+            session.pop("cupom", None)
+            cupom_codigo = None
+            session.modified = True
+        else:
+            desconto = valor
+
     return render_template(
         "cliente/checkout.html",
         carrinho=carrinho,
-        totais=_carrinho_totais(carrinho),
+        totais=_carrinho_totais(carrinho, desconto),
         restaurante=restaurante,
         enderecos=enderecos,
+        cupom_codigo=cupom_codigo,
     )
 
 
@@ -248,12 +358,6 @@ def meus_pedidos():
 @cliente_bp.route("/api/pedidos-ativos")
 @login_requerido("cliente")
 def api_pedidos_ativos():
-    """
-    Endpoint polled pelo static/js/notificacoes.js a cada 10s.
-    Retorna SÓ os pedidos em andamento (status != entregue e != cancelado)
-    do cliente logado. O JS compara com o estado anterior (sessionStorage)
-    e dispara o banner quando algum status muda.
-    """
     pedidos = models.listar_pedidos_ativos_cliente(session["user_id"])
     return jsonify({
         "pedidos": [

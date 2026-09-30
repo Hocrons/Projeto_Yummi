@@ -48,6 +48,17 @@
             </div>
         {% endfor %}
         <hr>
+        <div class="linha-resumo">
+            <span>Subtotal</span>
+            <span>R$ {{ '%.2f' % totais.subtotal }}</span>
+        </div>
+        {% if totais.desconto %}
+            <div class="linha-resumo cupom-desconto-linha">
+                <span>Cupom {% if cupom_codigo %}<strong class="cupom-box__tag cupom-box__tag--inline">{{ cupom_codigo }}</strong>{% endif %}</span>
+                <span class="cupom-desconto-valor">− R$ {{ '%.2f' % totais.desconto }}</span>
+            </div>
+        {% endif %}
+        <hr>
         <div class="linha-resumo linha-resumo--total">
             <span>Total</span>
             <span>R$ {{ '%.2f' % totais.total }}</span>
@@ -55,6 +66,5 @@
     </aside>
 </div>
 
-<!-- form separado para permitir cadastrar endereço sem sair da página de checkout -->
 <form id="form-endereco" method="post" action="{{ url_for('cliente.adicionar_endereco') }}"></form>
 {% endblock %}

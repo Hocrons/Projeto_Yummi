@@ -127,6 +127,29 @@ CREATE TABLE endereco (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
+-- cupom (descontos do cliente)
+-- ---------------------------------------------------------
+CREATE TABLE cupom (
+    id                       INT AUTO_INCREMENT PRIMARY KEY,
+    codigo                   VARCHAR(30)  NOT NULL UNIQUE,
+    descricao                VARCHAR(150),
+    tipo                     VARCHAR(15)  NOT NULL,   -- 'percentual' | 'fixo'
+    valor                    DECIMAL(10,2) NOT NULL,
+    valor_minimo_pedido      DECIMAL(10,2) NOT NULL DEFAULT 0,
+    valor_maximo_desconto    DECIMAL(10,2) NULL,
+    data_inicio              DATETIME NULL,
+    data_fim                 DATETIME NULL,
+    limite_usos_total        INT NULL,
+    usos_atuais              INT NOT NULL DEFAULT 0,
+    limite_usos_por_cliente  INT NULL,
+    id_restaurante           INT NULL,
+    ativo                    BOOLEAN NOT NULL DEFAULT TRUE,
+    criado_em                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_cupom_restaurante
+        FOREIGN KEY (id_restaurante) REFERENCES restaurante(id_usuario) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------
 -- pedido
 -- ---------------------------------------------------------
 CREATE TABLE pedido (
@@ -137,9 +160,9 @@ CREATE TABLE pedido (
     id_endereco     INT NULL,
     data_hora       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status          VARCHAR(30) NOT NULL DEFAULT 'pendente',
-    -- pendente | preparando | localizando_entregador | indo_ao_restaurante
-    -- | saiu_para_entrega | entregue | cancelado
     valor_total     DECIMAL(10,2) NOT NULL DEFAULT 0,
+    id_cupom        INT NULL,
+    valor_desconto  DECIMAL(10,2) NOT NULL DEFAULT 0,
     codigo_entrega  VARCHAR(4),
     CONSTRAINT fk_pedido_cliente
         FOREIGN KEY (id_cliente) REFERENCES cliente(id_usuario),
@@ -148,7 +171,9 @@ CREATE TABLE pedido (
     CONSTRAINT fk_pedido_entregador
         FOREIGN KEY (id_entregador) REFERENCES entregador(id_usuario),
     CONSTRAINT fk_pedido_endereco
-        FOREIGN KEY (id_endereco) REFERENCES endereco(id)
+        FOREIGN KEY (id_endereco) REFERENCES endereco(id),
+    CONSTRAINT fk_pedido_cupom
+        FOREIGN KEY (id_cupom) REFERENCES cupom(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
@@ -172,9 +197,27 @@ CREATE TABLE item_pedido (
 CREATE TABLE pagamento (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     id_pedido       INT NOT NULL,
-    forma_pagamento VARCHAR(20) NOT NULL,  -- cartao | pix | dinheiro
+    forma_pagamento VARCHAR(20) NOT NULL,
     valor           DECIMAL(10,2) NOT NULL,
-    status          VARCHAR(20) NOT NULL DEFAULT 'pendente', -- pendente | aprovado | recusado
+    status          VARCHAR(20) NOT NULL DEFAULT 'pendente',
     CONSTRAINT fk_pagamento_pedido
+        FOREIGN KEY (id_pedido) REFERENCES pedido(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------
+-- cupom_uso (auditoria: quem usou qual cupom em qual pedido)
+-- ---------------------------------------------------------
+CREATE TABLE cupom_uso (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    id_cupom       INT NOT NULL,
+    id_cliente     INT NOT NULL,
+    id_pedido      INT NOT NULL,
+    valor_desconto DECIMAL(10,2) NOT NULL,
+    data_hora      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_cupom_uso_cupom
+        FOREIGN KEY (id_cupom) REFERENCES cupom(id) ON DELETE CASCADE,
+    CONSTRAINT fk_cupom_uso_cliente
+        FOREIGN KEY (id_cliente) REFERENCES cliente(id_usuario) ON DELETE CASCADE,
+    CONSTRAINT fk_cupom_uso_pedido
         FOREIGN KEY (id_pedido) REFERENCES pedido(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

@@ -270,3 +270,193 @@
         width: 100%;
     }
 }
+
+/* =========================================================
+   CUPONS DO RESTAURANTE
+   ========================================================= */
+
+.cupons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 18px;
+    margin-top: 10px;
+}
+
+.cupom-card {
+    background: var(--cor-branco);
+    border: 2px solid var(--cor-borda);
+    border-radius: var(--raio);
+    padding: 18px 20px 16px;
+    box-shadow: var(--sombra);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: all var(--transicao);
+    position: relative;
+    overflow: hidden;
+}
+
+.cupom-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: var(--gradiente);
+    opacity: 0.35;
+    transition: opacity var(--transicao);
+}
+
+.cupom-card--ativo::before { opacity: 1; }
+.cupom-card--ativo { border-color: var(--cor-primaria); }
+
+.cupom-card--inativo,
+.cupom-card--expirado,
+.cupom-card--esgotado {
+    opacity: 0.75;
+}
+.cupom-card--inativo::before { background: var(--cor-muted); opacity: 1; }
+.cupom-card--expirado::before { background: var(--cor-erro); opacity: 1; }
+.cupom-card--esgotado::before { background: var(--cor-secundaria); opacity: 1; }
+.cupom-card--agendado::before { background: #4a9eff; opacity: 1; }
+
+.cupom-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sombra-forte);
+}
+
+.cupom-card__topo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.cupom-card__codigo-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+}
+
+.cupom-card__codigo {
+    display: inline-block;
+    background: var(--cor-fundo-alt);
+    border: 2px dashed var(--cor-borda);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-family: "Courier New", monospace;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--cor-texto);
+    align-self: flex-start;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cupom-card__status {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 3px 10px;
+    border-radius: var(--raio-pill);
+    align-self: flex-start;
+}
+
+.cupom-card__status--ativo { background: rgba(76, 175, 122, 0.15); color: var(--cor-sucesso); }
+.cupom-card__status--inativo { background: var(--cor-fundo-alt); color: var(--cor-muted); }
+.cupom-card__status--expirado { background: rgba(229, 72, 109, 0.15); color: var(--cor-erro); }
+.cupom-card__status--esgotado { background: rgba(139, 90, 122, 0.15); color: var(--cor-secundaria); }
+.cupom-card__status--agendado { background: rgba(74, 158, 255, 0.15); color: #2b7acc; }
+
+.cupom-card__valor {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--cor-primaria);
+    line-height: 1;
+    white-space: nowrap;
+    letter-spacing: -0.5px;
+}
+
+.cupom-card__valor-simbolo {
+    font-size: 16px;
+    font-weight: 800;
+    opacity: 0.7;
+    margin-right: 1px;
+}
+
+.cupom-card__descricao {
+    margin: 0;
+    font-size: 13px;
+    color: var(--cor-muted);
+    line-height: 1.45;
+    font-weight: 500;
+}
+
+.cupom-card__regras {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.cupom-card__regra {
+    display: inline-block;
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cor-secundaria);
+}
+
+.cupom-card__regra--sem {
+    color: var(--cor-sucesso);
+    border-color: rgba(76, 175, 122, 0.3);
+    background: rgba(76, 175, 122, 0.08);
+}
+
+.cupom-card__usos {
+    font-size: 12px;
+    color: var(--cor-muted);
+    font-weight: 600;
+    padding-top: 10px;
+    border-top: 1px dashed var(--cor-borda);
+}
+
+.cupom-card__usos strong {
+    color: var(--cor-primaria);
+    font-size: 14px;
+}
+
+.cupom-card__acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: auto;
+}
+
+.cupom-card__acoes .btn {
+    padding: 8px 14px;
+    font-size: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.cupom-card__acoes .btn--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+    .cupons-grid { grid-template-columns: 1fr; }
+    .cupom-card__valor { font-size: 24px; }
+    .cupom-card__acoes .btn { flex: 1 1 100%; }
+}

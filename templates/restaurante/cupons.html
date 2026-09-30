@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Meus cupons{% endblock %}
+{% block content %}
+
+<div class="cabecalho-lista">
+    <h2>🎟️ Meus cupons de desconto</h2>
+    <a href="{{ url_for('restaurante.cupom_novo') }}" class="btn btn--primary">+ Novo cupom</a>
+</div>
+
+<p class="muted" style="margin-top: -8px; margin-bottom: 20px;">
+    Crie cupons para seus clientes aplicarem no carrinho e ganharem desconto.
+    Cada cupom só vale aqui no seu restaurante.
+</p>
+
+{% if cupons %}
+
+<div class="cupons-grid">
+    {% for c in cupons %}
+    <div class="cupom-card cupom-card--{{ c.status_classe }}">
+
+        <div class="cupom-card__topo">
+            <div class="cupom-card__codigo-box">
+                <span class="cupom-card__codigo">{{ c.codigo }}</span>
+                <span class="cupom-card__status cupom-card__status--{{ c.status_classe }}">
+                    {{ c.status_label }}
+                </span>
+            </div>
+            <div class="cupom-card__valor">
+                {% if c.tipo == 'percentual' %}
+                    {{ '%.0f'|format(c.valor) }}<span class="cupom-card__valor-simbolo">%</span>
+                {% else %}
+                    <span class="cupom-card__valor-simbolo">R$</span>{{ '%.2f'|format(c.valor) }}
+                {% endif %}
+            </div>
+        </div>
+
+        {% if c.descricao %}
+            <p class="cupom-card__descricao">{{ c.descricao }}</p>
+        {% endif %}
+
+        <div class="cupom-card__regras">
+            {% if c.valor_minimo_pedido and c.valor_minimo_pedido|float > 0 %}
+                <span class="cupom-card__regra">🛒 Mínimo R$ {{ '%.2f'|format(c.valor_minimo_pedido) }}</span>
+            {% endif %}
+            {% if c.valor_maximo_desconto %}
+                <span class="cupom-card__regra">🔒 Teto R$ {{ '%.2f'|format(c.valor_maximo_desconto) }}</span>
+            {% endif %}
+            {% if c.data_inicio %}
+                <span class="cupom-card__regra">📅 De {{ c.data_inicio.strftime('%d/%m/%Y %H:%M') }}</span>
+            {% endif %}
+            {% if c.data_fim %}
+                <span class="cupom-card__regra">⏰ Até {{ c.data_fim.strftime('%d/%m/%Y %H:%M') }}</span>
+            {% endif %}
+            {% if c.limite_usos_total %}
+                <span class="cupom-card__regra">🎯 {{ c.usos_atuais }}/{{ c.limite_usos_total }} usos totais</span>
+            {% endif %}
+            {% if c.limite_usos_por_cliente %}
+                <span class="cupom-card__regra">👤 Máx {{ c.limite_usos_por_cliente }} por cliente</span>
+            {% endif %}
+            {% if not c.valor_minimo_pedido and not c.valor_maximo_desconto and not c.data_inicio and not c.data_fim and not c.limite_usos_total and not c.limite_usos_por_cliente %}
+                <span class="cupom-card__regra cupom-card__regra--sem">Sem restrições</span>
+            {% endif %}
+        </div>
+
+        <div class="cupom-card__usos">
+            Total de usos: <strong>{{ c.usos_atuais }}</strong>
+        </div>
+
+        <div class="cupom-card__acoes">
+            <a href="{{ url_for('restaurante.cupom_editar', id_cupom=c.id) }}"
+               class="btn btn--secundario">Editar</a>
+
+            <form method="post"
+                  action="{{ url_for('restaurante.cupom_alternar_ativo', id_cupom=c.id) }}"
+                  style="display:inline;">
+                <button type="submit" class="btn btn--ghost">
+                    {{ 'Desativar' if c.ativo else 'Ativar' }}
+                </button>
+            </form>
+
+            {% if c.usos_atuais == 0 %}
+                <form method="post"
+                      action="{{ url_for('restaurante.cupom_excluir', id_cupom=c.id) }}"
+                      onsubmit="return confirm('Excluir o cupom {{ c.codigo }}? Esta ação não pode ser desfeita.');"
+                      style="display:inline;">
+                    <button type="submit" class="btn btn--perigo">Excluir</button>
+                </form>
+            {% else %}
+                <button type="button"
+                        class="btn btn--perigo btn--disabled"
+                        title="Este cupom já foi usado e não pode ser excluído."
+                        disabled>Excluir</button>
+            {% endif %}
+        </div>
+
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+
+<div class="carrinho-vazio" style="margin-top: 40px;">
+    <div class="carrinho-vazio__icone">🎟️</div>
+    <h3>Nenhum cupom ainda</h3>
+    <p class="muted">Crie seu primeiro cupom de desconto para atrair mais clientes.</p>
+    <a href="{{ url_for('restaurante.cupom_novo') }}" class="btn btn--primary">Criar cupom</a>
+</div>
+
+{% endif %}
+
+{% endblock %}

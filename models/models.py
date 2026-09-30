@@ -4,6 +4,7 @@ Cada função representa uma operação no banco (Model, no padrão MVC).
 Nenhuma lógica de rota/HTTP entra aqui - isso fica nos controllers.
 """
 import re
+from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.db import DB
 
@@ -428,13 +429,157 @@ def deletar_endereco(id_endereco, id_cliente):
 
 
 # =========================================================
+# CUPOM
+# =========================================================
+def criar_cupom(codigo, descricao, tipo, valor,
+                valor_minimo_pedido=0, valor_maximo_desconto=None,
+                data_inicio=None, data_fim=None,
+                limite_usos_total=None, limite_usos_por_cliente=None,
+                id_restaurante=None, ativo=True):
+    with DB() as db:
+        db.cursor.execute(
+            """INSERT INTO cupom
+               (codigo, descricao, tipo, valor,
+                valor_minimo_pedido, valor_maximo_desconto,
+                data_inicio, data_fim,
+                limite_usos_total, limite_usos_por_cliente,
+                id_restaurante, ativo)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (codigo.upper().strip(), descricao, tipo, valor,
+             valor_minimo_pedido, valor_maximo_desconto,
+             data_inicio, data_fim,
+             limite_usos_total, limite_usos_por_cliente,
+             id_restaurante, ativo),
+        )
+        return db.cursor.lastrowid
+
+
+def listar_cupons(id_restaurante=None, apenas_ativos=False):
+    query = "SELECT c.*, r.nome_fantasia FROM cupom c LEFT JOIN restaurante r ON r.id_usuario = c.id_restaurante WHERE 1=1"
+    params = []
+    if id_restaurante is not None:
+        query += " AND (c.id_restaurante = %s OR c.id_restaurante IS NULL)"
+        params.append(id_restaurante)
+    if apenas_ativos:
+        query += " AND c.ativo = TRUE"
+    query += " ORDER BY c.criado_em DESC"
+    with DB() as db:
+        db.cursor.execute(query, params)
+        return db.cursor.fetchall()
+
+
+def buscar_cupom(id_cupom):
+    with DB() as db:
+        db.cursor.execute("SELECT * FROM cupom WHERE id=%s", (id_cupom,))
+        return db.cursor.fetchone()
+
+
+def buscar_cupom_por_codigo(codigo):
+    with DB() as db:
+        db.cursor.execute(
+            "SELECT * FROM cupom WHERE UPPER(codigo)=%s",
+            (codigo.upper().strip(),),
+        )
+        return db.cursor.fetchone()
+
+
+def atualizar_cupom(id_cupom, **campos):
+    if not campos:
+        return False
+    sets = ", ".join(f"{k}=%s" for k in campos.keys())
+    valores = list(campos.values()) + [id_cupom]
+    with DB() as db:
+        db.cursor.execute(f"UPDATE cupom SET {sets} WHERE id=%s", valores)
+        return db.cursor.rowcount > 0
+
+
+def deletar_cupom(id_cupom):
+    with DB() as db:
+        db.cursor.execute("DELETE FROM cupom WHERE id=%s", (id_cupom,))
+        return db.cursor.rowcount > 0
+
+
+def contar_usos_cupom_por_cliente(id_cupom, id_cliente):
+    with DB() as db:
+        db.cursor.execute(
+            "SELECT COUNT(*) AS total FROM cupom_uso WHERE id_cupom=%s AND id_cliente=%s",
+            (id_cupom, id_cliente),
+        )
+        row = db.cursor.fetchone()
+        return row["total"] if row else 0
+
+
+def validar_cupom(codigo, id_cliente, id_restaurante, subtotal):
+    """
+    Retorna (cupom_dict, valor_desconto, erro_msg).
+    Se válido: (cupom, valor, None). Se inválido: (None, 0, "motivo").
+    """
+    cupom = buscar_cupom_por_codigo(codigo)
+    if not cupom:
+        return None, 0.0, "Cupom não encontrado."
+    if not cupom["ativo"]:
+        return None, 0.0, "Este cupom está inativo."
+
+    agora = datetime.now()
+    if cupom["data_inicio"] and agora < cupom["data_inicio"]:
+        return None, 0.0, "Este cupom ainda não está válido."
+    if cupom["data_fim"] and agora > cupom["data_fim"]:
+        return None, 0.0, "Este cupom expirou."
+
+    if cupom["limite_usos_total"] is not None and cupom["usos_atuais"] >= cupom["limite_usos_total"]:
+        return None, 0.0, "Este cupom atingiu o limite de usos."
+
+    if cupom["limite_usos_por_cliente"] is not None:
+        usos = contar_usos_cupom_por_cliente(cupom["id"], id_cliente)
+        if usos >= cupom["limite_usos_por_cliente"]:
+            return None, 0.0, "Você já usou este cupom o número máximo de vezes."
+
+    if cupom["id_restaurante"] is not None and cupom["id_restaurante"] != id_restaurante:
+        return None, 0.0, "Este cupom não é válido para este restaurante."
+
+    if float(subtotal) < float(cupom["valor_minimo_pedido"]):
+        return None, 0.0, (
+            f"Este cupom exige um pedido mínimo de R$ "
+            f"{float(cupom['valor_minimo_pedido']):.2f}."
+        )
+
+    if cupom["tipo"] == "percentual":
+        desconto = float(subtotal) * (float(cupom["valor"]) / 100.0)
+    elif cupom["tipo"] == "fixo":
+        desconto = float(cupom["valor"])
+    else:
+        return None, 0.0, "Tipo de cupom inválido."
+
+    if cupom["valor_maximo_desconto"] is not None:
+        desconto = min(desconto, float(cupom["valor_maximo_desconto"]))
+
+    desconto = min(desconto, float(subtotal))
+    return cupom, round(desconto, 2), None
+
+
+def registrar_uso_cupom(id_cupom, id_cliente, id_pedido, valor_desconto):
+    with DB() as db:
+        db.cursor.execute(
+            """INSERT INTO cupom_uso (id_cupom, id_cliente, id_pedido, valor_desconto)
+               VALUES (%s,%s,%s,%s)""",
+            (id_cupom, id_cliente, id_pedido, valor_desconto),
+        )
+        db.cursor.execute(
+            "UPDATE cupom SET usos_atuais = usos_atuais + 1 WHERE id=%s",
+            (id_cupom,),
+        )
+
+
+# =========================================================
 # PEDIDO / ITEM_PEDIDO / PAGAMENTO
 # =========================================================
-def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens, forma_pagamento):
+def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
+                          forma_pagamento, codigo_cupom=None):
     if not itens:
         raise ValueError("O pedido precisa ter pelo menos um item.")
 
     with DB() as db:
+        # -------- 1. Código de entrega do cliente --------
         db.cursor.execute(
             "SELECT codigo_entrega FROM cliente WHERE id_usuario=%s",
             (id_cliente,),
@@ -451,10 +596,11 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens, forma_
             tel = _so_digitos((u or {}).get("telefone") or "")
             codigo_entrega = tel[-4:] if len(tel) >= 4 else None
 
+        # -------- 2. Revalida produtos E PREÇOS no banco --------
         ids_produto = [i["id_produto"] for i in itens]
         formato = ",".join(["%s"] * len(ids_produto))
         db.cursor.execute(
-            f"SELECT id, id_restaurante FROM produto WHERE id IN ({formato})",
+            f"SELECT id, id_restaurante, preco FROM produto WHERE id IN ({formato})",
             ids_produto,
         )
         produtos_encontrados = db.cursor.fetchall()
@@ -462,34 +608,75 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens, forma_
         if len(produtos_encontrados) != len(set(ids_produto)):
             raise ValueError("Um ou mais produtos do pedido não foram encontrados.")
 
+        precos_banco = {p["id"]: float(p["preco"]) for p in produtos_encontrados}
         for p in produtos_encontrados:
             if p["id_restaurante"] != id_restaurante:
                 raise ValueError(
                     "Não é possível fazer um pedido com produtos de restaurantes diferentes."
                 )
 
-        valor_total = sum(i["quantidade"] * float(i["preco_unitario"]) for i in itens)
+        # -------- 3. Recalcula subtotal com preço do banco --------
+        subtotal = 0.0
+        for item in itens:
+            preco_real = precos_banco[item["id_produto"]]
+            subtotal += preco_real * item["quantidade"]
+        subtotal = round(subtotal, 2)
 
+        # -------- 4. Valida cupom (se houver) --------
+        id_cupom = None
+        valor_desconto = 0.0
+        if codigo_cupom:
+            cupom, valor_desconto, erro = validar_cupom(
+                codigo_cupom, id_cliente, id_restaurante, subtotal
+            )
+            if erro:
+                raise ValueError(erro)
+            id_cupom = cupom["id"]
+            valor_desconto = round(valor_desconto, 2)
+
+        valor_total = round(subtotal - valor_desconto, 2)
+        if valor_total < 0:
+            valor_total = 0.0
+
+        # -------- 5. Insere o pedido --------
         db.cursor.execute(
             """INSERT INTO pedido
-               (id_cliente, id_restaurante, id_endereco, status, valor_total, codigo_entrega)
-               VALUES (%s,%s,%s,'pendente',%s,%s)""",
-            (id_cliente, id_restaurante, id_endereco, valor_total, codigo_entrega),
+               (id_cliente, id_restaurante, id_endereco, status,
+                valor_total, id_cupom, valor_desconto, codigo_entrega)
+               VALUES (%s,%s,%s,'pendente',%s,%s,%s,%s)""",
+            (id_cliente, id_restaurante, id_endereco,
+             valor_total, id_cupom, valor_desconto, codigo_entrega),
         )
         id_pedido = db.cursor.lastrowid
 
+        # -------- 6. Insere os itens (usando o preço do BANCO) --------
         for item in itens:
             db.cursor.execute(
                 """INSERT INTO item_pedido (id_pedido, id_produto, quantidade, preco_unitario)
                    VALUES (%s,%s,%s,%s)""",
-                (id_pedido, item["id_produto"], item["quantidade"], item["preco_unitario"]),
+                (id_pedido, item["id_produto"], item["quantidade"],
+                 precos_banco[item["id_produto"]]),
             )
 
+        # -------- 7. Pagamento --------
         db.cursor.execute(
             """INSERT INTO pagamento (id_pedido, forma_pagamento, valor, status)
                VALUES (%s,%s,%s,'pendente')""",
             (id_pedido, forma_pagamento, valor_total),
         )
+
+        # -------- 8. Registra uso do cupom --------
+        if id_cupom:
+            db.cursor.execute(
+                """INSERT INTO cupom_uso (id_cupom, id_cliente, id_pedido, valor_desconto)
+                   VALUES (%s,%s,%s,%s)""",
+                (id_cupom, id_cliente, id_pedido, valor_desconto),
+            )
+            db.cursor.execute(
+                "UPDATE cupom SET usos_atuais = usos_atuais + 1 WHERE id=%s",
+                (id_cupom,),
+            )
+
         return id_pedido
 
 
@@ -531,10 +718,6 @@ def listar_pedidos_cliente(id_cliente):
 
 
 def listar_pedidos_ativos_cliente(id_cliente):
-    """
-    Retorna só os pedidos EM ANDAMENTO (status diferente de 'entregue'
-    e 'cancelado'). Usado pelo endpoint de notificação em tempo real.
-    """
     with DB() as db:
         db.cursor.execute(
             """SELECT p.id, p.status, p.valor_total, p.data_hora,
