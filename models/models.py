@@ -7,6 +7,7 @@ import re
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.db import DB
+from services import distancia
 
 
 def _so_digitos(txt):
@@ -138,18 +139,20 @@ def criar_restaurante(id_usuario, nome_fantasia, cnpj, categoria, taxa_entrega,
                        tem_mesa=0, complemento=None,
                        cpf_representante=None, nome_representante=None,
                        data_nasc_representante=None, id_plano=None,
-                       foto_url=None):
+                       foto_url=None, lat=None, lon=None):
     with DB() as db:
         db.cursor.execute(
             """INSERT INTO restaurante
                (id_usuario, nome_fantasia, cnpj, categoria, taxa_entrega,
                 horario_funcionamento, rua, numero, bairro, cidade, cep,
+                lat, lon,
                 tem_mesa, complemento,
                 cpf_representante, nome_representante, data_nasc_representante,
                 id_plano, foto_url)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
             (id_usuario, nome_fantasia, cnpj, categoria, taxa_entrega,
              horario_funcionamento, rua, numero, bairro, cidade, cep,
+             lat, lon,
              tem_mesa, complemento,
              cpf_representante, nome_representante, data_nasc_representante,
              id_plano, foto_url),
@@ -177,6 +180,7 @@ def buscar_restaurante(id_usuario):
         db.cursor.execute(
             """SELECT u.*, r.nome_fantasia, r.cnpj, r.categoria, r.taxa_entrega,
                       r.horario_funcionamento, r.rua, r.numero, r.bairro, r.cidade, r.cep,
+                      r.lat, r.lon,
                       r.tem_mesa, r.complemento, r.foto_url,
                       r.cpf_representante, r.nome_representante, r.data_nasc_representante,
                       r.id_plano,
@@ -197,17 +201,19 @@ def atualizar_restaurante(id_usuario, nome_fantasia, categoria, taxa_entrega,
                            tem_mesa=0, complemento=None,
                            cpf_representante=None, nome_representante=None,
                            data_nasc_representante=None, id_plano=None,
-                           foto_url=None):
+                           foto_url=None, lat=None, lon=None):
     with DB() as db:
         db.cursor.execute(
             """UPDATE restaurante SET nome_fantasia=%s, categoria=%s, taxa_entrega=%s,
                horario_funcionamento=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, cep=%s,
+               lat=%s, lon=%s,
                tem_mesa=%s, complemento=%s,
                cpf_representante=%s, nome_representante=%s, data_nasc_representante=%s,
                id_plano=%s, foto_url=%s
                WHERE id_usuario=%s""",
             (nome_fantasia, categoria, taxa_entrega, horario_funcionamento,
              rua, numero, bairro, cidade, cep,
+             lat, lon,
              tem_mesa, complemento,
              cpf_representante, nome_representante, data_nasc_representante,
              id_plano, foto_url,
@@ -382,12 +388,12 @@ def buscar_produtos_por_nome(termo, limite=60):
 # =========================================================
 # ENDERECO
 # =========================================================
-def criar_endereco(id_cliente, rua, numero, bairro, cidade, cep):
+def criar_endereco(id_cliente, rua, numero, bairro, cidade, cep, lat=None, lon=None):
     with DB() as db:
         db.cursor.execute(
-            """INSERT INTO endereco (id_cliente, rua, numero, bairro, cidade, cep, ativo)
-               VALUES (%s,%s,%s,%s,%s,%s, 1)""",
-            (id_cliente, rua, numero, bairro, cidade, cep),
+            """INSERT INTO endereco (id_cliente, rua, numero, bairro, cidade, cep, lat, lon, ativo)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s, 1)""",
+            (id_cliente, rua, numero, bairro, cidade, cep, lat, lon),
         )
         return db.cursor.lastrowid
 
@@ -409,12 +415,14 @@ def buscar_endereco(id_endereco):
         return db.cursor.fetchone()
 
 
-def atualizar_endereco(id_endereco, id_cliente, rua, numero, bairro, cidade, cep):
+def atualizar_endereco(id_endereco, id_cliente, rua, numero, bairro, cidade, cep,
+                        lat=None, lon=None):
     with DB() as db:
         db.cursor.execute(
-            """UPDATE endereco SET rua=%s, numero=%s, bairro=%s, cidade=%s, cep=%s
+            """UPDATE endereco SET rua=%s, numero=%s, bairro=%s, cidade=%s, cep=%s,
+                                    lat=%s, lon=%s
                WHERE id=%s AND id_cliente=%s""",
-            (rua, numero, bairro, cidade, cep, id_endereco, id_cliente),
+            (rua, numero, bairro, cidade, cep, lat, lon, id_endereco, id_cliente),
         )
         return db.cursor.rowcount > 0
 
@@ -426,6 +434,38 @@ def deletar_endereco(id_endereco, id_cliente):
             (id_endereco, id_cliente),
         )
         return db.cursor.rowcount > 0
+
+
+# =========================================================
+# TAXA DE ENTREGA (por distância)
+# =========================================================
+def calcular_taxa_entrega_pedido(id_restaurante, id_endereco):
+    """
+    Calcula a taxa de entrega de um pedido com base na distância
+    entre o restaurante e o endereço de entrega.
+
+    Retorna (taxa, distancia_km, km_extra):
+      - taxa: float (já com a regra de R$ 1/km acima de 5 km)
+      - distancia_km: float ou None (se faltar coordenada)
+      - km_extra: float (0.0 se não passou do limite)
+    """
+    restaurante = buscar_restaurante(id_restaurante)
+    endereco = buscar_endereco(id_endereco)
+
+    if not restaurante:
+        return 0.0, None, 0.0
+
+    taxa_base = float(restaurante.get("taxa_entrega") or 0)
+
+    if not endereco:
+        return round(taxa_base, 2), None, 0.0
+
+    dist = distancia.calcular_distancia_km(
+        restaurante.get("lat"), restaurante.get("lon"),
+        endereco.get("lat"), endereco.get("lon"),
+    )
+
+    return distancia.calcular_taxa_entrega(taxa_base, dist)
 
 
 # =========================================================
@@ -574,27 +614,50 @@ def registrar_uso_cupom(id_cupom, id_cliente, id_pedido, valor_desconto):
 # PEDIDO / ITEM_PEDIDO / PAGAMENTO
 # =========================================================
 def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
-                          forma_pagamento, codigo_cupom=None):
+                          forma_pagamento, codigo_cupom=None,
+                          tipo_entrega=None, taxa_entrega=0.0):
+    """
+    Cria o pedido + itens + pagamento + registro de cupom (se houver).
+
+    tipo_entrega:
+      None        -> ainda não decidido (fica NULL, restaurante escolhe depois)
+      'propria'   -> o próprio restaurante entrega (NÃO gera codigo_entrega)
+      'parceira'  -> entregador do Yummy (gera codigo_entrega do cliente)
+
+    taxa_entrega:
+      Valor já calculado (base + R$ 1/km acima de 5 km). Gravado em
+      'taxa_entrega_cobrada' e somado no valor_total.
+    """
     if not itens:
         raise ValueError("O pedido precisa ter pelo menos um item.")
 
-    with DB() as db:
-        # -------- 1. Código de entrega do cliente --------
-        db.cursor.execute(
-            "SELECT codigo_entrega FROM cliente WHERE id_usuario=%s",
-            (id_cliente,),
-        )
-        cli = db.cursor.fetchone()
-        codigo_entrega = (cli or {}).get("codigo_entrega") if cli else None
+    if tipo_entrega not in (None, "propria", "parceira"):
+        raise ValueError("Tipo de entrega inválido.")
 
-        if not codigo_entrega:
+    try:
+        taxa_entrega = float(taxa_entrega or 0)
+    except (TypeError, ValueError):
+        taxa_entrega = 0.0
+
+    with DB() as db:
+        # -------- 1. Código de entrega (só faz sentido pra entrega parceira) --------
+        codigo_entrega = None
+        if tipo_entrega == "parceira":
             db.cursor.execute(
-                "SELECT telefone FROM usuario WHERE id=%s",
+                "SELECT codigo_entrega FROM cliente WHERE id_usuario=%s",
                 (id_cliente,),
             )
-            u = db.cursor.fetchone()
-            tel = _so_digitos((u or {}).get("telefone") or "")
-            codigo_entrega = tel[-4:] if len(tel) >= 4 else None
+            cli = db.cursor.fetchone()
+            codigo_entrega = (cli or {}).get("codigo_entrega") if cli else None
+
+            if not codigo_entrega:
+                db.cursor.execute(
+                    "SELECT telefone FROM usuario WHERE id=%s",
+                    (id_cliente,),
+                )
+                u = db.cursor.fetchone()
+                tel = _so_digitos((u or {}).get("telefone") or "")
+                codigo_entrega = tel[-4:] if len(tel) >= 4 else None
 
         # -------- 2. Revalida produtos E PREÇOS no banco --------
         ids_produto = [i["id_produto"] for i in itens]
@@ -634,18 +697,21 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
             id_cupom = cupom["id"]
             valor_desconto = round(valor_desconto, 2)
 
-        valor_total = round(subtotal - valor_desconto, 2)
+        # valor_total = subtotal - desconto + taxa de entrega
+        valor_total = round(subtotal - valor_desconto + taxa_entrega, 2)
         if valor_total < 0:
             valor_total = 0.0
 
         # -------- 5. Insere o pedido --------
         db.cursor.execute(
             """INSERT INTO pedido
-               (id_cliente, id_restaurante, id_endereco, status,
-                valor_total, id_cupom, valor_desconto, codigo_entrega)
-               VALUES (%s,%s,%s,'pendente',%s,%s,%s,%s)""",
-            (id_cliente, id_restaurante, id_endereco,
-             valor_total, id_cupom, valor_desconto, codigo_entrega),
+               (id_cliente, id_restaurante, id_endereco, status, tipo_entrega,
+                valor_total, id_cupom, valor_desconto, taxa_entrega_cobrada,
+                codigo_entrega)
+               VALUES (%s,%s,%s,'pendente',%s,%s,%s,%s,%s,%s)""",
+            (id_cliente, id_restaurante, id_endereco, tipo_entrega,
+             valor_total, id_cupom, valor_desconto, taxa_entrega,
+             codigo_entrega),
         )
         id_pedido = db.cursor.lastrowid
 
@@ -732,7 +798,7 @@ def listar_pedidos_ativos_cliente(id_cliente):
         return db.cursor.fetchall()
 
 
-def listar_pedidos_restaurante(id_restaurante, status=None):
+def listar_pedidos_restaurante(id_restaurante, status=None, tipo_entrega=None):
     query = """SELECT p.*, u.nome AS nome_cliente
                FROM pedido p JOIN usuario u ON u.id = p.id_cliente
                WHERE p.id_restaurante=%s"""
@@ -740,6 +806,9 @@ def listar_pedidos_restaurante(id_restaurante, status=None):
     if status:
         query += " AND p.status=%s"
         params.append(status)
+    if tipo_entrega:
+        query += " AND p.tipo_entrega=%s"
+        params.append(tipo_entrega)
     query += " ORDER BY p.data_hora DESC"
     with DB() as db:
         db.cursor.execute(query, params)
@@ -747,6 +816,12 @@ def listar_pedidos_restaurante(id_restaurante, status=None):
 
 
 def listar_pedidos_disponiveis_para_entrega():
+    """
+    Lista só pedidos que o entregador parceiro pode pegar:
+      - status 'localizando_entregador'
+      - sem entregador atribuído
+      - tipo_entrega = 'parceira' (nunca aparece 'propria' aqui)
+    """
     with DB() as db:
         db.cursor.execute(
             """SELECT p.*, r.nome_fantasia, r.foto_url AS restaurante_foto_url,
@@ -755,7 +830,9 @@ def listar_pedidos_disponiveis_para_entrega():
                FROM pedido p
                JOIN restaurante r ON r.id_usuario = p.id_restaurante
                LEFT JOIN endereco e ON e.id = p.id_endereco
-               WHERE p.status='localizando_entregador' AND p.id_entregador IS NULL
+               WHERE p.status='localizando_entregador'
+                 AND p.id_entregador IS NULL
+                 AND p.tipo_entrega='parceira'
                ORDER BY p.data_hora"""
         )
         return db.cursor.fetchall()
@@ -782,7 +859,9 @@ def atribuir_entregador(id_pedido, id_entregador):
     with DB() as db:
         db.cursor.execute(
             """UPDATE pedido SET id_entregador=%s, status='indo_ao_restaurante'
-               WHERE id=%s AND id_entregador IS NULL AND status='localizando_entregador'""",
+               WHERE id=%s AND id_entregador IS NULL
+                 AND status='localizando_entregador'
+                 AND tipo_entrega='parceira'""",
             (id_entregador, id_pedido),
         )
         return db.cursor.rowcount > 0
@@ -808,6 +887,22 @@ def marcar_pedido_entregue(id_pedido, id_entregador):
         return db.cursor.rowcount > 0
 
 
+def marcar_pedido_entregue_pelo_restaurante(id_pedido, id_restaurante):
+    """
+    Usado só quando tipo_entrega='propria'.
+    O restaurante confirma que entregou o pedido.
+    """
+    with DB() as db:
+        db.cursor.execute(
+            """UPDATE pedido SET status='entregue'
+               WHERE id=%s AND id_restaurante=%s
+                 AND tipo_entrega='propria'
+                 AND status='saiu_para_entrega'""",
+            (id_pedido, id_restaurante),
+        )
+        return db.cursor.rowcount > 0
+
+
 def liberar_entregador(id_pedido, id_restaurante):
     with DB() as db:
         db.cursor.execute(
@@ -829,6 +924,23 @@ def atualizar_status_pedido(id_pedido, status, id_restaurante=None):
             db.cursor.execute(
                 "UPDATE pedido SET status=%s WHERE id=%s", (status, id_pedido)
             )
+        return db.cursor.rowcount > 0
+
+
+def atualizar_status_e_tipo_entrega(id_pedido, status, tipo_entrega, id_restaurante):
+    """
+    Usada quando o restaurante aceita o pedido e escolhe o tipo de entrega
+    de uma vez: 'pendente' -> 'preparando' + tipo_entrega.
+    Só atualiza se o pedido ainda estiver 'pendente' e sem tipo definido.
+    """
+    with DB() as db:
+        db.cursor.execute(
+            """UPDATE pedido SET status=%s, tipo_entrega=%s
+               WHERE id=%s AND id_restaurante=%s
+                 AND status='pendente'
+                 AND tipo_entrega IS NULL""",
+            (status, tipo_entrega, id_pedido, id_restaurante),
+        )
         return db.cursor.rowcount > 0
 
 

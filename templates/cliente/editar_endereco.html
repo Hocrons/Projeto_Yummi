@@ -3,7 +3,7 @@
 {% block content %}
 <div class="form-card">
     <h2>Editar endereço</h2>
-    
+
     <label>Buscar endereço
         <input type="text" id="google-autocomplete" placeholder="Comece a digitar o nome da rua..." autocomplete="off">
     </label>
@@ -27,12 +27,15 @@
             <input type="text" id="cidade" name="cidade" value="{{ endereco.cidade or '' }}">
         </label>
 
+        {# Coordenadas (preenchidas pelo endereco.js) #}
+        <input type="hidden" name="lat" id="lat" value="{{ endereco.lat or '' }}">
+        <input type="hidden" name="lon" id="lon" value="{{ endereco.lon or '' }}">
+
         <button type="submit" class="btn btn--primary btn--full">Salvar alterações</button>
     </form>
     <p class="muted"><a href="{{ url_for('cliente.editar_perfil') }}">Voltar ao perfil</a></p>
 </div>
 
-<!-- Scripts com parâmetro de versão para forçar a atualização do cache -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-<script src="{{ url_for('static', filename='js/endereco.js') }}?v=3.0"></script>
+<script src="{{ url_for('static', filename='js/endereco.js') }}?v=4.0"></script>
 {% endblock %}

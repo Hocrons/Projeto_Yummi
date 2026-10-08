@@ -7,6 +7,51 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputBairro = document.getElementById("bairro");
     const inputCidade = document.getElementById("cidade");
     const inputSearch = document.getElementById("google-autocomplete");
+    const inputLat = document.getElementById("lat");
+    const inputLon = document.getElementById("lon");
+
+    // ---------------------------------------------------------------
+    // Helper: guarda as coordenadas nos campos hidden (se existirem)
+    // ---------------------------------------------------------------
+    function preencherCoordenadas(lat, lon) {
+        if (!inputLat || !inputLon) return;
+        if (lat === null || lat === undefined || lon === null || lon === undefined) return;
+        inputLat.value = lat;
+        inputLon.value = lon;
+    }
+
+    // ---------------------------------------------------------------
+    // Helper: busca lat/lon no Nominatim a partir dos campos já preenchidos
+    // (usado depois do ViaCEP, que não devolve coordenadas)
+    // ---------------------------------------------------------------
+    function geocodificarEnderecoAtual() {
+        if (!inputRua || !inputCidade) return;
+
+        const partes = [
+            inputRua.value,
+            inputNumero ? inputNumero.value : "",
+            inputBairro ? inputBairro.value : "",
+            inputCidade.value,
+            "Brasil",
+        ].filter((p) => p && p.trim());
+
+        if (partes.length < 2) return;
+
+        const query = partes.join(", ");
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(query)}`;
+
+        fetch(url, { headers: { "Accept-Language": "pt-BR" } })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data && data.length > 0) {
+                    preencherCoordenadas(data[0].lat, data[0].lon);
+                    console.log("[endereco.js] Coordenadas obtidas via geocoding:", data[0].lat, data[0].lon);
+                } else {
+                    console.warn("[endereco.js] Nominatim não retornou resultado para:", query);
+                }
+            })
+            .catch((err) => console.error("[endereco.js] Erro no geocoding:", err));
+    }
 
     // ---------------------------------------------------------------
     // 1. ViaCEP (Gratuito - Busca ao desfocar o campo CEP)
@@ -29,6 +74,10 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (inputCidade) inputCidade.value = data.localidade || "";
                             if (inputCep) inputCep.value = data.cep || cep;
                             if (inputNumero) inputNumero.focus();
+
+                            // ViaCEP não devolve coordenadas — busca no Nominatim
+                            // usando os dados recém-preenchidos.
+                            geocodificarEnderecoAtual();
                         } else {
                             if (typeof mostrarToast === "function") {
                                 mostrarToast("CEP não encontrado.");
@@ -54,6 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (inputRua) inputRua.value = "";
         if (inputBairro) inputBairro.value = "";
         if (inputCidade) inputCidade.value = "";
+        preencherCoordenadas("", "");
     }
 
     // ---------------------------------------------------------------
@@ -64,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const listaSugestoes = document.createElement("ul");
         listaSugestoes.style.cssText = "position:absolute; z-index:1000; background:#fff; border:1px solid #ccc; width:100%; list-style:none; padding:0; margin:0; max-height:200px; overflow-y:auto; border-radius:0 0 8px 8px; box-shadow:0 4px 6px rgba(0,0,0,0.1);";
-        
+
         inputSearch.parentNode.style.position = "relative";
         inputSearch.parentNode.appendChild(listaSugestoes);
 
@@ -99,6 +149,9 @@ document.addEventListener("DOMContentLoaded", () => {
                                 if (inputBairro) inputBairro.value = addr.suburb || addr.neighbourhood || addr.district || "";
                                 if (inputCidade) inputCidade.value = addr.city || addr.town || addr.municipality || "";
                                 if (inputCep && addr.postcode) inputCep.value = addr.postcode.replace(/\D/g, "");
+
+                                // Salva as coordenadas que o Nominatim já devolveu
+                                preencherCoordenadas(item.lat, item.lon);
 
                                 inputSearch.value = item.display_name;
                                 listaSugestoes.innerHTML = "";

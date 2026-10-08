@@ -5,12 +5,14 @@
 <p class="muted">Restaurante: <strong>{{ restaurante.nome_fantasia }}</strong></p>
 
 <div class="checkout-grid">
-    <form method="post" class="form-card">
+    <form method="post" class="form-card" id="form-checkout">
         <h3>Endereço de entrega</h3>
         {% if enderecos %}
             {% for e in enderecos %}
                 <label class="radio-linha">
-                    <input type="radio" name="id_endereco" value="{{ e.id }}" required>
+                    <input type="radio" name="id_endereco" value="{{ e.id }}"
+                           data-endereco-id="{{ e.id }}"
+                           {% if loop.first %}checked{% endif %} required>
                     {{ e.rua }}, {{ e.numero }} - {{ e.bairro }}, {{ e.cidade }} ({{ e.cep }})
                 </label>
             {% endfor %}
@@ -20,12 +22,39 @@
 
         <details style="margin: 12px 0;">
             <summary>+ Adicionar novo endereço</summary>
+
+            {# Formulário separado (form="form-endereco") que vai junto com o principal #}
             <div class="mini-form">
-                <label>Rua <input type="text" name="rua" form="form-endereco"></label>
-                <label>Número <input type="text" name="numero" form="form-endereco"></label>
-                <label>Bairro <input type="text" name="bairro" form="form-endereco"></label>
-                <label>Cidade <input type="text" name="cidade" form="form-endereco"></label>
-                <label>CEP <input type="text" name="cep" form="form-endereco"></label>
+                <label>Buscar endereço
+                    <input type="text" id="google-autocomplete"
+                           placeholder="Comece a digitar a rua..." autocomplete="off"
+                           form="form-endereco">
+                </label>
+
+                <div style="text-align: center; margin: 10px 0; font-size: 0.9em; color: #888;">
+                    ou preencha por CEP
+                </div>
+
+                <label>CEP
+                    <input type="text" id="cep" name="cep" maxlength="9"
+                           placeholder="00000-000" form="form-endereco">
+                </label>
+                <label>Rua
+                    <input type="text" id="rua" name="rua" required form="form-endereco">
+                </label>
+                <label>Número
+                    <input type="text" id="numero" name="numero" form="form-endereco">
+                </label>
+                <label>Bairro
+                    <input type="text" id="bairro" name="bairro" form="form-endereco">
+                </label>
+                <label>Cidade
+                    <input type="text" id="cidade" name="cidade" form="form-endereco">
+                </label>
+
+                {# Coordenadas preenchidas pelo endereco.js #}
+                <input type="hidden" name="lat" id="lat" form="form-endereco">
+                <input type="hidden" name="lon" id="lon" form="form-endereco">
             </div>
         </details>
 
@@ -35,7 +64,7 @@
         <label class="radio-linha"><input type="radio" name="forma_pagamento" value="dinheiro"> Dinheiro</label>
 
         <button type="submit" class="btn btn--primary btn--full" style="margin-top:16px;">
-            Confirmar pedido - R$ {{ '%.2f' % totais.total }}
+            Confirmar pedido - R$ <span id="total-carrinho-checkout">{{ '%.2f' % (totais.total + taxa_inicial) }}</span>
         </button>
     </form>
 
@@ -58,13 +87,95 @@
                 <span class="cupom-desconto-valor">− R$ {{ '%.2f' % totais.desconto }}</span>
             </div>
         {% endif %}
+
+        <div class="linha-resumo" id="linha-taxa-entrega" {% if not taxa_inicial %}hidden{% endif %}>
+            <span>Taxa de entrega</span>
+            <span>R$ <span id="taxa-entrega-valor">{{ '%.2f' % taxa_inicial }}</span></span>
+        </div>
+        <p class="muted" id="distancia-info" style="font-size: 12px; margin: 4px 0 0 0; line-height: 1.4;
+            {% if not dist_inicial %}display: none;{% endif %}">
+            {% if dist_inicial %}
+                Distância aproximada: {{ '%.1f'|format(dist_inicial) }} km
+                {% if dist_inicial > 5 %}
+                    · +R$ {{ '%.2f' % (dist_inicial - 5) }} acima de 5 km
+                {% endif %}
+            {% endif %}
+        </p>
+
         <hr>
         <div class="linha-resumo linha-resumo--total">
             <span>Total</span>
-            <span>R$ {{ '%.2f' % totais.total }}</span>
+            <span>R$ <span id="total-resumo">{{ '%.2f' % (totais.total + taxa_inicial) }}</span></span>
         </div>
     </aside>
 </div>
 
-<form id="form-endereco" method="post" action="{{ url_for('cliente.adicionar_endereco') }}"></form>
+{# Form que recebe os campos do "novo endereço" #}
+<form id="form-endereco" method="post" action="{{ url_for('cliente.adicionar_endereco') }}">
+    <input type="hidden" name="origem" value="checkout">
+</form>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/endereco.js') }}?v=4.0"></script>
+<script>
+(function () {
+    "use strict";
+
+    const BASE_CLIENTE = "/cliente";
+
+    const radiosEndereco = document.querySelectorAll('input[name="id_endereco"]');
+    const taxaEl = document.getElementById("taxa-entrega-valor");
+    const linhaTaxa = document.getElementById("linha-taxa-entrega");
+    const distInfo = document.getElementById("distancia-info");
+    const totalResumo = document.getElementById("total-resumo");
+    const totalBotao = document.getElementById("total-carrinho-checkout");
+
+    if (!radiosEndereco.length) return;
+
+    async function atualizarTaxa(idEndereco) {
+        try {
+            const resp = await fetch(`${BASE_CLIENTE}/api/taxa-entrega/${idEndereco}`, {
+                headers: { "Accept": "application/json" },
+                cache: "no-store",
+            });
+            if (!resp.ok) return;
+            const dados = await resp.json();
+            if (!dados.ok) return;
+
+            if (taxaEl) taxaEl.textContent = Number(dados.taxa).toFixed(2);
+            if (linhaTaxa) linhaTaxa.hidden = !(dados.taxa > 0);
+
+            if (distInfo) {
+                if (dados.distancia_km !== null && dados.distancia_km !== undefined) {
+                    let texto = `Distância aproximada: ${Number(dados.distancia_km).toFixed(1)} km`;
+                    if (dados.km_extra > 0) {
+                        texto += ` · +R$ ${Number(dados.km_extra).toFixed(2)} acima de 5 km`;
+                    }
+                    distInfo.textContent = texto;
+                    distInfo.style.display = "block";
+                } else {
+                    distInfo.style.display = "none";
+                }
+            }
+
+            const total = Number(dados.total_com_taxa).toFixed(2);
+            if (totalResumo) totalResumo.textContent = total;
+            if (totalBotao) totalBotao.textContent = total;
+
+        } catch (e) {
+            console.error("Erro ao calcular taxa:", e);
+        }
+    }
+
+    radiosEndereco.forEach((radio) => {
+        radio.addEventListener("change", () => {
+            if (radio.checked) atualizarTaxa(radio.dataset.enderecoId);
+        });
+    });
+
+    const marcado = document.querySelector('input[name="id_endereco"]:checked');
+    if (marcado) atualizarTaxa(marcado.dataset.enderecoId);
+})();
+</script>
 {% endblock %}

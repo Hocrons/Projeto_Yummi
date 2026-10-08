@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from models import models
 from controllers.decorators import login_requerido
+from services import geocoding
 
 cliente_bp = Blueprint("cliente", __name__, url_prefix="/cliente")
 
@@ -28,6 +29,35 @@ def _carrinho_totais(carrinho, desconto=0.0):
         "total": total,
         "qtd_total": qtd_total,
     }
+
+
+def _lat_lon_do_form(form):
+    """
+    Lê lat/lon do form. Se vierem vazios, geocodifica pelos dados
+    do próprio form (rua, numero, bairro, cidade, estado/uf).
+    Devolve (lat, lon) — floats ou None.
+    """
+    lat = form.get("lat") or None
+    lon = form.get("lon") or None
+
+    try:
+        lat = float(lat) if lat else None
+        lon = float(lon) if lon else None
+    except (TypeError, ValueError):
+        lat, lon = None, None
+
+    if lat is not None and lon is not None:
+        return lat, lon
+
+    # Fallback: geocodifica no backend
+    lat, lon, _, _ = geocoding.buscar_coordenadas(
+        rua=form.get("rua"),
+        numero=form.get("numero"),
+        bairro=form.get("bairro"),
+        cidade=form.get("cidade"),
+        uf=form.get("estado") or form.get("uf"),
+    )
+    return lat, lon
 
 
 # ---------------------------------------------------------
@@ -214,6 +244,8 @@ def remover_cupom():
 @cliente_bp.route("/endereco/adicionar", methods=["POST"])
 @login_requerido("cliente")
 def adicionar_endereco():
+    lat, lon = _lat_lon_do_form(request.form)
+
     models.criar_endereco(
         id_cliente=session["user_id"],
         rua=request.form["rua"],
@@ -221,6 +253,8 @@ def adicionar_endereco():
         bairro=request.form.get("bairro"),
         cidade=request.form.get("cidade"),
         cep=request.form.get("cep"),
+        lat=lat,
+        lon=lon,
     )
     flash("Endereço adicionado.", "sucesso")
     if request.form.get("origem") == "perfil":
@@ -237,6 +271,13 @@ def editar_endereco(id_endereco):
         return redirect(url_for("cliente.editar_perfil"))
 
     if request.method == "POST":
+        # Se lat/lon vierem vazios, tenta geocodificar de novo.
+        # Senão, mantém as coordenadas antigas.
+        lat, lon = _lat_lon_do_form(request.form)
+        if lat is None or lon is None:
+            lat = endereco.get("lat")
+            lon = endereco.get("lon")
+
         models.atualizar_endereco(
             id_endereco,
             id_cliente=session["user_id"],
@@ -245,6 +286,8 @@ def editar_endereco(id_endereco):
             bairro=request.form.get("bairro"),
             cidade=request.form.get("cidade"),
             cep=request.form.get("cep"),
+            lat=lat,
+            lon=lon,
         )
         flash("Endereço atualizado.", "sucesso")
         return redirect(url_for("cliente.editar_perfil"))
@@ -264,6 +307,52 @@ def excluir_endereco(id_endereco):
 
 
 # ---------------------------------------------------------
+# API — TAXA DE ENTREGA (por distância)
+# ---------------------------------------------------------
+@cliente_bp.route("/api/taxa-entrega/<int:id_endereco>")
+@login_requerido("cliente")
+def api_taxa_entrega(id_endereco):
+    """
+    Calcula a taxa de entrega do carrinho atual para um dado endereço.
+    Usado pelo checkout pra atualizar em tempo real quando o cliente
+    troca o endereço no radio button.
+    """
+    carrinho = _carrinho()
+    if not carrinho.get("id_restaurante"):
+        return jsonify({"erro": "Carrinho vazio."}), 400
+
+    endereco = models.buscar_endereco(id_endereco)
+    if not endereco or endereco["id_cliente"] != session["user_id"]:
+        return jsonify({"erro": "Endereço não encontrado."}), 404
+
+    taxa, dist, km_extra = models.calcular_taxa_entrega_pedido(
+        carrinho["id_restaurante"], id_endereco
+    )
+
+    subtotal = _carrinho_totais(carrinho)["subtotal"]
+    desconto = 0.0
+    if session.get("cupom"):
+        cupom_obj, valor, erro = models.validar_cupom(
+            session["cupom"], session["user_id"], carrinho["id_restaurante"], subtotal
+        )
+        if not erro:
+            desconto = valor
+    totais = _carrinho_totais(carrinho, desconto)
+    total_com_taxa = round(totais["total"] + taxa, 2)
+
+    return jsonify({
+        "ok": True,
+        "taxa": taxa,
+        "distancia_km": dist,
+        "km_extra": km_extra,
+        "subtotal": totais["subtotal"],
+        "desconto": totais["desconto"],
+        "total_sem_taxa": totais["total"],
+        "total_com_taxa": total_com_taxa,
+    })
+
+
+# ---------------------------------------------------------
 # CHECKOUT
 # ---------------------------------------------------------
 @cliente_bp.route("/checkout", methods=["GET", "POST"])
@@ -280,6 +369,10 @@ def checkout():
             flash("Selecione um endereço de entrega.", "erro")
             return redirect(url_for("cliente.checkout"))
 
+        taxa, dist_km, km_extra = models.calcular_taxa_entrega_pedido(
+            carrinho["id_restaurante"], int(id_endereco)
+        )
+
         itens = [
             {"id_produto": int(pid), "quantidade": item["quantidade"],
              "preco_unitario": item["preco"]}
@@ -293,6 +386,7 @@ def checkout():
                 itens=itens,
                 forma_pagamento=request.form["forma_pagamento"],
                 codigo_cupom=session.get("cupom"),
+                taxa_entrega=taxa,
             )
         except ValueError as e:
             flash(str(e), "erro")
@@ -303,6 +397,7 @@ def checkout():
         session.modified = True
         return redirect(url_for("cliente.pedido_sucesso", id_pedido=id_pedido))
 
+    # ---------- GET ----------
     restaurante = None
     if carrinho.get("id_restaurante"):
         restaurante = models.buscar_restaurante(carrinho["id_restaurante"])
@@ -325,6 +420,13 @@ def checkout():
         else:
             desconto = valor
 
+    taxa_inicial = 0.0
+    dist_inicial = None
+    if enderecos:
+        taxa_inicial, dist_inicial, _ = models.calcular_taxa_entrega_pedido(
+            carrinho["id_restaurante"], enderecos[0]["id"]
+        )
+
     return render_template(
         "cliente/checkout.html",
         carrinho=carrinho,
@@ -332,6 +434,8 @@ def checkout():
         restaurante=restaurante,
         enderecos=enderecos,
         cupom_codigo=cupom_codigo,
+        taxa_inicial=taxa_inicial,
+        dist_inicial=dist_inicial,
     )
 
 

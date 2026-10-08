@@ -11,10 +11,14 @@
                 <strong>#{{ p.id }} - {{ p.nome_fantasia }}</strong>
                 <p class="muted">{{ p.data_hora }}</p>
 
-                {% if p.codigo_entrega and p.status not in ('entregue', 'cancelado') %}
+                {% if p.tipo_entrega == 'parceira' and p.codigo_entrega and p.status not in ('entregue', 'cancelado') %}
                     <p class="muted" style="margin-top: 6px;">
                         Código de entrega:
                         <strong class="codigo-entrega-inline">{{ p.codigo_entrega }}</strong>
+                    </p>
+                {% elif p.tipo_entrega == 'propria' and p.status not in ('entregue', 'cancelado') %}
+                    <p class="muted" style="margin-top: 6px;">
+                        🏪 Entrega pelo restaurante
                     </p>
                 {% endif %}
             </div>

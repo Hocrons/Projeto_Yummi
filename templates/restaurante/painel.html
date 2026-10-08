@@ -18,15 +18,32 @@
         <div>
             <strong>#{{ p.id }} - {{ p.nome_cliente }}</strong>
             <p class="muted">{{ p.data_hora }}</p>
+
             <span class="status-badge status-badge--{{ p.status }}">{{ p.status.replace('_', ' ') }}</span>
+
+            {% if p.tipo_entrega == 'propria' %}
+                <span class="status-badge" style="background: var(--cor-primaria-suave); color: var(--cor-primaria);">
+                    🏪 Entrega própria
+                </span>
+            {% elif p.tipo_entrega == 'parceira' %}
+                <span class="status-badge" style="background: rgba(74, 158, 255, 0.15); color: #2b7acc;">
+                    🛵 Entregador parceiro
+                </span>
+            {% endif %}
         </div>
+
         <div class="acoes-pedido">
             <p>R$ {{ '%.2f' % p.valor_total }}</p>
 
             {% if p.status == 'pendente' %}
+                {# ---------- ESCOLHA DO TIPO DE ENTREGA ---------- #}
                 <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}">
-                    <input type="hidden" name="status" value="preparando">
-                    <button class="btn btn--secundario">Aceitar / Preparar</button>
+                    <input type="hidden" name="status" value="aceitar_propria">
+                    <button class="btn btn--secundario">Aceitar (entrega própria)</button>
+                </form>
+                <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}">
+                    <input type="hidden" name="status" value="aceitar_parceira">
+                    <button class="btn btn--primary">Aceitar (entregador parceiro)</button>
                 </form>
                 <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}"
                       onsubmit="return confirm('Cancelar este pedido?');">
@@ -35,10 +52,17 @@
                 </form>
 
             {% elif p.status == 'preparando' %}
-                <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}">
-                    <input type="hidden" name="status" value="localizando_entregador">
-                    <button class="btn btn--secundario">Marcar como pronto</button>
-                </form>
+                {% if p.tipo_entrega == 'propria' %}
+                    <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}">
+                        <input type="hidden" name="status" value="saiu_para_entrega">
+                        <button class="btn btn--secundario">Saiu para entrega</button>
+                    </form>
+                {% else %}
+                    <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}">
+                        <input type="hidden" name="status" value="localizando_entregador">
+                        <button class="btn btn--secundario">Marcar como pronto (buscar entregador)</button>
+                    </form>
+                {% endif %}
                 <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}"
                       onsubmit="return confirm('Cancelar este pedido?');">
                     <input type="hidden" name="status" value="cancelado">
@@ -46,7 +70,7 @@
                 </form>
 
             {% elif p.status == 'localizando_entregador' %}
-                <p class="muted">Aguardando um entregador aceitar...</p>
+                <p class="muted">Aguardando um entregador parceiro aceitar...</p>
 
             {% elif p.status == 'indo_ao_restaurante' %}
                 <p class="muted">Entregador a caminho para retirar.</p>
@@ -56,7 +80,15 @@
                 </form>
 
             {% elif p.status == 'saiu_para_entrega' %}
-                <p class="muted">Pedido a caminho do cliente.</p>
+                {% if p.tipo_entrega == 'propria' %}
+                    <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}"
+                          onsubmit="return confirm('Confirmar que o pedido foi entregue ao cliente?');">
+                        <input type="hidden" name="status" value="entregue">
+                        <button class="btn btn--primary">Marcar como entregue</button>
+                    </form>
+                {% else %}
+                    <p class="muted">Pedido a caminho do cliente — entregador parceiro conduzindo.</p>
+                {% endif %}
             {% endif %}
         </div>
     </div>

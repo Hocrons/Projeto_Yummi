@@ -151,6 +151,12 @@ CREATE TABLE cupom (
 
 -- ---------------------------------------------------------
 -- pedido
+-- tipo_entrega:
+--   NULL        -> ainda não decidido (pedido pendente)
+--   'propria'   -> o próprio restaurante entrega (sem entregador,
+--                  sem código de entrega)
+--   'parceira'  -> entregador parceiro do Yummy pega a corrida
+--                  (fluxo com código de entrega de 4 dígitos)
 -- ---------------------------------------------------------
 CREATE TABLE pedido (
     id              INT AUTO_INCREMENT PRIMARY KEY,
@@ -160,6 +166,7 @@ CREATE TABLE pedido (
     id_endereco     INT NULL,
     data_hora       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status          VARCHAR(30) NOT NULL DEFAULT 'pendente',
+    tipo_entrega    ENUM('propria','parceira') NULL,
     valor_total     DECIMAL(10,2) NOT NULL DEFAULT 0,
     id_cupom        INT NULL,
     valor_desconto  DECIMAL(10,2) NOT NULL DEFAULT 0,

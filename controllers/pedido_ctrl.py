@@ -20,5 +20,7 @@ def status_pedido(id_pedido):
     return jsonify({
         "id": pedido["id"],
         "status": pedido["status"],
+        "tipo_entrega": pedido.get("tipo_entrega"),
+        "codigo_entrega": pedido.get("codigo_entrega"),
         "valor_total": float(pedido["valor_total"]),
     })

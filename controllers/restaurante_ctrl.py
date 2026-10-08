@@ -1,12 +1,24 @@
+import time
+import requests
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from models import models
 from controllers.decorators import login_requerido
 
 restaurante_bp = Blueprint("restaurante", __name__, url_prefix="/restaurante")
 
+
+# ---------------------------------------------------------
+# TRANSIÇÕES PERMITIDAS
+# ---------------------------------------------------------
 TRANSICOES_PERMITIDAS = {
-    "pendente": ["preparando", "cancelado"],
-    "preparando": ["localizando_entregador", "cancelado"],
+    "preparando": {
+        "propria":  ["saiu_para_entrega", "cancelado"],
+        "parceira": ["localizando_entregador", "cancelado"],
+    },
+    "saiu_para_entrega": {
+        "propria":  [],
+        "parceira": [],
+    },
 }
 
 
@@ -20,6 +32,72 @@ def _url_valida(url):
     if len(url) > 500:
         return False
     return url
+
+
+# ---------------------------------------------------------
+# GEOCODIFICAÇÃO (Nominatim)
+# ---------------------------------------------------------
+def _nominatim_query(endereco):
+    try:
+        resp = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={
+                "format": "json",
+                "limit": 1,
+                "q": endereco,
+                "countrycodes": "br",
+                "addressdetails": 0,
+            },
+            headers={"User-Agent": "YummyApp/1.0 (projeto academico)"},
+            timeout=6,
+        )
+        if resp.ok:
+            dados = resp.json()
+            if dados:
+                return float(dados[0]["lat"]), float(dados[0]["lon"])
+    except Exception as e:
+        print(f"[Nominatim] Erro na consulta '{endereco}': {e}")
+    return None, None
+
+
+def _buscar_coordenadas(rua, numero, bairro, cidade, uf):
+    tentativas = []
+
+    if rua and numero and bairro and cidade and uf:
+        tentativas.append((f"{rua}, {numero}, {bairro}, {cidade}, {uf}, Brasil", "rua"))
+    if rua and numero and cidade and uf:
+        tentativas.append((f"{rua}, {numero}, {cidade}, {uf}, Brasil", "rua"))
+    if rua and cidade and uf:
+        tentativas.append((f"{rua}, {cidade}, {uf}, Brasil", "rua"))
+    if rua and cidade:
+        tentativas.append((f"{rua}, {cidade}, Brasil", "rua"))
+    if rua and bairro and cidade:
+        tentativas.append((f"{rua}, {bairro}, {cidade}, Brasil", "rua"))
+
+    if bairro and cidade and uf:
+        tentativas.append((f"{bairro}, {cidade}, {uf}, Brasil", "bairro"))
+    if bairro and cidade:
+        tentativas.append((f"{bairro}, {cidade}, Brasil", "bairro"))
+    if cidade and uf:
+        tentativas.append((f"{cidade}, {uf}, Brasil", "cidade"))
+    if cidade:
+        tentativas.append((f"{cidade}, Brasil", "cidade"))
+
+    vistas = set()
+    unicas = []
+    for t, p in tentativas:
+        if t not in vistas:
+            vistas.add(t)
+            unicas.append((t, p))
+
+    for i, (endereco, precisao) in enumerate(unicas):
+        if i > 0:
+            time.sleep(1.1)
+        lat, lon = _nominatim_query(endereco)
+        if lat is not None:
+            return lat, lon, endereco, precisao
+
+    return None, None, None, None
 
 
 # ---------------------------------------------------------
@@ -47,14 +125,54 @@ def painel():
 @restaurante_bp.route("/pedido/<int:id_pedido>/status", methods=["POST"])
 @login_requerido("restaurante")
 def atualizar_status_pedido(id_pedido):
-    novo_status = request.form["status"]
+    novo_status = request.form.get("status", "").strip()
     pedido = models.buscar_pedido(id_pedido)
 
     if not pedido or pedido["id_restaurante"] != session["user_id"]:
         flash("Pedido não encontrado.", "erro")
         return redirect(url_for("restaurante.painel"))
 
-    permitidos = TRANSICOES_PERMITIDAS.get(pedido["status"], [])
+    # ---------- Caso especial 1: aceitar o pedido escolhendo o tipo ----------
+    if novo_status in ("aceitar_propria", "aceitar_parceira"):
+        tipo = "propria" if novo_status == "aceitar_propria" else "parceira"
+
+        if pedido["status"] != "pendente" or pedido.get("tipo_entrega"):
+            flash("Esse pedido já foi aceito.", "erro")
+            return redirect(url_for("restaurante.painel"))
+
+        ok = models.atualizar_status_e_tipo_entrega(
+            id_pedido,
+            status="preparando",
+            tipo_entrega=tipo,
+            id_restaurante=session["user_id"],
+        )
+        if ok:
+            rotulo = "entrega própria" if tipo == "propria" else "entregador parceiro"
+            flash(f"Pedido #{id_pedido} aceito com {rotulo}.", "sucesso")
+        else:
+            flash("Não foi possível aceitar esse pedido.", "erro")
+        return redirect(url_for("restaurante.painel"))
+
+    # ---------- Caso especial 2: marcar como entregue (só entrega própria) ----------
+    if novo_status == "entregue":
+        if pedido["tipo_entrega"] != "propria":
+            flash("Só pedidos com entrega própria podem ser marcados como entregues por aqui.", "erro")
+            return redirect(url_for("restaurante.painel"))
+        ok = models.marcar_pedido_entregue_pelo_restaurante(id_pedido, session["user_id"])
+        if ok:
+            models.atualizar_status_pagamento(id_pedido, "aprovado")
+            flash(f"Pedido #{id_pedido} marcado como entregue!", "sucesso")
+        else:
+            flash("Não foi possível marcar esse pedido como entregue.", "erro")
+        return redirect(url_for("restaurante.painel"))
+
+    # ---------- Caso geral: transição "normal" dentro do mesmo tipo ----------
+    tipo_entrega = pedido.get("tipo_entrega")
+    if tipo_entrega not in ("propria", "parceira"):
+        flash("Defina o tipo de entrega antes de mudar o status.", "erro")
+        return redirect(url_for("restaurante.painel"))
+
+    permitidos = TRANSICOES_PERMITIDAS.get(pedido["status"], {}).get(tipo_entrega, [])
     if novo_status not in permitidos:
         flash("Essa mudança de status não é permitida neste momento.", "erro")
         return redirect(url_for("restaurante.painel"))
@@ -258,7 +376,6 @@ def _calcular_status_cupom(c):
 def cupons():
     lista = models.listar_cupons(id_restaurante=session["user_id"], apenas_ativos=False)
 
-    # Enriquece cada cupom com status calculado
     for c in lista:
         label, classe = _calcular_status_cupom(c)
         c["status_label"] = label
@@ -276,7 +393,6 @@ def cupom_novo():
             flash(erro, "erro")
             return render_template("restaurante/cupom_form.html", cupom=None, form=request.form)
 
-        # Código único globalmente (a coluna tem UNIQUE)
         if models.buscar_cupom_por_codigo(dados["codigo"]):
             flash(f"Já existe um cupom com o código '{dados['codigo']}'.", "erro")
             return render_template("restaurante/cupom_form.html", cupom=None, form=request.form)
@@ -320,7 +436,6 @@ def cupom_editar(id_cupom):
             flash(erro, "erro")
             return render_template("restaurante/cupom_form.html", cupom=cupom, form=request.form)
 
-        # Se trocou o código, checa se não colide com outro
         if dados["codigo"] != cupom["codigo"]:
             existente = models.buscar_cupom_por_codigo(dados["codigo"])
             if existente:
@@ -401,6 +516,22 @@ def editar_perfil():
             flash("URL da foto inválida. Use http:// ou https://", "erro")
             return redirect(url_for("restaurante.editar_perfil"))
 
+        # Geocodifica o novo endereço (mantém as coords antigas se falhar)
+        rua = request.form.get("rua") or ""
+        numero = request.form.get("numero") or ""
+        bairro = request.form.get("bairro") or ""
+        cidade = request.form.get("cidade") or ""
+        uf = request.form.get("estado") or ""
+
+        restaurante_atual = models.buscar_restaurante(session["user_id"])
+        lat = restaurante_atual.get("lat") if restaurante_atual else None
+        lon = restaurante_atual.get("lon") if restaurante_atual else None
+
+        if rua and cidade:
+            nova_lat, nova_lon, _, _ = _buscar_coordenadas(rua, numero, bairro, cidade, uf)
+            if nova_lat is not None:
+                lat, lon = nova_lat, nova_lon
+
         models.atualizar_usuario(
             session["user_id"],
             request.form["nome_responsavel"],
@@ -419,6 +550,8 @@ def editar_perfil():
             cidade=request.form.get("cidade"),
             cep=request.form.get("cep"),
             foto_url=foto_url,
+            lat=lat,
+            lon=lon,
         )
 
         flash("Perfil do restaurante atualizado.", "sucesso")

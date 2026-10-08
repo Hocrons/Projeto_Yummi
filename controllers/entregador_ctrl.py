@@ -45,6 +45,9 @@ def alternar_disponibilidade():
 @entregador_bp.route("/pedido/<int:id_pedido>/aceitar", methods=["POST"])
 @login_requerido("entregador")
 def aceitar_pedido(id_pedido):
+    # A query 'listar_pedidos_disponiveis_para_entrega' só devolve pedidos
+    # do tipo 'parceira'. E a função 'atribuir_entregador' também só atualiza
+    # se tipo_entrega='parceira' — dupla proteção.
     sucesso = models.atribuir_entregador(id_pedido, session["user_id"])
     if sucesso:
         flash(f"Pedido #{id_pedido} aceito! Vá até o restaurante para retirar.", "sucesso")
@@ -78,12 +81,18 @@ def marcar_entregue(id_pedido):
         flash("Pedido não encontrado.", "erro")
         return redirect(url_for("entregador.painel"))
 
+    # Segurança extra: só pedido com entrega parceira tem código.
+    if pedido.get("tipo_entrega") != "parceira":
+        flash("Esse pedido não é uma entrega parceira.", "erro")
+        return redirect(url_for("entregador.painel"))
+
     if pedido["status"] != "saiu_para_entrega":
         flash("Esse pedido não está em rota de entrega.", "erro")
         return redirect(url_for("entregador.painel"))
 
     codigo_correto = (pedido.get("codigo_entrega") or "").strip()
     if not codigo_correto:
+        # Fallback: últimos 4 dígitos do telefone do cliente
         cliente = models.buscar_usuario_por_id(pedido["id_cliente"])
         telefone = "".join(c for c in (cliente.get("telefone") or "") if c.isdigit())
         codigo_correto = telefone[-4:] if len(telefone) >= 4 else ""

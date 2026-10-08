@@ -5,12 +5,25 @@
     <h2>🎉 Pedido #{{ pedido.id }} confirmado!</h2>
     <p class="muted">{{ pedido.nome_fantasia }}</p>
 
-    {% if pedido.codigo_entrega and pedido.status not in ('entregue', 'cancelado') %}
+    {% if pedido.tipo_entrega == 'parceira' and pedido.codigo_entrega and pedido.status not in ('entregue', 'cancelado') %}
+        {# ---------- ENTREGA PARCEIRA: mostra o código de entrega ---------- #}
         <div class="codigo-entrega-box">
             <p class="codigo-entrega-box__titulo">Código de entrega</p>
             <p class="codigo-entrega-box__numero">{{ pedido.codigo_entrega }}</p>
             <p class="codigo-entrega-box__aviso">
                 Informe esse código ao entregador quando receber o pedido.
+            </p>
+        </div>
+
+    {% elif pedido.tipo_entrega == 'propria' and pedido.status not in ('entregue', 'cancelado') %}
+        {# ---------- ENTREGA PRÓPRIA: sem código ---------- #}
+        <div class="codigo-entrega-box" style="border-color: var(--cor-secundaria);">
+            <p class="codigo-entrega-box__titulo" style="color: var(--cor-secundaria);">
+                🏪 Entrega pelo restaurante
+            </p>
+            <p class="codigo-entrega-box__aviso">
+                Este pedido será entregue pela equipe do próprio restaurante.
+                Você não precisa informar nenhum código.
             </p>
         </div>
     {% endif %}
