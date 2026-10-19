@@ -3,6 +3,7 @@
 
 {% block content %}
 <div class="form-card form-card--wide">
+    {% set etapa_cadastro = 5 %}{% include "restaurante/_progresso_cadastro.html" %}
     <h2>Últimos dados do seu restaurante</h2>
     <p class="muted">
         Confirme o e-mail <strong>{{ fluxo.email }}</strong> e o celular

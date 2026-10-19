@@ -1,8 +1,8 @@
-import time
-import requests
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+from datetime import datetime
 from models import models
 from controllers.decorators import login_requerido
+from services import geocoding
 
 restaurante_bp = Blueprint("restaurante", __name__, url_prefix="/restaurante")
 
@@ -21,6 +21,11 @@ TRANSICOES_PERMITIDAS = {
     },
 }
 
+MESES_RELATORIO = (
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+)
+
 
 def _url_valida(url):
     """Aceita só http:// ou https://. Vazio vira None. Inválido vira False."""
@@ -32,72 +37,6 @@ def _url_valida(url):
     if len(url) > 500:
         return False
     return url
-
-
-# ---------------------------------------------------------
-# GEOCODIFICAÇÃO (Nominatim)
-# ---------------------------------------------------------
-def _nominatim_query(endereco):
-    try:
-        resp = requests.get(
-            "https://nominatim.openstreetmap.org/search",
-            params={
-                "format": "json",
-                "limit": 1,
-                "q": endereco,
-                "countrycodes": "br",
-                "addressdetails": 0,
-            },
-            headers={"User-Agent": "YummyApp/1.0 (projeto academico)"},
-            timeout=6,
-        )
-        if resp.ok:
-            dados = resp.json()
-            if dados:
-                return float(dados[0]["lat"]), float(dados[0]["lon"])
-    except Exception as e:
-        print(f"[Nominatim] Erro na consulta '{endereco}': {e}")
-    return None, None
-
-
-def _buscar_coordenadas(rua, numero, bairro, cidade, uf):
-    tentativas = []
-
-    if rua and numero and bairro and cidade and uf:
-        tentativas.append((f"{rua}, {numero}, {bairro}, {cidade}, {uf}, Brasil", "rua"))
-    if rua and numero and cidade and uf:
-        tentativas.append((f"{rua}, {numero}, {cidade}, {uf}, Brasil", "rua"))
-    if rua and cidade and uf:
-        tentativas.append((f"{rua}, {cidade}, {uf}, Brasil", "rua"))
-    if rua and cidade:
-        tentativas.append((f"{rua}, {cidade}, Brasil", "rua"))
-    if rua and bairro and cidade:
-        tentativas.append((f"{rua}, {bairro}, {cidade}, Brasil", "rua"))
-
-    if bairro and cidade and uf:
-        tentativas.append((f"{bairro}, {cidade}, {uf}, Brasil", "bairro"))
-    if bairro and cidade:
-        tentativas.append((f"{bairro}, {cidade}, Brasil", "bairro"))
-    if cidade and uf:
-        tentativas.append((f"{cidade}, {uf}, Brasil", "cidade"))
-    if cidade:
-        tentativas.append((f"{cidade}, Brasil", "cidade"))
-
-    vistas = set()
-    unicas = []
-    for t, p in tentativas:
-        if t not in vistas:
-            vistas.add(t)
-            unicas.append((t, p))
-
-    for i, (endereco, precisao) in enumerate(unicas):
-        if i > 0:
-            time.sleep(1.1)
-        lat, lon = _nominatim_query(endereco)
-        if lat is not None:
-            return lat, lon, endereco, precisao
-
-    return None, None, None, None
 
 
 # ---------------------------------------------------------
@@ -118,8 +57,69 @@ def portal():
 @login_requerido("restaurante")
 def painel():
     status = request.args.get("status")
+    if status not in {
+        "pendente", "preparando", "localizando_entregador",
+        "indo_ao_restaurante", "saiu_para_entrega", "entregue", "cancelado",
+    }:
+        status = None
     pedidos = models.listar_pedidos_restaurante(session["user_id"], status=status)
     return render_template("restaurante/painel.html", pedidos=pedidos, status_filtro=status)
+
+
+@restaurante_bp.route("/relatorio")
+@login_requerido("restaurante")
+def relatorio():
+    ano_atual = datetime.now().year
+    try:
+        ano_solicitado = request.args.get("ano", str(ano_atual))
+        ano = int(ano_solicitado) if ano_solicitado else None
+        if ano is not None and not 2000 <= ano <= ano_atual:
+            ano = ano_atual
+    except (TypeError, ValueError):
+        ano = ano_atual
+
+    try:
+        mes_solicitado = request.args.get("mes", str(datetime.now().month))
+        mes = int(mes_solicitado) if mes_solicitado else None
+        if mes is not None and not 1 <= mes <= 12:
+            mes = None
+    except (TypeError, ValueError):
+        mes = None
+
+    anos = sorted(
+        set(models.listar_anos_pedidos_restaurante(session["user_id"]) + [ano_atual]),
+        reverse=True,
+    )
+    dados = models.obter_relatorio_restaurante(session["user_id"], ano, mes)
+    if ano is None and mes is None:
+        periodo_label = "Todo o histórico"
+    elif ano is None:
+        periodo_label = f"Todos os anos · {MESES_RELATORIO[mes - 1]}"
+    elif mes is None:
+        periodo_label = f"Ano de {ano}"
+    else:
+        periodo_label = f"{MESES_RELATORIO[mes - 1]} de {ano}"
+    return render_template(
+        "restaurante/relatorio.html",
+        dados=dados,
+        ano=ano,
+        mes=mes,
+        anos=anos,
+        meses=MESES_RELATORIO,
+        periodo_label=periodo_label,
+    )
+
+
+@restaurante_bp.route("/relatorio/dados")
+@login_requerido("restaurante")
+def dados_relatorio():
+    try:
+        ano = int(request.args["ano"]) if request.args.get("ano") else None
+        mes = int(request.args["mes"]) if request.args.get("mes") else None
+        dados = models.obter_relatorio_restaurante(session["user_id"], ano, mes)
+    except (TypeError, ValueError):
+        return jsonify({"erro": "Filtros de ano ou mês inválidos."}), 400
+    return jsonify(dados)
 
 
 @restaurante_bp.route("/pedido/<int:id_pedido>/status", methods=["POST"])
@@ -130,6 +130,17 @@ def atualizar_status_pedido(id_pedido):
 
     if not pedido or pedido["id_restaurante"] != session["user_id"]:
         flash("Pedido não encontrado.", "erro")
+        return redirect(url_for("restaurante.painel"))
+
+    if novo_status == "cancelado":
+        if models.cancelar_pedido_restaurante(id_pedido, session["user_id"]):
+            flash(
+                f"Pedido #{id_pedido} cancelado. Se o pagamento já foi aprovado, "
+                "o reembolso ficou pendente e deve ser processado manualmente.",
+                "sucesso",
+            )
+        else:
+            flash("Não foi possível cancelar esse pedido.", "erro")
         return redirect(url_for("restaurante.painel"))
 
     # ---------- Caso especial 1: aceitar o pedido escolhendo o tipo ----------
@@ -528,7 +539,9 @@ def editar_perfil():
         lon = restaurante_atual.get("lon") if restaurante_atual else None
 
         if rua and cidade:
-            nova_lat, nova_lon, _, _ = _buscar_coordenadas(rua, numero, bairro, cidade, uf)
+            nova_lat, nova_lon, _, _ = geocoding.buscar_coordenadas(
+                rua, numero, bairro, cidade, uf
+            )
             if nova_lat is not None:
                 lat, lon = nova_lat, nova_lon
 

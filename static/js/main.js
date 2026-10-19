@@ -6,6 +6,12 @@
  * - Fecha o dropdown após clicar em um link (sem bloquear a navegação)
  */
 document.addEventListener("click", function (event) {
+    const confirmLink = event.target.closest("[data-confirm]");
+    if (confirmLink && !window.confirm(confirmLink.dataset.confirm)) {
+        event.preventDefault();
+        return;
+    }
+
     const toggles = document.querySelectorAll(".dropdown__toggle");
 
     // Se o clique foi dentro de algum dropdown aberto

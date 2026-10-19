@@ -157,6 +157,155 @@
     padding: 10px 20px;
 }
 
+/* ---------- RELATÓRIO ---------- */
+.relatorio {
+    padding: 18px 0 36px;
+}
+
+.relatorio__cabecalho,
+.relatorio__secao-cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.relatorio__sobretitulo {
+    color: var(--cor-primaria);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    margin: 0 0 6px;
+}
+
+.relatorio__cabecalho h1,
+.relatorio__secao-cabecalho h2 {
+    margin: 0 0 6px;
+}
+
+.relatorio__cabecalho .muted,
+.relatorio__secao-cabecalho .muted {
+    margin: 0;
+}
+
+.relatorio__filtros {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.relatorio__filtros label {
+    margin: 0 0 8px;
+    color: var(--cor-muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.relatorio__filtros select {
+    min-width: 140px;
+    min-height: 42px;
+    padding: 8px 12px;
+    color: var(--cor-texto);
+    background: var(--cor-branco);
+    border: 2px solid var(--cor-borda);
+    border-radius: var(--raio);
+    font: inherit;
+}
+
+.relatorio__metricas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin: 28px 0;
+}
+
+.relatorio-card {
+    position: relative;
+    min-height: 150px;
+    padding: 22px 24px;
+    overflow: hidden;
+    background: var(--cor-branco);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+}
+
+.relatorio-card::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 5px;
+    background: var(--cor-primaria);
+    content: "";
+}
+
+.relatorio-card--faturamento::before {
+    background: var(--cor-secundaria);
+}
+
+.relatorio-card__icone {
+    float: right;
+    font-size: 25px;
+}
+
+.relatorio-card p {
+    margin: 0 0 9px;
+    color: var(--cor-muted);
+    font-weight: 700;
+}
+
+.relatorio-card strong {
+    display: block;
+    color: var(--cor-texto);
+    font-size: clamp(25px, 4vw, 34px);
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.relatorio-card__periodo {
+    display: block;
+    margin-top: 8px;
+    color: var(--cor-muted);
+    font-size: 13px;
+}
+
+.relatorio__itens {
+    padding: 22px;
+    background: var(--cor-branco);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+}
+
+.relatorio__secao-cabecalho {
+    margin-bottom: 16px;
+}
+
+.relatorio__atualizacao {
+    color: var(--cor-muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.relatorio__tabela-wrap {
+    overflow-x: auto;
+}
+
+.relatorio__tabela {
+    min-width: 620px;
+    width: 100%;
+}
+
+.relatorio__tabela td:nth-child(n+2),
+.relatorio__tabela th:nth-child(n+2) {
+    text-align: right;
+}
+
+.relatorio__vazio td {
+    padding: 24px;
+    color: var(--cor-muted);
+    text-align: center !important;
+}
+
 /* =========================================================
    MAPA (confirmação de localização do restaurante)
    ========================================================= */
@@ -239,6 +388,30 @@
 }
 
 @media (max-width: 600px) {
+    .relatorio__cabecalho,
+    .relatorio__secao-cabecalho {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    .relatorio__filtros {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    .relatorio__filtros label {
+        margin: 0;
+    }
+    .relatorio__filtros select {
+        flex: 1;
+        min-width: 120px;
+    }
+    .relatorio__metricas {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin: 20px 0;
+    }
+    .relatorio__itens {
+        padding: 16px;
+    }
     .mapa-wrapper {
         height: 240px;
     }
@@ -459,4 +632,66 @@
     .cupons-grid { grid-template-columns: 1fr; }
     .cupom-card__valor { font-size: 24px; }
     .cupom-card__acoes .btn { flex: 1 1 100%; }
+}
+/* ---------- PROGRESSO DO CADASTRO ---------- */
+.progresso-cadastro {
+    margin: 0 0 24px;
+}
+
+.progresso-cadastro__resumo {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.progresso-cadastro__etapas {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.progresso-cadastro__etapa {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--cor-muted);
+    text-align: center;
+    font-size: 11px;
+}
+
+.progresso-cadastro__numero {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--cor-borda);
+    border-radius: 50%;
+    font-weight: 800;
+}
+
+.progresso-cadastro__etapa--atual,
+.progresso-cadastro__etapa--concluida {
+    color: var(--cor-primaria-escura);
+    font-weight: 700;
+}
+
+.progresso-cadastro__etapa--atual .progresso-cadastro__numero,
+.progresso-cadastro__etapa--concluida .progresso-cadastro__numero {
+    border-color: var(--cor-primaria);
+    background: var(--cor-primaria);
+    color: white;
+}
+
+@media (max-width: 540px) {
+    .progresso-cadastro__etapas {
+        gap: 3px;
+    }
+
+    .progresso-cadastro__rotulo {
+        font-size: 9px;
+    }
 }

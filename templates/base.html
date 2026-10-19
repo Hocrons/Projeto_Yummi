@@ -82,14 +82,25 @@
             {% elif portal_atual == 'restaurante' and user_tipo == 'restaurante' %}
                 <a href="{{ url_for('restaurante.painel') }}">Pedidos</a>
                 <a href="{{ url_for('restaurante.produtos') }}">Cardápio</a>
+                <a href="{{ url_for('restaurante.relatorio') }}">Relatório</a>
                 <a href="{{ url_for('restaurante.cupons') }}">Cupons</a>
                 <a href="{{ url_for('restaurante.editar_perfil') }}">Perfil</a>
 
             {% elif portal_atual == 'entregador' and user_tipo == 'entregador' %}
                 <a href="{{ url_for('entregador.painel') }}">Painel de entregas</a>
+                <a href="{{ url_for('entregador.relatorio') }}">Meus ganhos</a>
             {% endif %}
 
-            {% if user_tipo == portal_atual and user_tipo %}
+            {% if user_tipo and user_tipo != portal_atual %}
+                <span class="muted" role="status">
+                    Você está conectado como {{ user_tipo }}.
+                </span>
+                <a href="{{ url_for('landing.escolher_portal') }}"
+                   class="btn btn--ghost"
+                   data-confirm="Você sairá da conta atual para trocar de portal. Deseja continuar?">
+                    Trocar de portal
+                </a>
+            {% elif user_tipo == portal_atual and user_tipo %}
                 <span class="muted" style="font-size:13px;">{{ user_nome }}</span>
                 <a href="{{ url_for('auth.logout') }}" class="btn btn--ghost">Sair</a>
             {% elif portal_atual %}
@@ -97,10 +108,13 @@
                 <a href="{{ url_cadastro }}" class="btn btn--primary">Criar conta</a>
             {% endif %}
 
-            <a href="{{ url_for('landing.escolher_portal') }}" class="btn btn--ghost"
-               title="Voltar para a escolha de portal (faz logout)">
-                🏠 Escolha seu portal
-            </a>
+            {% if not user_tipo or user_tipo == portal_atual %}
+                <a href="{{ url_for('landing.escolher_portal') }}" class="btn btn--ghost"
+                   title="Voltar para a escolha de portal"
+                   {% if user_tipo %}data-confirm="Você sairá da conta atual para trocar de portal. Deseja continuar?"{% endif %}>
+                    🏠 {{ 'Trocar de portal' if user_tipo else 'Escolha seu portal' }}
+                </a>
+            {% endif %}
 
             <button type="button" id="theme-toggle" class="theme-toggle"
                     title="Alternar tema" aria-label="Alternar tema claro/escuro">

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from models import models
 from controllers.decorators import login_requerido
 
@@ -31,6 +31,19 @@ def painel():
         disponiveis=disponiveis,
         minhas_entregas=minhas_entregas,
     )
+
+
+@entregador_bp.route("/relatorio")
+@login_requerido("entregador")
+def relatorio():
+    ganhos = models.obter_relatorio_ganhos_entregador(session["user_id"])
+    return render_template("entregador/relatorio.html", ganhos=ganhos)
+
+
+@entregador_bp.route("/relatorio/dados")
+@login_requerido("entregador")
+def dados_relatorio():
+    return jsonify(models.obter_relatorio_ganhos_entregador(session["user_id"]))
 
 
 @entregador_bp.route("/disponibilidade", methods=["POST"])

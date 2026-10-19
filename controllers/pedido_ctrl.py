@@ -10,17 +10,16 @@ def status_pedido(id_pedido):
     Endpoint simples de polling usado pelo JS da página de acompanhamento
     do pedido (ex.: templates/cliente/pedido_sucesso.html).
     """
-    if "user_id" not in session:
+    if session.get("user_tipo") != "cliente":
         return jsonify({"erro": "não autenticado"}), 401
 
     pedido = models.buscar_pedido(id_pedido)
-    if not pedido:
+    if not pedido or pedido["id_cliente"] != session["user_id"]:
         return jsonify({"erro": "pedido não encontrado"}), 404
 
     return jsonify({
         "id": pedido["id"],
         "status": pedido["status"],
         "tipo_entrega": pedido.get("tipo_entrega"),
-        "codigo_entrega": pedido.get("codigo_entrega"),
         "valor_total": float(pedido["valor_total"]),
     })

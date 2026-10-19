@@ -60,11 +60,13 @@
             </div>
             <div class="card-pedido__texto">
                 <strong>#{{ p.id }} - {{ p.nome_fantasia }}</strong>
-                <span class="status-badge status-badge--{{ p.status }}">{{ p.status.replace('_', ' ') }}</span>
+                <span class="status-badge status-badge--{{ p.status }}">{{ status_labels.get(p.status, p.status.replace('_', ' ')|title) }}</span>
                 {% if p.status == 'indo_ao_restaurante' %}
                     <p class="muted">Retirar em: {{ p.rua_restaurante }}, {{ p.bairro_restaurante }}</p>
+                    <p class="muted">Ao chegar, confirme a retirada para iniciar a entrega.</p>
                 {% elif p.status == 'saiu_para_entrega' %}
                     <p class="muted">Entregar em: {{ p.rua_entrega or '-' }}, {{ p.bairro_entrega or '' }}</p>
+                    <p class="muted">Peça ao cliente o código de 4 dígitos para confirmar a entrega.</p>
                 {% endif %}
             </div>
 
@@ -76,8 +78,9 @@
                 <button type="button"
                         class="btn btn--primary btn-abrir-modal-codigo"
                         data-id="{{ p.id }}"
-                        data-cliente="{{ p.nome_cliente }}">
-                    Cheguei no local
+                        data-cliente="{{ p.nome_cliente }}"
+                        data-action-url="{{ url_for('entregador.marcar_entregue', id_pedido=p.id) }}">
+                    Confirmar código do cliente
                 </button>
             {% endif %}
         </div>

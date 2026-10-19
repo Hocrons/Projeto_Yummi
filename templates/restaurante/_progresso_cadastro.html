@@ -1,0 +1,15 @@
+{% set etapas = ['E-mail', 'Confirmação', 'Responsável', 'Celular', 'Restaurante', 'Localização'] %}
+<nav class="progresso-cadastro" aria-label="Progresso do cadastro do restaurante">
+    <p class="progresso-cadastro__resumo">Etapa {{ etapa_cadastro }} de {{ etapas|length }}: {{ etapas[etapa_cadastro - 1] }}</p>
+    <ol class="progresso-cadastro__etapas">
+        {% for etapa in etapas %}
+            <li class="progresso-cadastro__etapa
+                       {{ 'progresso-cadastro__etapa--concluida' if loop.index < etapa_cadastro }}
+                       {{ 'progresso-cadastro__etapa--atual' if loop.index == etapa_cadastro }}"
+                {% if loop.index == etapa_cadastro %}aria-current="step"{% endif %}>
+                <span class="progresso-cadastro__numero">{{ loop.index }}</span>
+                <span class="progresso-cadastro__rotulo">{{ etapa }}</span>
+            </li>
+        {% endfor %}
+    </ol>
+</nav>

@@ -125,9 +125,13 @@ def adicionar_ao_carrinho():
     carrinho = _carrinho()
 
     if carrinho.get("itens") and carrinho.get("id_restaurante") != produto["id_restaurante"]:
+        restaurante_atual = models.buscar_restaurante(carrinho["id_restaurante"])
+        restaurante_novo = models.buscar_restaurante(produto["id_restaurante"])
         return jsonify({
             "erro": "Seu carrinho já tem itens de outro restaurante.",
             "conflito_restaurante": True,
+            "restaurante_atual": restaurante_atual.get("nome_fantasia") if restaurante_atual else None,
+            "restaurante_novo": restaurante_novo.get("nome_fantasia") if restaurante_novo else None,
         }), 409
 
     carrinho["id_restaurante"] = produto["id_restaurante"]
@@ -259,6 +263,8 @@ def adicionar_endereco():
     flash("Endereço adicionado.", "sucesso")
     if request.form.get("origem") == "perfil":
         return redirect(url_for("cliente.editar_perfil"))
+    if request.form.get("origem") == "checkout":
+        return redirect(url_for("cliente.checkout"))
     return redirect(url_for("cliente.ver_carrinho"))
 
 
@@ -443,6 +449,9 @@ def checkout():
 @login_requerido("cliente")
 def pedido_sucesso(id_pedido):
     pedido = models.buscar_pedido(id_pedido)
+    if not pedido or pedido["id_cliente"] != session["user_id"]:
+        flash("Pedido não encontrado.", "erro")
+        return redirect(url_for("cliente.meus_pedidos"))
     return render_template("cliente/pedido_sucesso.html", pedido=pedido)
 
 

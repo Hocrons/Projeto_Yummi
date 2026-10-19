@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Pedido confirmado{% endblock %}
+{% block title %}Acompanhar pedido #{{ pedido.id }}{% endblock %}
 {% block content %}
 <div class="form-card" style="text-align:center;">
-    <h2>🎉 Pedido #{{ pedido.id }} confirmado!</h2>
+    <h2>🎉 Pedido #{{ pedido.id }}</h2>
     <p class="muted">{{ pedido.nome_fantasia }}</p>
 
     {% if pedido.tipo_entrega == 'parceira' and pedido.codigo_entrega and pedido.status not in ('entregue', 'cancelado') %}
@@ -28,7 +28,7 @@
         </div>
     {% endif %}
 
-    <p>Status atual: <strong id="status-pedido" data-id="{{ pedido.id }}">{{ pedido.status }}</strong></p>
+    <p>Status atual: <strong id="status-pedido" data-id="{{ pedido.id }}" data-status="{{ pedido.status }}">{{ status_labels.get(pedido.status, pedido.status.replace('_', ' ')|title) }}</strong></p>
     <p>Total: R$ {{ '%.2f' % pedido.valor_total }}</p>
 
     <ul style="text-align:left; max-width:320px; margin: 16px auto;">

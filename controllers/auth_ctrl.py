@@ -1,11 +1,10 @@
 import os
 import time
 import secrets
-import requests
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from extensions import oauth
 from models import models
-from services import otp, verificacao_email, verificacao_whatsapp_local
+from services import geocoding, otp, verificacao_email, verificacao_whatsapp_local
 from utils import normalizar_telefone, mascarar_email, mascarar_telefone
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -53,72 +52,6 @@ def _codigo_restaurante_valido(fluxo, chave_codigo, chave_gerado_em):
 def _codigo_entrega_padrao(telefone_normalizado):
     digitos = "".join(c for c in (telefone_normalizado or "") if c.isdigit())
     return digitos[-4:] if len(digitos) >= 4 else None
-
-
-def _nominatim_query(endereco):
-    try:
-        resp = requests.get(
-            "https://nominatim.openstreetmap.org/search",
-            params={
-                "format": "json",
-                "limit": 1,
-                "q": endereco,
-                "countrycodes": "br",
-                "addressdetails": 0,
-            },
-            headers={"User-Agent": "YummyApp/1.0 (projeto academico)"},
-            timeout=6,
-        )
-        if resp.ok:
-            dados = resp.json()
-            if dados:
-                return float(dados[0]["lat"]), float(dados[0]["lon"])
-    except Exception as e:
-        print(f"[Nominatim] Erro na consulta '{endereco}': {e}")
-    return None, None
-
-
-def _buscar_coordenadas(rua, numero, bairro, cidade, uf):
-    tentativas = []
-
-    if rua and numero and bairro and cidade and uf:
-        tentativas.append((f"{rua}, {numero}, {bairro}, {cidade}, {uf}, Brasil", "rua"))
-    if rua and numero and cidade and uf:
-        tentativas.append((f"{rua}, {numero}, {cidade}, {uf}, Brasil", "rua"))
-    if rua and cidade and uf:
-        tentativas.append((f"{rua}, {cidade}, {uf}, Brasil", "rua"))
-    if rua and cidade:
-        tentativas.append((f"{rua}, {cidade}, Brasil", "rua"))
-    if rua and bairro and cidade:
-        tentativas.append((f"{rua}, {bairro}, {cidade}, Brasil", "rua"))
-
-    if bairro and cidade and uf:
-        tentativas.append((f"{bairro}, {cidade}, {uf}, Brasil", "bairro"))
-    if bairro and cidade:
-        tentativas.append((f"{bairro}, {cidade}, Brasil", "bairro"))
-    if cidade and uf:
-        tentativas.append((f"{cidade}, {uf}, Brasil", "cidade"))
-    if cidade:
-        tentativas.append((f"{cidade}, Brasil", "cidade"))
-
-    vistas = set()
-    unicas = []
-    for t, p in tentativas:
-        if t not in vistas:
-            vistas.add(t)
-            unicas.append((t, p))
-
-    for i, (endereco, precisao) in enumerate(unicas):
-        if i > 0:
-            time.sleep(1.1)
-        print(f"[Nominatim] Tentando ({precisao}): {endereco}")
-        lat, lon = _nominatim_query(endereco)
-        if lat is not None:
-            print(f"[Nominatim] ✓ Encontrado ({precisao}): {lat}, {lon}")
-            return lat, lon, endereco, precisao
-
-    print("[Nominatim] ✗ Nenhuma tentativa funcionou.")
-    return None, None, None, None
 
 
 # =========================================================
@@ -784,7 +717,9 @@ def restaurante_completar():
         uf = request.form.get("estado") or ""
         cep = request.form.get("cep") or ""
 
-        lat, lon, endereco_usado, precisao = _buscar_coordenadas(rua, numero, bairro, cidade, uf)
+        lat, lon, endereco_usado, precisao = geocoding.buscar_coordenadas(
+            rua, numero, bairro, cidade, uf
+        )
 
         fluxo["form_dados"] = {
             "senha": request.form.get("senha"),

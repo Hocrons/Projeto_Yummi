@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Meus ganhos{% endblock %}
+{% block content %}
+<section class="relatorio relatorio--entregador"
+         data-report-type="entregador"
+         data-refresh-url="{{ url_for('entregador.dados_relatorio') }}">
+    <div class="relatorio__cabecalho">
+        <div>
+            <p class="relatorio__sobretitulo">YUMMY · SUAS ENTREGAS</p>
+            <h1>Meus ganhos</h1>
+            <p class="muted">Cada entrega concluída conta. Continue no seu ritmo!</p>
+        </div>
+        <span class="relatorio__atualizacao" data-report-refresh-status aria-live="polite">Atualizado agora</span>
+    </div>
+
+    <div class="relatorio__metricas relatorio__metricas--entregador">
+        <article class="relatorio-card relatorio-card--dia">
+            <span class="relatorio-card__icone" aria-hidden="true">☀️</span>
+            <p>Ganho do dia</p>
+            <strong data-ganho="ganho_dia">R$ {{ '{:,.2f}'.format(ganhos.ganho_dia).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong>
+            <span class="relatorio-card__periodo">Hoje, desde 00:00</span>
+        </article>
+        <article class="relatorio-card relatorio-card--semana">
+            <span class="relatorio-card__icone" aria-hidden="true">🗓️</span>
+            <p>Ganho semanal</p>
+            <strong data-ganho="ganho_semanal">R$ {{ '{:,.2f}'.format(ganhos.ganho_semanal).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong>
+            <span class="relatorio-card__periodo">Últimos 7 dias, incluindo hoje</span>
+        </article>
+        <article class="relatorio-card relatorio-card--mes">
+            <span class="relatorio-card__icone" aria-hidden="true">🏆</span>
+            <p>Ganho mensal</p>
+            <strong data-ganho="ganho_mensal">R$ {{ '{:,.2f}'.format(ganhos.ganho_mensal).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong>
+            <span class="relatorio-card__periodo">Desde o primeiro dia do mês</span>
+        </article>
+    </div>
+
+    <p class="relatorio__nota">
+        Os ganhos consideram a taxa de entrega de corridas concluídas. Gorjetas ainda não são registradas pelo sistema.
+    </p>
+</section>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/relatorios.js') }}"></script>
+{% endblock %}

@@ -51,6 +51,36 @@
     min-width: 0;
 }
 
+/* ---------- RELATÓRIO DE GANHOS ---------- */
+.relatorio--entregador .relatorio__metricas {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.relatorio--entregador .relatorio-card {
+    min-height: 180px;
+}
+
+.relatorio-card--dia::before {
+    background: #f1a72b;
+}
+
+.relatorio-card--semana::before {
+    background: var(--cor-secundaria);
+}
+
+.relatorio-card--mes::before {
+    background: var(--cor-primaria);
+}
+
+.relatorio__nota {
+    padding: 14px 16px;
+    color: var(--cor-muted);
+    background: var(--cor-fundo-alt);
+    border-radius: var(--raio);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
 .modal-codigo {
     position: fixed;
     inset: 0;
@@ -163,6 +193,9 @@
 }
 
 @media (max-width: 480px) {
+    .relatorio--entregador .relatorio__metricas {
+        grid-template-columns: 1fr;
+    }
     .caixa-codigo-modal {
         gap: 8px;
     }

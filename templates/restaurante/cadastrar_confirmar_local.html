@@ -7,6 +7,7 @@
 
 {% block content %}
 <div class="form-card form-card--wide">
+    {% set etapa_cadastro = 6 %}{% include "restaurante/_progresso_cadastro.html" %}
     <a href="{{ voltar_url }}" class="link-voltar">&lsaquo;</a>
 
     <p class="entrada-titulo-sm">INFORMAÇÕES DA LOJA</p>

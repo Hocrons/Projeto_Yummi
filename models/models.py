@@ -815,6 +815,111 @@ def listar_pedidos_restaurante(id_restaurante, status=None, tipo_entrega=None):
         return db.cursor.fetchall()
 
 
+def listar_anos_pedidos_restaurante(id_restaurante):
+    with DB() as db:
+        db.cursor.execute(
+            """SELECT DISTINCT YEAR(data_hora) AS ano
+               FROM pedido
+               WHERE id_restaurante=%s
+               ORDER BY ano DESC""",
+            (id_restaurante,),
+        )
+        return [int(row["ano"]) for row in db.cursor.fetchall() if row["ano"]]
+
+
+def obter_relatorio_restaurante(id_restaurante, ano=None, mes=None):
+    if ano is not None and (not isinstance(ano, int) or not 2000 <= ano <= 9999):
+        raise ValueError("Ano de relatório inválido.")
+    if mes is not None and (not isinstance(mes, int) or not 1 <= mes <= 12):
+        raise ValueError("Mês de relatório inválido.")
+
+    filtro_periodo = ""
+    parametros = [id_restaurante]
+    if ano is not None:
+        filtro_periodo += " AND YEAR(p.data_hora)=%s"
+        parametros.append(ano)
+    if mes is not None:
+        filtro_periodo += " AND MONTH(p.data_hora)=%s"
+        parametros.append(mes)
+
+    with DB() as db:
+        db.cursor.execute(
+            f"""SELECT COUNT(*) AS numero_vendas,
+                       COALESCE(SUM(p.valor_total), 0) AS faturamento
+                FROM pedido p
+                WHERE p.id_restaurante=%s
+                  AND p.status != 'cancelado'
+                  {filtro_periodo}""",
+            parametros,
+        )
+        metricas = db.cursor.fetchone()
+
+        db.cursor.execute(
+            f"""SELECT pr.id, pr.nome,
+                       SUM(ip.quantidade) AS quantidade,
+                       SUM(ip.quantidade * ip.preco_unitario) AS faturamento,
+                       SUM(ip.quantidade * ip.preco_unitario)
+                           / NULLIF(SUM(ip.quantidade), 0) AS preco_unitario
+                FROM item_pedido ip
+                JOIN pedido p ON p.id = ip.id_pedido
+                JOIN produto pr ON pr.id = ip.id_produto
+                WHERE p.id_restaurante=%s
+                  AND p.status != 'cancelado'
+                  {filtro_periodo}
+                GROUP BY pr.id, pr.nome
+                ORDER BY quantidade DESC, pr.nome ASC""",
+            parametros,
+        )
+        itens = db.cursor.fetchall()
+
+    return {
+        "numero_vendas": int(metricas["numero_vendas"]),
+        "faturamento": float(metricas["faturamento"]),
+        "itens": [
+            {
+                "id": item["id"],
+                "nome": item["nome"],
+                "quantidade": int(item["quantidade"]),
+                "preco_unitario": float(item["preco_unitario"]),
+                "faturamento": float(item["faturamento"]),
+            }
+            for item in itens
+        ],
+    }
+
+
+def obter_relatorio_ganhos_entregador(id_entregador):
+    with DB() as db:
+        db.cursor.execute(
+            """SELECT
+                   COALESCE(SUM(
+                       CASE WHEN COALESCE(p.entregue_em, p.data_hora) >= CURDATE()
+                            THEN p.taxa_entrega_cobrada ELSE 0 END
+                   ), 0) AS ganho_dia,
+                   COALESCE(SUM(
+                       CASE WHEN COALESCE(p.entregue_em, p.data_hora)
+                                     >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+                            THEN p.taxa_entrega_cobrada ELSE 0 END
+                   ), 0) AS ganho_semanal,
+                   COALESCE(SUM(
+                       CASE WHEN COALESCE(p.entregue_em, p.data_hora)
+                                     >= DATE_FORMAT(CURDATE(), '%%Y-%%m-01')
+                            THEN p.taxa_entrega_cobrada ELSE 0 END
+                   ), 0) AS ganho_mensal
+               FROM pedido p
+               WHERE p.id_entregador=%s
+                 AND p.tipo_entrega='parceira'
+                 AND p.status='entregue'
+                 AND COALESCE(p.entregue_em, p.data_hora)
+                     >= DATE_FORMAT(CURDATE(), '%%Y-%%m-01')
+                     - INTERVAL 6 DAY""",
+            (id_entregador,),
+        )
+        ganhos = db.cursor.fetchone()
+
+    return {periodo: float(valor) for periodo, valor in ganhos.items()}
+
+
 def listar_pedidos_disponiveis_para_entrega():
     """
     Lista só pedidos que o entregador parceiro pode pegar:
@@ -880,7 +985,7 @@ def marcar_pedido_retirado(id_pedido, id_entregador):
 def marcar_pedido_entregue(id_pedido, id_entregador):
     with DB() as db:
         db.cursor.execute(
-            """UPDATE pedido SET status='entregue'
+            """UPDATE pedido SET status='entregue', entregue_em=CURRENT_TIMESTAMP
                WHERE id=%s AND id_entregador=%s AND status='saiu_para_entrega'""",
             (id_pedido, id_entregador),
         )
@@ -894,7 +999,7 @@ def marcar_pedido_entregue_pelo_restaurante(id_pedido, id_restaurante):
     """
     with DB() as db:
         db.cursor.execute(
-            """UPDATE pedido SET status='entregue'
+            """UPDATE pedido SET status='entregue', entregue_em=CURRENT_TIMESTAMP
                WHERE id=%s AND id_restaurante=%s
                  AND tipo_entrega='propria'
                  AND status='saiu_para_entrega'""",
@@ -911,6 +1016,33 @@ def liberar_entregador(id_pedido, id_restaurante):
             (id_pedido, id_restaurante),
         )
         return db.cursor.rowcount > 0
+
+
+def cancelar_pedido_restaurante(id_pedido, id_restaurante):
+    with DB() as db:
+        db.cursor.execute(
+            """UPDATE pedido
+               SET status='cancelado'
+               WHERE id=%s AND id_restaurante=%s
+                 AND status IN (
+                     'pendente', 'preparando', 'localizando_entregador',
+                     'indo_ao_restaurante', 'saiu_para_entrega', 'entregue'
+                 )""",
+            (id_pedido, id_restaurante),
+        )
+        if db.cursor.rowcount == 0:
+            return False
+
+        db.cursor.execute(
+            """UPDATE pagamento
+               SET status=CASE
+                   WHEN status='aprovado' THEN 'reembolso_pendente'
+                   ELSE 'cancelado'
+               END
+               WHERE id_pedido=%s""",
+            (id_pedido,),
+        )
+        return True
 
 
 def atualizar_status_pedido(id_pedido, status, id_restaurante=None):

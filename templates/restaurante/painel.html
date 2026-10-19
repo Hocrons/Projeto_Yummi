@@ -7,7 +7,7 @@
     <a href="{{ url_for('restaurante.painel') }}" class="chip {{ 'chip--ativo' if not status_filtro }}">Todos</a>
     {% for s in ['pendente', 'preparando', 'localizando_entregador', 'indo_ao_restaurante', 'saiu_para_entrega', 'entregue', 'cancelado'] %}
         <a href="{{ url_for('restaurante.painel', status=s) }}"
-           class="chip {{ 'chip--ativo' if status_filtro == s }}">{{ s.replace('_', ' ') }}</a>
+           class="chip {{ 'chip--ativo' if status_filtro == s }}">{{ status_labels.get(s, s.replace('_', ' ')|title) }}</a>
     {% endfor %}
 </div>
 
@@ -19,7 +19,7 @@
             <strong>#{{ p.id }} - {{ p.nome_cliente }}</strong>
             <p class="muted">{{ p.data_hora }}</p>
 
-            <span class="status-badge status-badge--{{ p.status }}">{{ p.status.replace('_', ' ') }}</span>
+            <span class="status-badge status-badge--{{ p.status }}">{{ status_labels.get(p.status, p.status.replace('_', ' ')|title) }}</span>
 
             {% if p.tipo_entrega == 'propria' %}
                 <span class="status-badge" style="background: var(--cor-primaria-suave); color: var(--cor-primaria);">
@@ -34,6 +34,15 @@
 
         <div class="acoes-pedido">
             <p>R$ {{ '%.2f' % p.valor_total }}</p>
+            {% if p.status != 'cancelado' %}
+                <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}"
+                      onsubmit="return confirm('O pedido será removido do faturamento. Se o pagamento estiver aprovado, o reembolso ficará pendente de processamento manual. Continuar?');">
+                    <input type="hidden" name="status" value="cancelado">
+                    <button class="btn btn--perigo">
+                        {{ 'Cancelar e solicitar reembolso' if p.status == 'entregue' else 'Cancelar pedido' }}
+                    </button>
+                </form>
+            {% endif %}
 
             {% if p.status == 'pendente' %}
                 {# ---------- ESCOLHA DO TIPO DE ENTREGA ---------- #}
@@ -45,12 +54,6 @@
                     <input type="hidden" name="status" value="aceitar_parceira">
                     <button class="btn btn--primary">Aceitar (entregador parceiro)</button>
                 </form>
-                <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}"
-                      onsubmit="return confirm('Cancelar este pedido?');">
-                    <input type="hidden" name="status" value="cancelado">
-                    <button class="btn btn--perigo">Cancelar</button>
-                </form>
-
             {% elif p.status == 'preparando' %}
                 {% if p.tipo_entrega == 'propria' %}
                     <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}">
@@ -63,12 +66,6 @@
                         <button class="btn btn--secundario">Marcar como pronto (buscar entregador)</button>
                     </form>
                 {% endif %}
-                <form method="post" action="{{ url_for('restaurante.atualizar_status_pedido', id_pedido=p.id) }}"
-                      onsubmit="return confirm('Cancelar este pedido?');">
-                    <input type="hidden" name="status" value="cancelado">
-                    <button class="btn btn--perigo">Cancelar</button>
-                </form>
-
             {% elif p.status == 'localizando_entregador' %}
                 <p class="muted">Aguardando um entregador parceiro aceitar...</p>
 

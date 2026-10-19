@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Relatório de vendas{% endblock %}
+{% block content %}
+<section class="relatorio"
+         data-report-type="restaurante"
+         data-refresh-url="{{ url_for('restaurante.dados_relatorio', ano=ano if ano is not none else '', mes=mes if mes is not none else '') }}">
+    <div class="relatorio__cabecalho">
+        <div>
+            <p class="relatorio__sobretitulo">YUMMY · DESEMPENHO</p>
+            <h1>Relatório de vendas</h1>
+            <p class="muted">Acompanhe os pedidos e os itens mais vendidos do seu restaurante.</p>
+        </div>
+        <form class="relatorio__filtros" method="get" action="{{ url_for('restaurante.relatorio') }}">
+            <label for="relatorio-ano">Ano</label>
+            <select id="relatorio-ano" name="ano">
+                <option value="" {% if ano is none %}selected{% endif %}>Todos os anos</option>
+                {% for opcao_ano in anos %}
+                <option value="{{ opcao_ano }}" {% if ano == opcao_ano %}selected{% endif %}>{{ opcao_ano }}</option>
+                {% endfor %}
+            </select>
+            <label for="relatorio-mes">Mês</label>
+            <select id="relatorio-mes" name="mes">
+                <option value="" {% if mes is none %}selected{% endif %}>Todos os meses</option>
+                {% for indice in range(12) %}
+                <option value="{{ indice + 1 }}" {% if mes == indice + 1 %}selected{% endif %}>{{ meses[indice] }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn--primary">Filtrar</button>
+        </form>
+    </div>
+
+    <div class="relatorio__metricas">
+        <article class="relatorio-card relatorio-card--vendas">
+            <span class="relatorio-card__icone" aria-hidden="true">🧾</span>
+            <p>Número de vendas</p>
+            <strong id="relatorio-vendas">{{ dados.numero_vendas }}</strong>
+            <span class="relatorio-card__periodo">{{ periodo_label }}</span>
+        </article>
+        <article class="relatorio-card relatorio-card--faturamento">
+            <span class="relatorio-card__icone" aria-hidden="true">💰</span>
+            <p>Faturamento total</p>
+            <strong id="relatorio-faturamento">R$ {{ '{:,.2f}'.format(dados.faturamento).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong>
+            <span class="relatorio-card__periodo">{{ periodo_label }}</span>
+        </article>
+    </div>
+
+    <section class="relatorio__itens">
+        <div class="relatorio__secao-cabecalho">
+            <div>
+                <h2>Itens vendidos</h2>
+                <p class="muted">Ordenados por quantidade vendida, da maior para a menor.</p>
+            </div>
+            <span class="relatorio__atualizacao" data-report-refresh-status aria-live="polite">Atualizado agora</span>
+        </div>
+        <div class="relatorio__tabela-wrap">
+            <table class="tabela relatorio__tabela">
+                <thead>
+                    <tr>
+                        <th>Nome do item</th>
+                        <th>Quantidade</th>
+                        <th>Preço unitário médio</th>
+                        <th>Faturamento</th>
+                    </tr>
+                </thead>
+                <tbody id="relatorio-itens">
+                    {% for item in dados.itens %}
+                    <tr>
+                        <td><strong>{{ item.nome }}</strong></td>
+                        <td>{{ item.quantidade }}</td>
+                        <td>R$ {{ '{:,.2f}'.format(item.preco_unitario).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                        <td>R$ {{ '{:,.2f}'.format(item.faturamento).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr class="relatorio__vazio">
+                        <td colspan="4">Nenhum item vendido neste período.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/relatorios.js') }}"></script>
+{% endblock %}

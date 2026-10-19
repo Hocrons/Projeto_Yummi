@@ -6,12 +6,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ---------- Botões "Adicionar" no cardápio ----------
     document.querySelectorAll(".btn-adicionar").forEach((botao) => {
-        botao.addEventListener("click", async () => {
-            const idProduto = botao.dataset.id;
-            const nomeProduto = botao.dataset.nome;
+        botao.addEventListener("click", () => adicionarProduto(botao));
+    });
 
-            botao.disabled = true;
-            try {
+    async function adicionarProduto(botao) {
+        const idProduto = botao.dataset.id;
+        const nomeProduto = botao.dataset.nome;
+        botao.disabled = true;
+
+        try {
+            while (true) {
                 const resposta = await fetch(`${BASE_CLIENTE}/carrinho/adicionar`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -21,10 +25,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (!resposta.ok) {
                     if (dados.conflito_restaurante) {
-                        if (confirm(dados.erro + " Deseja esvaziar o carrinho e adicionar este item?")) {
-                            await fetch(`${BASE_CLIENTE}/carrinho/limpar`, { method: "POST" });
-                            botao.click();
+                        const atual = dados.restaurante_atual || "outro restaurante";
+                        const novo = dados.restaurante_novo || "este restaurante";
+                        if (!confirm(`Seu carrinho contém itens de "${atual}". Se continuar, ele será esvaziado para adicionar itens de "${novo}". Deseja continuar?`)) return;
+
+                        const respostaLimpeza = await fetch(`${BASE_CLIENTE}/carrinho/limpar`, { method: "POST" });
+                        if (!respostaLimpeza.ok) {
+                            mostrarToast("Não foi possível limpar o carrinho. Tente novamente.");
+                            return;
                         }
+                        continue;
                     } else {
                         mostrarToast(dados.erro || "Não foi possível adicionar o produto.");
                     }
@@ -33,14 +43,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 atualizarBadgeCarrinho(dados.totais.qtd_total);
                 mostrarToast(`"${nomeProduto}" adicionado ao carrinho!`);
-            } catch (erro) {
-                console.error(erro);
-                mostrarToast("Erro de conexão. Tente novamente.");
-            } finally {
-                botao.disabled = false;
+                return;
             }
-        });
-    });
+        } catch (erro) {
+            console.error(erro);
+            mostrarToast("Erro de conexão. Tente novamente.");
+        } finally {
+            botao.disabled = false;
+        }
+    }
 
     // ---------- Botões +/- na página do carrinho ----------
     document.querySelectorAll(".btn-qtd").forEach((botao) => {

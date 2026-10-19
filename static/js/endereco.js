@@ -21,39 +21,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ---------------------------------------------------------------
-    // Helper: busca lat/lon no Nominatim a partir dos campos já preenchidos
-    // (usado depois do ViaCEP, que não devolve coordenadas)
-    // ---------------------------------------------------------------
-    function geocodificarEnderecoAtual() {
-        if (!inputRua || !inputCidade) return;
-
-        const partes = [
-            inputRua.value,
-            inputNumero ? inputNumero.value : "",
-            inputBairro ? inputBairro.value : "",
-            inputCidade.value,
-            "Brasil",
-        ].filter((p) => p && p.trim());
-
-        if (partes.length < 2) return;
-
-        const query = partes.join(", ");
-        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(query)}`;
-
-        fetch(url, { headers: { "Accept-Language": "pt-BR" } })
-            .then((res) => res.json())
-            .then((data) => {
-                if (data && data.length > 0) {
-                    preencherCoordenadas(data[0].lat, data[0].lon);
-                    console.log("[endereco.js] Coordenadas obtidas via geocoding:", data[0].lat, data[0].lon);
-                } else {
-                    console.warn("[endereco.js] Nominatim não retornou resultado para:", query);
-                }
-            })
-            .catch((err) => console.error("[endereco.js] Erro no geocoding:", err));
-    }
-
-    // ---------------------------------------------------------------
     // 1. ViaCEP (Gratuito - Busca ao desfocar o campo CEP)
     // ---------------------------------------------------------------
     if (inputCep) {
@@ -75,9 +42,6 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (inputCep) inputCep.value = data.cep || cep;
                             if (inputNumero) inputNumero.focus();
 
-                            // ViaCEP não devolve coordenadas — busca no Nominatim
-                            // usando os dados recém-preenchidos.
-                            geocodificarEnderecoAtual();
                         } else {
                             if (typeof mostrarToast === "function") {
                                 mostrarToast("CEP não encontrado.");
@@ -107,69 +71,69 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ---------------------------------------------------------------
-    // 2. OpenStreetMap / Nominatim (Gratuito - Autocomplete)
+    // 2. Busca explícita de endereço via API do servidor
     // ---------------------------------------------------------------
     if (inputSearch) {
-        let timeout = null;
-
+        const botaoBusca = document.getElementById("buscar-endereco");
         const listaSugestoes = document.createElement("ul");
         listaSugestoes.style.cssText = "position:absolute; z-index:1000; background:#fff; border:1px solid #ccc; width:100%; list-style:none; padding:0; margin:0; max-height:200px; overflow-y:auto; border-radius:0 0 8px 8px; box-shadow:0 4px 6px rgba(0,0,0,0.1);";
 
         inputSearch.parentNode.style.position = "relative";
         inputSearch.parentNode.appendChild(listaSugestoes);
 
-        inputSearch.addEventListener("input", () => {
-            clearTimeout(timeout);
+        botaoBusca.addEventListener("click", async () => {
             const query = inputSearch.value.trim();
-
             if (query.length < 3) {
-                listaSugestoes.innerHTML = "";
+                if (typeof mostrarToast === "function") mostrarToast("Informe pelo menos 3 caracteres.");
                 return;
             }
 
-            timeout = setTimeout(() => {
-                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=br&addressdetails=1&limit=5`, {
-                    headers: {
-                        "Accept-Language": "pt-BR"
-                    }
-                })
-                    .then((res) => res.json())
-                    .then((data) => {
+            botaoBusca.disabled = true;
+            listaSugestoes.innerHTML = "";
+            try {
+                const response = await fetch(`/api/geocoding/search?q=${encodeURIComponent(query)}`, {
+                    headers: { "Accept": "application/json" },
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok) {
+                    throw new Error(data.erro || "Não foi possível buscar esse endereço.");
+                }
+
+                data.resultados.forEach((item) => {
+                    const li = document.createElement("li");
+                    li.style.cssText = "padding:10px; cursor:pointer; border-bottom:1px solid #eee; font-size:0.9em; text-align:left; color:#333;";
+                    li.textContent = item.display_name;
+
+                    li.addEventListener("click", () => {
+                        const addr = item.address || {};
+                        if (inputRua) inputRua.value = addr.road || addr.pedestrian || addr.suburb || "";
+                        if (inputNumero) inputNumero.value = addr.house_number || "";
+                        if (inputBairro) inputBairro.value = addr.suburb || addr.neighbourhood || addr.district || "";
+                        if (inputCidade) inputCidade.value = addr.city || addr.town || addr.municipality || "";
+                        if (inputCep && addr.postcode) inputCep.value = addr.postcode.replace(/\D/g, "");
+
+                        preencherCoordenadas(item.lat, item.lon);
+                        inputSearch.value = item.display_name;
                         listaSugestoes.innerHTML = "";
-                        data.forEach((item) => {
-                            const li = document.createElement("li");
-                            li.style.cssText = "padding:10px; cursor:pointer; border-bottom:1px solid #eee; font-size:0.9em; text-align:left; color:#333;";
-                            li.textContent = item.display_name;
 
-                            li.addEventListener("click", () => {
-                                const addr = item.address || {};
+                        if (inputNumero && !addr.house_number) inputNumero.focus();
+                    });
+                    listaSugestoes.appendChild(li);
+                });
 
-                                if (inputRua) inputRua.value = addr.road || addr.pedestrian || addr.suburb || "";
-                                if (inputNumero) inputNumero.value = addr.house_number || "";
-                                if (inputBairro) inputBairro.value = addr.suburb || addr.neighbourhood || addr.district || "";
-                                if (inputCidade) inputCidade.value = addr.city || addr.town || addr.municipality || "";
-                                if (inputCep && addr.postcode) inputCep.value = addr.postcode.replace(/\D/g, "");
-
-                                // Salva as coordenadas que o Nominatim já devolveu
-                                preencherCoordenadas(item.lat, item.lon);
-
-                                inputSearch.value = item.display_name;
-                                listaSugestoes.innerHTML = "";
-
-                                if (inputNumero && !addr.house_number) {
-                                    inputNumero.focus();
-                                }
-                            });
-
-                            listaSugestoes.appendChild(li);
-                        });
-                    })
-                    .catch((err) => console.error("Erro no Autocomplete:", err));
-            }, 400);
+                if (!data.resultados.length && typeof mostrarToast === "function") {
+                    mostrarToast("Nenhum endereço encontrado.");
+                }
+            } catch (error) {
+                console.error("Erro na busca de endereço:", error);
+                if (typeof mostrarToast === "function") mostrarToast(error.message);
+            } finally {
+                botaoBusca.disabled = false;
+            }
         });
 
         document.addEventListener("click", (e) => {
-            if (e.target !== inputSearch) listaSugestoes.innerHTML = "";
+            if (e.target !== inputSearch && e.target !== botaoBusca) listaSugestoes.innerHTML = "";
         });
     }
 });

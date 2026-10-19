@@ -14,8 +14,8 @@
         campoOculto.value = "";
     }
 
-    function abrir(idPedido) {
-        form.action = "/entregador/pedido/" + idPedido + "/entregue";
+    function abrir(url) {
+        form.action = url;
         limparCaixas();
         modal.hidden = false;
         caixas[0].focus();
@@ -27,7 +27,7 @@
     }
 
     document.querySelectorAll(".btn-abrir-modal-codigo").forEach((btn) => {
-        btn.addEventListener("click", () => abrir(btn.dataset.id));
+        btn.addEventListener("click", () => abrir(btn.dataset.actionUrl));
     });
 
     btnFechar.addEventListener("click", fechar);

@@ -72,6 +72,9 @@
         <h2 class="resultados__titulo">
             Buscando por <span class="resultados__termo">{{ busca }}</span>
         </h2>
+        <p class="resultados__acoes">
+            <a class="btn btn--ghost" href="{{ url_for('home.index') }}">Limpar busca e ver todas as lojas</a>
+        </p>
 
         {# ----- Abas Lojas / Itens ----- #}
         <div class="abas-busca">

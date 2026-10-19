@@ -29,9 +29,11 @@ Yummy/
 │
 ├── models/ # Model: acesso ao banco (sem HTTP aqui)
 │ ├── db.py # Conexão MySQL (PyMySQL)
-│ └── models.py # Funções de CRUD por entidade
+│ ├── models.py # Funções de CRUD por entidade
+│ └── migrations.py # Migrações incrementais do schema
 │
 ├── services/ # Serviços auxiliares
+│ ├── geocoding.py # Geocodificação com cache e limitação de chamadas
 │ ├── otp.py # Geração e validade dos códigos OTP
 │ ├── verificacao_email.py # Envio de código por e-mail (SMTP)
 │ └── verificacao_whatsapp_local.py # Cliente HTTP do microsserviço WhatsApp
@@ -94,7 +96,17 @@ Credenciais dos OAuths (Google / Facebook) — se for usar
 
 SMTP para envio de e-mail (se for usar OTP por e-mail)
 
-6. Rodar o servidor Flask
+6. Atualizar o schema sem apagar dados existentes
+```bash
+flask --app app db-upgrade
+```
+
+Esse comando aplica apenas migrações ainda não executadas. Para bancos criados
+com uma versão anterior do `database.sql`, ele adiciona as colunas ausentes
+sem remover tabelas ou registros. Configure `SESSION_COOKIE_SECURE=true` em
+produção com HTTPS; mantenha `false` apenas no desenvolvimento local por HTTP.
+
+7. Rodar o servidor Flask
 bash
 python app.py
 Acesse http://localhost:5000.

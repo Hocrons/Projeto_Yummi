@@ -3,13 +3,23 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!elStatus) return;
 
     const idPedido = elStatus.dataset.id;
+    const rotulos = {
+        pendente: "Pendente",
+        preparando: "Em preparo",
+        localizando_entregador: "Buscando entregador",
+        indo_ao_restaurante: "Entregador a caminho do restaurante",
+        saiu_para_entrega: "Saiu para entrega",
+        entregue: "Entregue",
+        cancelado: "Cancelado",
+    };
 
     async function atualizarStatus() {
         try {
             const resposta = await fetch(`/pedido/${idPedido}/status`);
             if (!resposta.ok) return;
             const dados = await resposta.json();
-            elStatus.textContent = dados.status;
+            elStatus.dataset.status = dados.status;
+            elStatus.textContent = rotulos[dados.status] || dados.status.replace(/_/g, " ");
 
             if (dados.status === "entregue" || dados.status === "cancelado") {
                 clearInterval(intervalo);

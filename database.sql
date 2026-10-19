@@ -64,6 +64,8 @@ CREATE TABLE restaurante (
     data_nasc_representante DATE,
     id_plano               INT NULL,
     foto_url               VARCHAR(500),
+    lat                    DECIMAL(10,7) NULL,
+    lon                    DECIMAL(10,7) NULL,
     CONSTRAINT fk_restaurante_usuario
         FOREIGN KEY (id_usuario) REFERENCES usuario(id) ON DELETE CASCADE,
     CONSTRAINT fk_restaurante_plano
@@ -121,6 +123,8 @@ CREATE TABLE endereco (
     bairro     VARCHAR(50),
     cidade     VARCHAR(50),
     cep        VARCHAR(10),
+    lat        DECIMAL(10,7) NULL,
+    lon        DECIMAL(10,7) NULL,
     ativo      TINYINT(1) NOT NULL DEFAULT 1,
     CONSTRAINT fk_endereco_cliente
         FOREIGN KEY (id_cliente) REFERENCES cliente(id_usuario) ON DELETE CASCADE
@@ -165,11 +169,13 @@ CREATE TABLE pedido (
     id_entregador   INT NULL,
     id_endereco     INT NULL,
     data_hora       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    entregue_em     DATETIME NULL,
     status          VARCHAR(30) NOT NULL DEFAULT 'pendente',
     tipo_entrega    ENUM('propria','parceira') NULL,
     valor_total     DECIMAL(10,2) NOT NULL DEFAULT 0,
     id_cupom        INT NULL,
     valor_desconto  DECIMAL(10,2) NOT NULL DEFAULT 0,
+    taxa_entrega_cobrada DECIMAL(10,2) NOT NULL DEFAULT 0,
     codigo_entrega  VARCHAR(4),
     CONSTRAINT fk_pedido_cliente
         FOREIGN KEY (id_cliente) REFERENCES cliente(id_usuario),
