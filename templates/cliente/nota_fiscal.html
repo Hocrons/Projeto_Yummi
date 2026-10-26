@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; color: #000; background: #f4f4f4; padding: 20px; }
+        .cupom { max-width: 400px; margin: 0 auto; background: #fff; border: 1px solid #ccc; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        hr { border: 1px dashed #000; margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 5px; }
+        th, td { text-align: left; padding: 4px 0; border-bottom: 1px dotted #eee; }
+        .right { text-align: right; }
+        .small { font-size: 10px; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="cupom">
+        <div class="center bold">
+            DANFE NFC-e - Documento Auxiliar<br>
+            Nota Fiscal de Consumidor Eletrônica
+        </div>
+        <hr>
+        <div class="bold">EMISSOR:</div>
+        <div>{{ restaurante.nome_fantasia }}</div>
+        <div>CNPJ: {{ restaurante.cnpj or '00.000.000/0000-00' }}</div>
+        <div>Endereço: {{ restaurante.rua }}, {{ restaurante.numero }} - {{ restaurante.cidade }}/{{ restaurante.estado }}</div>
+        <div>TEL: {{ restaurante.telefone or '(00) 0000-0000' }}</div>
+        <hr>
+        <div class="bold">CONSUMIDOR:</div>
+        <div>Nome: {{ cliente.nome }}</div>
+        <div>Endereço: {{ endereco.rua }}, {{ endereco.numero }} - {{ endereco.bairro }}, {{ endereco.cidade }}</div>
+        <hr>
+        <div class="bold">ITENS:</div>
+        <table>
+            <tr>
+                <th>COD</th>
+                <th>DESCRIÇÃO</th>
+                <th>QTD</th>
+                <th>VLR. UNIT</th>
+                <th class="right">VLR. TOTAL</th>
+            </tr>
+            {% for item in itens %}
+            <tr>
+                <td>{{ "%03d"|format(loop.index) }}</td>
+                <td>{{ item.nome_produto }}</td>
+                <td>{{ item.quantidade }} UN</td>
+                <td>{{ '%.2f'|format(item.preco_unitario) }}</td>
+                <td class="right">{{ '%.2f'|format(item.preco_unitario * item.quantidade) }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <hr>
+        <div class="bold">RESUMO:</div>
+        <div class="right">SUBTOTAL: R$ {{ '%.2f'|format(pedido.valor_total - pedido.taxa_entrega_cobrada) }}</div>
+        <div class="right">TAXA DE ENTREGA: R$ {{ '%.2f'|format(pedido.taxa_entrega_cobrada) }}</div>
+        <div class="right bold">TOTAL: R$ {{ '%.2f'|format(pedido.valor_total) }}</div>
+        <hr>
+        <div class="bold">PAGAMENTO:</div>
+        <div>MODALIDADE: {{ pedido.forma_pagamento|upper }}</div>
+        <div>VALOR PAGO: R$ {{ '%.2f'|format(pedido.valor_total) }}</div>
+        <hr>
+        <div class="center small">
+            AMBIENTE DE HOMOLOGAÇÃO - SEM VALOR FISCAL<br>
+            Emitida em {{ pedido.data_hora.strftime('%d/%m/%Y') }}<br>
+            Chave de Acesso: 352610{{ restaurante.cnpj|replace('.', '')|replace('/', '')|replace('-', '') }}...
+        </div>
+        <div class="center" style="margin-top: 15px;">
+            <div style="font-size: 30px;">|||||||||||||||||||||||||||</div>
+            <div class="small">OBRIGADO PELA PREFERÊNCIA!</div>
+        </div>
+    </div>
+</body>
+</html>

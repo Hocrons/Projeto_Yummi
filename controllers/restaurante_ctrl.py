@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime
 from models import models
 from controllers.decorators import login_requerido
-from services import geocoding
+from services import geocoding, verificacao_email
 
 restaurante_bp = Blueprint("restaurante", __name__, url_prefix="/restaurante")
 
@@ -28,7 +28,6 @@ MESES_RELATORIO = (
 
 
 def _url_valida(url):
-    """Aceita só http:// ou https://. Vazio vira None. Inválido vira False."""
     url = (url or "").strip()
     if not url:
         return None
@@ -40,7 +39,7 @@ def _url_valida(url):
 
 
 # ---------------------------------------------------------
-# PORTAL (ponto de entrada)
+# PORTAL
 # ---------------------------------------------------------
 @restaurante_bp.route("")
 @restaurante_bp.route("/")
@@ -171,8 +170,33 @@ def atualizar_status_pedido(id_pedido):
             return redirect(url_for("restaurante.painel"))
         ok = models.marcar_pedido_entregue_pelo_restaurante(id_pedido, session["user_id"])
         if ok:
-            models.atualizar_status_pagamento(id_pedido, "aprovado")
             flash(f"Pedido #{id_pedido} marcado como entregue!", "sucesso")
+            
+            # --- DISPARO DA NOTA FISCAL ---
+            try:
+                pedido_atualizado = models.buscar_pedido(id_pedido)
+                cliente = models.buscar_usuario_por_id(pedido_atualizado["id_cliente"])
+                restaurante = models.buscar_restaurante(pedido_atualizado["id_restaurante"])
+                endereco = models.buscar_endereco(pedido_atualizado["id_endereco"])
+                
+                html_nota = render_template(
+                    "cliente/nota_fiscal.html",
+                    pedido=pedido_atualizado,
+                    cliente=cliente,
+                    restaurante=restaurante,
+                    endereco=endereco,
+                    itens=pedido_atualizado["itens"]
+                )
+                
+                verificacao_email.enviar_nota_fiscal(
+                    email_destino=cliente["email"],
+                    html_nota=html_nota,
+                    nome_cliente=cliente["nome"],
+                    id_pedido=id_pedido
+                )
+            except Exception as e:
+                print(f"Erro ao enviar nota fiscal do pedido {id_pedido}: {e}")
+            # -------------------------------
         else:
             flash("Não foi possível marcar esse pedido como entregue.", "erro")
         return redirect(url_for("restaurante.painel"))
@@ -278,7 +302,6 @@ def produto_excluir(id_produto):
 # CRUD DE CUPONS
 # ---------------------------------------------------------
 def _parse_decimal(valor):
-    """Converte string de formulário pra float. Retorna None se vazio."""
     if valor is None or valor == "":
         return None
     try:
@@ -297,17 +320,15 @@ def _parse_int(valor):
 
 
 def _parse_datetime(valor):
-    """Campo datetime-local vem como 'YYYY-MM-DDTHH:MM'. Retorna string aceita pelo MySQL."""
     if not valor:
         return None
     valor = valor.strip().replace("T", " ")
-    if len(valor) == 16:  # sem segundos
+    if len(valor) == 16:
         valor += ":00"
     return valor
 
 
 def _validar_form_cupom(form):
-    """Valida o form. Retorna (dados, erro_msg)."""
     codigo = (form.get("codigo") or "").strip().upper()
     if not codigo:
         return None, "Informe o código do cupom."
@@ -364,11 +385,6 @@ def _validar_form_cupom(form):
 
 
 def _calcular_status_cupom(c):
-    """
-    Retorna (label, classe_css) do status atual do cupom.
-    Classes: ativo | inativo | expirado | agendado | esgotado
-    """
-    from datetime import datetime
     agora = datetime.now()
 
     if not c["ativo"]:
@@ -527,7 +543,6 @@ def editar_perfil():
             flash("URL da foto inválida. Use http:// ou https://", "erro")
             return redirect(url_for("restaurante.editar_perfil"))
 
-        # Geocodifica o novo endereço (mantém as coords antigas se falhar)
         rua = request.form.get("rua") or ""
         numero = request.form.get("numero") or ""
         bairro = request.form.get("bairro") or ""

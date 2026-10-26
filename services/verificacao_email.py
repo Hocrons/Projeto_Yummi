@@ -1,8 +1,5 @@
 """
-Envio de código de verificação por e-mail, usado no fluxo "Entrar com e-mail".
-
-Usa SMTP simples (funciona de graça com Gmail, usando uma "senha de app" -
-não a senha normal da conta). Nenhuma biblioteca paga é necessária.
+Envio de código de verificação e notas fiscais por e-mail.
 """
 import os
 import smtplib
@@ -25,12 +22,9 @@ def servico_configurado():
 
 
 def enviar_codigo(email_destino, codigo):
-    """
-    Envia o código de verificação por e-mail.
-    Retorna (sucesso: bool, mensagem_erro: str | None)
-    """
+    """Envia o código de verificação por e-mail."""
     if not servico_configurado():
-        return False, "Envio de e-mail não está configurado no servidor (faltam SMTP_USER / SMTP_PASSWORD no .env)."
+        return False, "Envio de e-mail não está configurado no servidor."
 
     corpo_html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
@@ -41,8 +35,33 @@ def enviar_codigo(email_destino, codigo):
     </div>
     """
 
+    return _enviar_email(email_destino, f"{codigo} é o seu código de verificação Yummy", corpo_html)
+
+
+def enviar_nota_fiscal(email_destino, html_nota, nome_cliente, id_pedido):
+    """Envia o cupom fiscal eletrônico simulado."""
+    if not servico_configurado():
+        return False, "Envio de e-mail não está configurado."
+
+    corpo_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
+        <h2 style="color: #ea1d2c; text-align: center;">Yummy</h2>
+        <p>Olá, <strong>{nome_cliente}</strong>!</p>
+        <p>Seu pedido <strong>#{id_pedido}</strong> foi entregue. Obrigado por comprar com a gente!</p>
+        <p>Segue abaixo o seu comprovante (DANFE NFC-e):</p>
+        <div style="background: #fff; padding: 10px; border-radius: 4px;">
+            {html_nota}
+        </div>
+        <p style="color: #777; font-size: 12px; text-align: center; margin-top: 20px;">Este é um e-mail automático, não responda.</p>
+    </div>
+    """
+
+    return _enviar_email(email_destino, f"Sua Nota Fiscal - Pedido #{id_pedido} - Yummy", corpo_html)
+
+
+def _enviar_email(email_destino, assunto, corpo_html):
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"{codigo} é o seu código de verificação Yummy"
+    msg["Subject"] = assunto
     msg["From"] = f"{_REMETENTE_NOME} <{_SMTP_USER}>"
     msg["To"] = email_destino
     msg.attach(MIMEText(corpo_html, "html"))

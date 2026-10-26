@@ -1,12 +1,5 @@
 /**
  * Notificações globais de status de pedido para o cliente.
- *
- * Roda em TODAS as páginas do cliente logado.
- * A cada 10 segundos consulta /cliente/api/pedidos-ativos e compara com
- * o último status conhecido (guardado em sessionStorage). Se algum status
- * mudou, mostra um banner no topo centralizado.
- *
- * Sem som. Sem spam: só notifica quando o status MUDA de verdade.
  */
 (function () {
     "use strict";
@@ -14,63 +7,29 @@
     const INTERVALO_MS = 10000;
     const STORAGE_KEY = "yummy_status_pedidos";
 
-    // Mapa de status → { icone, titulo, cor }
     const INFO_STATUS = {
-        "pendente": {
-            icone: "⏳",
-            titulo: "Pedido aguardando aceite",
-            descricao: "O restaurante ainda não confirmou.",
-        },
-        "preparando": {
-            icone: "🍳",
-            titulo: "Pedido em preparo",
-            descricao: "O restaurante está preparando seu pedido.",
-        },
-        "localizando_entregador": {
-            icone: "📡",
-            titulo: "Procurando entregador",
-            descricao: "Estamos buscando alguém para levar seu pedido.",
-        },
-        "indo_ao_restaurante": {
-            icone: "🛵",
-            titulo: "Entregador a caminho",
-            descricao: "O entregador está indo retirar o pedido.",
-        },
-        "saiu_para_entrega": {
-            icone: "🚀",
-            titulo: "Pedido saiu para entrega",
-            descricao: "Logo chega aí!",
-        },
-        "entregue": {
-            icone: "✅",
-            titulo: "Pedido entregue",
-            descricao: "Bom apetite!",
-        },
-        "cancelado": {
-            icone: "❌",
-            titulo: "Pedido cancelado",
-            descricao: "O pedido foi cancelado.",
-        },
+        "pendente": { icone: "⏳", titulo: "Pedido aguardando aceite", descricao: "O restaurante ainda não confirmou." },
+        "preparando": { icone: "🍳", titulo: "Pedido em preparo", descricao: "O restaurante está preparando seu pedido." },
+        "localizando_entregador": { icone: "📡", titulo: "Procurando entregador", descricao: "Estamos buscando alguém para levar seu pedido." },
+        "indo_ao_restaurante": { icone: "🛵", titulo: "Entregador a caminho", descricao: "O entregador está indo retirar o pedido." },
+        "saiu_para_entrega": { icone: "🚀", titulo: "Pedido saiu para entrega", descricao: "Logo chega aí!" },
+        "entregue": { icone: "✅", titulo: "Pedido entregue", descricao: "Bom apetite!" },
+        "cancelado": { icone: "❌", titulo: "Pedido cancelado", descricao: "O pedido foi cancelado." },
     };
 
     function carregarUltimoEstado() {
         try {
             const raw = sessionStorage.getItem(STORAGE_KEY);
             return raw ? JSON.parse(raw) : {};
-        } catch (e) {
-            return {};
-        }
+        } catch (e) { return {}; }
     }
 
     function salvarUltimoEstado(estado) {
         try {
             sessionStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
-        } catch (e) {
-            /* ignora */
-        }
+        } catch (e) {}
     }
 
-    // Cria o container dos banners (uma vez)
     let container = null;
     function obterContainer() {
         if (container) return container;
@@ -81,17 +40,39 @@
         return container;
     }
 
-    function mostrarBanner(pedido, statusNovo) {
-        const info = INFO_STATUS[statusNovo] || {
-            icone: "🔔",
-            titulo: "Status atualizado",
-            descricao: `Pedido #${pedido.id}`,
+    function dispararPushNotification(info, pedido) {
+        if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+        const titulo = `${info.icone} ${info.titulo}`;
+        const opcoes = {
+            body: `Pedido #${pedido.id} · ${pedido.nome_fantasia}\n${info.descricao}`,
+            icon: "/static/img/logo.png",
+            badge: "/static/img/logo.png",
+            tag: `pedido-${pedido.id}`,
+            renotify: true,
+            requireInteraction: true,
         };
+
+        try {
+            const notificacao = new Notification(titulo, opcoes);
+            notificacao.onclick = function () {
+                window.focus();
+                window.location.href = "/cliente/pedidos";
+                notificacao.close();
+            };
+        } catch (e) { console.warn("Push falhou:", e); }
+    }
+
+    function mostrarBanner(pedido, statusNovo) {
+        const info = INFO_STATUS[statusNovo] || { icone: "🔔", titulo: "Status atualizado", descricao: `Pedido #${pedido.id}` };
+
+        dispararPushNotification(info, pedido);
 
         const el = document.createElement("div");
         el.className = "notif-banner";
         el.dataset.pedido = pedido.id;
 
+        // Adicionado a div da barra de progresso no final
         el.innerHTML = `
             <div class="notif-banner__icone">${info.icone}</div>
             <div class="notif-banner__texto">
@@ -102,22 +83,20 @@
                 </div>
             </div>
             <button type="button" class="notif-banner__fechar" aria-label="Fechar">×</button>
+            <div class="notif-banner__progress"></div>
         `;
 
-        // Fechar no X
-        el.querySelector(".notif-banner__fechar").addEventListener("click", () => {
+        el.querySelector(".notif-banner__fechar").addEventListener("click", (e) => {
+            e.stopPropagation();
             removerBanner(el);
         });
 
-        // Fechar ao clicar no corpo (vai pra "Meus pedidos")
         el.addEventListener("click", (evento) => {
             if (evento.target.closest(".notif-banner__fechar")) return;
             window.location.href = "/cliente/pedidos";
         });
 
         obterContainer().appendChild(el);
-
-        // Auto-fecha em 7 segundos
         setTimeout(() => removerBanner(el), 7000);
     }
 
@@ -126,7 +105,7 @@
         el.classList.add("notif-banner--saindo");
         setTimeout(() => {
             if (el.parentNode) el.parentNode.removeChild(el);
-        }, 260);
+        }, 300);
     }
 
     async function verificarPedidos() {
@@ -146,7 +125,6 @@
                 const id = String(p.id);
                 novoEstado[id] = p.status;
 
-                // Se já conhecíamos esse pedido e o status mudou → notifica
                 if (estadoAnterior[id] && estadoAnterior[id] !== p.status) {
                     mostrarBanner(p, p.status);
                 }
@@ -154,14 +132,10 @@
 
             salvarUltimoEstado(novoEstado);
         } catch (erro) {
-            // silencioso — não incomoda o usuário
             console.debug("Notificações: falha ao consultar pedidos", erro);
         }
     }
 
-    // Primeira checagem depois de 3s (pra não competir com o load da página)
     setTimeout(verificarPedidos, 3000);
-
-    // Depois a cada 10s
     setInterval(verificarPedidos, INTERVALO_MS);
 })();

@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from models import models
 from controllers.decorators import login_requerido
+from services import verificacao_email
 
 entregador_bp = Blueprint("entregador", __name__, url_prefix="/entregador")
 
@@ -58,9 +59,6 @@ def alternar_disponibilidade():
 @entregador_bp.route("/pedido/<int:id_pedido>/aceitar", methods=["POST"])
 @login_requerido("entregador")
 def aceitar_pedido(id_pedido):
-    # A query 'listar_pedidos_disponiveis_para_entrega' só devolve pedidos
-    # do tipo 'parceira'. E a função 'atribuir_entregador' também só atualiza
-    # se tipo_entrega='parceira' — dupla proteção.
     sucesso = models.atribuir_entregador(id_pedido, session["user_id"])
     if sucesso:
         flash(f"Pedido #{id_pedido} aceito! Vá até o restaurante para retirar.", "sucesso")
@@ -94,7 +92,6 @@ def marcar_entregue(id_pedido):
         flash("Pedido não encontrado.", "erro")
         return redirect(url_for("entregador.painel"))
 
-    # Segurança extra: só pedido com entrega parceira tem código.
     if pedido.get("tipo_entrega") != "parceira":
         flash("Esse pedido não é uma entrega parceira.", "erro")
         return redirect(url_for("entregador.painel"))
@@ -105,7 +102,6 @@ def marcar_entregue(id_pedido):
 
     codigo_correto = (pedido.get("codigo_entrega") or "").strip()
     if not codigo_correto:
-        # Fallback: últimos 4 dígitos do telefone do cliente
         cliente = models.buscar_usuario_por_id(pedido["id_cliente"])
         telefone = "".join(c for c in (cliente.get("telefone") or "") if c.isdigit())
         codigo_correto = telefone[-4:] if len(telefone) >= 4 else ""
@@ -116,8 +112,33 @@ def marcar_entregue(id_pedido):
 
     sucesso = models.marcar_pedido_entregue(id_pedido, session["user_id"])
     if sucesso:
-        models.atualizar_status_pagamento(id_pedido, "aprovado")
         flash(f"Pedido #{id_pedido} entregue com sucesso!", "sucesso")
+        
+        # --- DISPARO DA NOTA FISCAL ---
+        try:
+            pedido_atualizado = models.buscar_pedido(id_pedido)
+            cliente = models.buscar_usuario_por_id(pedido_atualizado["id_cliente"])
+            restaurante = models.buscar_restaurante(pedido_atualizado["id_restaurante"])
+            endereco = models.buscar_endereco(pedido_atualizado["id_endereco"])
+            
+            html_nota = render_template(
+                "cliente/nota_fiscal.html",
+                pedido=pedido_atualizado,
+                cliente=cliente,
+                restaurante=restaurante,
+                endereco=endereco,
+                itens=pedido_atualizado["itens"]
+            )
+            
+            verificacao_email.enviar_nota_fiscal(
+                email_destino=cliente["email"],
+                html_nota=html_nota,
+                nome_cliente=cliente["nome"],
+                id_pedido=id_pedido
+            )
+        except Exception as e:
+            print(f"Erro ao enviar nota fiscal do pedido {id_pedido}: {e}")
+        # -------------------------------
     else:
         flash("Não foi possível concluir esse pedido.", "erro")
     return redirect(url_for("entregador.painel"))
