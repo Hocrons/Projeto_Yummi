@@ -613,6 +613,31 @@ def registrar_uso_cupom(id_cupom, id_cliente, id_pedido, valor_desconto):
 # =========================================================
 # PEDIDO / ITEM_PEDIDO / PAGAMENTO
 # =========================================================
+
+def _obter_codigo_entrega_cliente(db, id_cliente):
+    """
+    Busca o código de entrega (PIN de 4 dígitos) do cliente para informar
+    ao entregador parceiro. Usa o código cadastrado no perfil do cliente;
+    se ele não tiver um definido, cai para os últimos 4 dígitos do telefone.
+    """
+    db.cursor.execute(
+        "SELECT codigo_entrega FROM cliente WHERE id_usuario=%s",
+        (id_cliente,),
+    )
+    cli = db.cursor.fetchone()
+    codigo_entrega = (cli or {}).get("codigo_entrega") if cli else None
+
+    if not codigo_entrega:
+        db.cursor.execute(
+            "SELECT telefone FROM usuario WHERE id=%s",
+            (id_cliente,),
+        )
+        u = db.cursor.fetchone()
+        tel = _so_digitos((u or {}).get("telefone") or "")
+        codigo_entrega = tel[-4:] if len(tel) >= 4 else None
+
+    return codigo_entrega
+
 def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
                           forma_pagamento, codigo_cupom=None,
                           tipo_entrega=None, taxa_entrega=0.0):
@@ -643,21 +668,7 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
         # -------- 1. Código de entrega (só faz sentido pra entrega parceira) --------
         codigo_entrega = None
         if tipo_entrega == "parceira":
-            db.cursor.execute(
-                "SELECT codigo_entrega FROM cliente WHERE id_usuario=%s",
-                (id_cliente,),
-            )
-            cli = db.cursor.fetchone()
-            codigo_entrega = (cli or {}).get("codigo_entrega") if cli else None
-
-            if not codigo_entrega:
-                db.cursor.execute(
-                    "SELECT telefone FROM usuario WHERE id=%s",
-                    (id_cliente,),
-                )
-                u = db.cursor.fetchone()
-                tel = _so_digitos((u or {}).get("telefone") or "")
-                codigo_entrega = tel[-4:] if len(tel) >= 4 else None
+            codigo_entrega = _obter_codigo_entrega_cliente(db, id_cliente)
 
         # -------- 2. Revalida produtos E PREÇOS no banco --------
         ids_produto = [i["id_produto"] for i in itens]
@@ -1064,14 +1075,27 @@ def atualizar_status_e_tipo_entrega(id_pedido, status, tipo_entrega, id_restaura
     Usada quando o restaurante aceita o pedido e escolhe o tipo de entrega
     de uma vez: 'pendente' -> 'preparando' + tipo_entrega.
     Só atualiza se o pedido ainda estiver 'pendente' e sem tipo definido.
+
+    Quando o tipo escolhido é 'parceira', também gera o código de entrega
+    nesse momento: ele não é gerado na criação do pedido porque o tipo de
+    entrega só é definido aqui, quando o restaurante aceita.
     """
     with DB() as db:
+        codigo_entrega = None
+        if tipo_entrega == "parceira":
+            db.cursor.execute(
+                "SELECT id_cliente FROM pedido WHERE id=%s", (id_pedido,)
+            )
+            ped = db.cursor.fetchone()
+            if ped:
+                codigo_entrega = _obter_codigo_entrega_cliente(db, ped["id_cliente"])
+
         db.cursor.execute(
-            """UPDATE pedido SET status=%s, tipo_entrega=%s
+            """UPDATE pedido SET status=%s, tipo_entrega=%s, codigo_entrega=%s
                WHERE id=%s AND id_restaurante=%s
                  AND status='pendente'
                  AND tipo_entrega IS NULL""",
-            (status, tipo_entrega, id_pedido, id_restaurante),
+            (status, tipo_entrega, codigo_entrega, id_pedido, id_restaurante),
         )
         return db.cursor.rowcount > 0
 
