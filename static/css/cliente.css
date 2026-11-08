@@ -495,6 +495,79 @@
     align-items: start;
 }
 
+/* ---------- SELEÇÃO DE ENDEREÇO NO CHECKOUT ---------- */
+.endereco-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.endereco-opcao {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-sm);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.endereco-opcao:hover {
+    border-color: var(--cor-primaria);
+}
+
+.endereco-opcao input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.endereco-opcao__icone {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.endereco-opcao__texto {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.endereco-opcao__linha1 {
+    font-weight: 600;
+    color: var(--cor-texto);
+}
+
+.endereco-opcao__linha2 {
+    font-size: 0.82rem;
+    color: var(--cor-muted);
+}
+
+.endereco-opcao__check {
+    visibility: hidden;
+    color: var(--cor-primaria);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.endereco-opcao:has(input:checked) {
+    border-color: var(--cor-primaria);
+    background: var(--cor-primaria-suave);
+    box-shadow: var(--sombra);
+}
+
+.endereco-opcao:has(input:checked) .endereco-opcao__check {
+    visibility: visible;
+}
+
+.endereco-opcao:has(input:focus-visible) {
+    outline: 2px solid var(--cor-primaria);
+    outline-offset: 2px;
+}
+
 .codigo-entrega-box {
     background: linear-gradient(135deg, var(--cor-primaria-suave) 0%, var(--cor-branco) 100%);
     border: 2px dashed var(--cor-primaria);

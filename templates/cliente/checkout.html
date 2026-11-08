@@ -8,14 +8,21 @@
     <form method="post" class="form-card" id="form-checkout">
         <h3>Endereço de entrega</h3>
         {% if enderecos %}
-            {% for e in enderecos %}
-                <label class="radio-linha">
-                    <input type="radio" name="id_endereco" value="{{ e.id }}"
-                           data-endereco-id="{{ e.id }}"
-                           {% if loop.first %}checked{% endif %} required>
-                    {{ e.rua }}, {{ e.numero }} - {{ e.bairro }}, {{ e.cidade }} ({{ e.cep }})
-                </label>
-            {% endfor %}
+            <div class="endereco-lista">
+                {% for e in enderecos %}
+                    <label class="endereco-opcao">
+                        <input type="radio" name="id_endereco" value="{{ e.id }}"
+                               data-endereco-id="{{ e.id }}"
+                               {% if loop.first %}checked{% endif %} required>
+                        <span class="endereco-opcao__icone">📍</span>
+                        <span class="endereco-opcao__texto">
+                            <span class="endereco-opcao__linha1">{{ e.rua }}, {{ e.numero }}</span>
+                            <span class="endereco-opcao__linha2">{{ e.bairro }}, {{ e.cidade }} · {{ e.cep }}</span>
+                        </span>
+                        <span class="endereco-opcao__check">✓</span>
+                    </label>
+                {% endfor %}
+            </div>
         {% else %}
             <p class="muted">Você ainda não tem endereço cadastrado. Adicione um endereço para continuar.</p>
         {% endif %}
