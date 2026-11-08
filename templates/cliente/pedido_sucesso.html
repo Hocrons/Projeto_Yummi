@@ -38,6 +38,12 @@
     </ul>
 
     <a href="{{ url_for('cliente.meus_pedidos') }}" class="btn btn--primary">Ver meus pedidos</a>
+    {% if pedido.status == 'pendente' %}
+    <form method="post" action="{{ url_for('cliente.cancelar_pedido', id_pedido=pedido.id) }}"
+          onsubmit="return confirm('Cancelar o pedido #{{ pedido.id }}?');" style="margin-top:12px;">
+        <button type="submit" class="btn btn--ghost">Cancelar pedido</button>
+    </form>
+    {% endif %}
 </div>
 {% endblock %}
 

@@ -1028,6 +1028,33 @@ def liberar_entregador(id_pedido, id_restaurante):
         )
         return db.cursor.rowcount > 0
 
+def cancelar_pedido_cliente(id_pedido, id_cliente):
+    """
+    Cancela o pedido a pedido do cliente. Só é permitido enquanto o pedido
+    ainda está 'pendente' (restaurante ainda não aceitou). O UPDATE já
+    confere o status, então não há risco de cancelar um pedido que o
+    restaurante aceitou no meio tempo.
+    """
+    with DB() as db:
+        db.cursor.execute(
+            """UPDATE pedido
+               SET status='cancelado'
+               WHERE id=%s AND id_cliente=%s AND status='pendente'""",
+            (id_pedido, id_cliente),
+        )
+        if db.cursor.rowcount == 0:
+            return False
+
+        db.cursor.execute(
+            """UPDATE pagamento
+               SET status=CASE
+                   WHEN status='aprovado' THEN 'reembolso_pendente'
+                   ELSE 'cancelado'
+               END
+               WHERE id_pedido=%s""",
+            (id_pedido,),
+        )
+        return True
 
 def cancelar_pedido_restaurante(id_pedido, id_restaurante):
     with DB() as db:

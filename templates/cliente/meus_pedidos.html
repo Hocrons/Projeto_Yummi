@@ -28,6 +28,12 @@
                 <a class="btn btn--ghost" href="{{ url_for('cliente.pedido_sucesso', id_pedido=p.id) }}">
                     Acompanhar pedido
                 </a>
+                {% if p.status == 'pendente' %}
+                <form method="post" action="{{ url_for('cliente.cancelar_pedido', id_pedido=p.id) }}"
+                      onsubmit="return confirm('Cancelar o pedido #{{ p.id }}?');" style="margin-top:8px;">
+                    <button type="submit" class="btn btn--ghost">Cancelar pedido</button>
+                </form>
+                {% endif %}
             </div>
         </div>
         {% endfor %}

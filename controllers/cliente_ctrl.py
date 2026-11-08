@@ -464,6 +464,19 @@ def meus_pedidos():
     pedidos = models.listar_pedidos_cliente(session["user_id"])
     return render_template("cliente/meus_pedidos.html", pedidos=pedidos)
 
+@cliente_bp.route("/pedido/<int:id_pedido>/cancelar", methods=["POST"])
+@login_requerido("cliente")
+def cancelar_pedido(id_pedido):
+    if models.cancelar_pedido_cliente(id_pedido, session["user_id"]):
+        flash(f"Pedido #{id_pedido} cancelado.", "sucesso")
+    else:
+        flash(
+            "Não foi possível cancelar: o pedido já foi aceito pelo restaurante "
+            "ou não está mais disponível.",
+            "erro",
+        )
+    return redirect(url_for("cliente.meus_pedidos"))
+
 
 # ---------------------------------------------------------
 # API — PEDIDOS ATIVOS (usado pelo notificacoes.js)
