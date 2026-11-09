@@ -3,6 +3,10 @@ from datetime import datetime
 from models import models
 from controllers.decorators import login_requerido
 from services import geocoding, verificacao_email
+from services.periodos_relatorio import (
+    resolver_limite_relatorio,
+    resolver_periodo_relatorio,
+)
 
 restaurante_bp = Blueprint("restaurante", __name__, url_prefix="/restaurante")
 
@@ -20,11 +24,6 @@ TRANSICOES_PERMITIDAS = {
         "parceira": [],
     },
 }
-
-MESES_RELATORIO = (
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-)
 
 STATUS_PEDIDOS = {
     "pendente", "preparando", "localizando_entregador",
@@ -82,44 +81,24 @@ def api_pedidos_painel():
 @restaurante_bp.route("/relatorio")
 @login_requerido("restaurante")
 def relatorio():
-    ano_atual = datetime.now().year
     try:
-        ano_solicitado = request.args.get("ano", str(ano_atual))
-        ano = int(ano_solicitado) if ano_solicitado else None
-        if ano is not None and not 2000 <= ano <= ano_atual:
-            ano = ano_atual
-    except (TypeError, ValueError):
-        ano = ano_atual
+        periodo = resolver_periodo_relatorio(request.args, "mes")
+    except ValueError as erro:
+        flash(str(erro), "erro")
+        return redirect(url_for("restaurante.relatorio"))
 
-    try:
-        mes_solicitado = request.args.get("mes", str(datetime.now().month))
-        mes = int(mes_solicitado) if mes_solicitado else None
-        if mes is not None and not 1 <= mes <= 12:
-            mes = None
-    except (TypeError, ValueError):
-        mes = None
-
-    anos = sorted(
-        set(models.listar_anos_pedidos_restaurante(session["user_id"]) + [ano_atual]),
-        reverse=True,
+    limite = 20
+    dados = models.obter_relatorio_restaurante(
+        session["user_id"],
+        periodo["data_inicio"],
+        periodo["data_fim"],
+        limite,
     )
-    dados = models.obter_relatorio_restaurante(session["user_id"], ano, mes)
-    if ano is None and mes is None:
-        periodo_label = "Todo o histórico"
-    elif ano is None:
-        periodo_label = f"Todos os anos · {MESES_RELATORIO[mes - 1]}"
-    elif mes is None:
-        periodo_label = f"Ano de {ano}"
-    else:
-        periodo_label = f"{MESES_RELATORIO[mes - 1]} de {ano}"
     return render_template(
         "restaurante/relatorio.html",
         dados=dados,
-        ano=ano,
-        mes=mes,
-        anos=anos,
-        meses=MESES_RELATORIO,
-        periodo_label=periodo_label,
+        limite=limite,
+        **periodo,
     )
 
 
@@ -127,11 +106,16 @@ def relatorio():
 @login_requerido("restaurante")
 def dados_relatorio():
     try:
-        ano = int(request.args["ano"]) if request.args.get("ano") else None
-        mes = int(request.args["mes"]) if request.args.get("mes") else None
-        dados = models.obter_relatorio_restaurante(session["user_id"], ano, mes)
-    except (TypeError, ValueError):
-        return jsonify({"erro": "Filtros de ano ou mês inválidos."}), 400
+        periodo = resolver_periodo_relatorio(request.args, "mes")
+        limite = resolver_limite_relatorio(request.args, (5, 10, 20), 20)
+        dados = models.obter_relatorio_restaurante(
+            session["user_id"],
+            periodo["data_inicio"],
+            periodo["data_fim"],
+            limite,
+        )
+    except ValueError as erro:
+        return jsonify({"erro": str(erro)}), 400
     return jsonify(dados)
 
 

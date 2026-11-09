@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Relatório administrativo{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/relatorios.css') }}">
+{% endblock %}
+{% block content %}
+<section class="relatorio relatorio--admin"
+         data-report-type="admin"
+         data-refresh-url="{{ url_for('admin.dados_relatorio', periodo=periodo, data_inicio=data_inicio_input, data_fim=data_fim_input) }}">
+    <div class="relatorio__cabecalho">
+        <div>
+            <p class="relatorio__sobretitulo">YUMMY · ADMINISTRAÇÃO</p>
+            <h1>Relatório geral</h1>
+            <p class="muted">Acompanhe pedidos e faturamento dos restaurantes.</p>
+        </div>
+        <form class="relatorio__filtros" method="get" action="{{ url_for('admin.relatorio') }}">
+            <label for="relatorio-periodo">Período</label>
+            <select id="relatorio-periodo" name="periodo" data-period-select>
+                <option value="hoje" {% if periodo == 'hoje' %}selected{% endif %}>Hoje</option>
+                <option value="semana" {% if periodo == 'semana' %}selected{% endif %}>Semana</option>
+                <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Mês</option>
+                <option value="periodo" {% if periodo == 'periodo' %}selected{% endif %}>Período personalizado</option>
+            </select>
+            <div class="relatorio__datas" data-period-dates {% if periodo != 'periodo' %}hidden{% endif %}>
+                <label for="relatorio-data-inicio">De</label>
+                <input id="relatorio-data-inicio" type="date" name="data_inicio"
+                       value="{{ data_inicio_input }}" {% if periodo != 'periodo' %}disabled{% endif %}>
+                <label for="relatorio-data-fim">Até</label>
+                <input id="relatorio-data-fim" type="date" name="data_fim"
+                       value="{{ data_fim_input }}" {% if periodo != 'periodo' %}disabled{% endif %}>
+            </div>
+            <button type="submit" class="btn btn--primary">Filtrar</button>
+        </form>
+    </div>
+
+    <div class="admin-relatorio__periodo">
+        <span aria-hidden="true"></span>
+        Exibindo dados de <strong data-period-label>{{ periodo_label }}</strong>
+        <span class="relatorio__atualizacao" data-report-refresh-status aria-live="polite">Atualizado agora</span>
+    </div>
+
+    <div class="admin-relatorio__metricas">
+        <article class="relatorio-card">
+            <span class="relatorio-card__icone" aria-hidden="true">💰</span>
+            <p>Faturamento total</p>
+            <strong data-admin-metrica="faturamento">R$ {{ '{:,.2f}'.format(dados.metricas.faturamento).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong>
+            <span class="relatorio-card__periodo">Cancelados excluídos</span>
+        </article>
+        <article class="relatorio-card">
+            <span class="relatorio-card__icone" aria-hidden="true">🛒</span>
+            <p>Pedidos realizados</p>
+            <strong data-admin-metrica="pedidos_realizados">{{ dados.metricas.pedidos_realizados }}</strong>
+            <span class="relatorio-card__periodo">Inclui pedidos cancelados</span>
+        </article>
+        <article class="relatorio-card">
+            <span class="relatorio-card__icone" aria-hidden="true">✅</span>
+            <p>Pedidos concluídos</p>
+            <strong data-admin-metrica="pedidos_concluidos">{{ dados.metricas.pedidos_concluidos }}</strong>
+            <span class="relatorio-card__periodo">Entregas bem-sucedidas</span>
+        </article>
+        <article class="relatorio-card">
+            <span class="relatorio-card__icone" aria-hidden="true">❌</span>
+            <p>Pedidos cancelados</p>
+            <strong data-admin-metrica="pedidos_cancelados">{{ dados.metricas.pedidos_cancelados }}</strong>
+            <span class="relatorio-card__periodo">No período selecionado</span>
+        </article>
+    </div>
+
+    <section class="admin-relatorio__secao">
+        <div class="admin-relatorio__secao-cabecalho">
+            <div>
+                <h2>Desempenho por restaurante</h2>
+                <p>Ranking por faturamento · Cancelados excluídos do faturamento.</p>
+            </div>
+        </div>
+        <div class="relatorio__tabela-wrap">
+            <table class="tabela">
+                <thead>
+                    <tr>
+                        <th>Restaurante</th>
+                        <th>Pedidos realizados</th>
+                        <th>Pedidos concluídos</th>
+                        <th>Pedidos cancelados</th>
+                        <th>Taxa de conclusão</th>
+                        <th>Faturamento</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-relatorio-restaurantes">
+                    {% for restaurante in dados.restaurantes %}
+                    <tr>
+                        <td><span class="admin-relatorio__rank">{{ loop.index }}</span><strong>{{ restaurante.nome }}</strong></td>
+                        <td>{{ restaurante.pedidos_realizados }}</td>
+                        <td>{{ restaurante.pedidos_concluidos }}</td>
+                        <td>{{ restaurante.pedidos_cancelados }}</td>
+                        <td>
+                            <div class="admin-relatorio__taxa">
+                                <span><i style="width: {{ restaurante.taxa_conclusao }}%"></i></span>
+                                <strong>{{ restaurante.taxa_conclusao }}%</strong>
+                            </div>
+                        </td>
+                        <td>R$ {{ '{:,.2f}'.format(restaurante.faturamento).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr class="relatorio__vazio"><td colspan="6">Nenhum restaurante cadastrado.</td></tr>
+                    {% endfor %}
+                    <tr class="admin-relatorio__total">
+                        <td><strong>Total geral</strong></td>
+                        <td>{{ dados.metricas.pedidos_realizados }}</td>
+                        <td>{{ dados.metricas.pedidos_concluidos }}</td>
+                        <td>{{ dados.metricas.pedidos_cancelados }}</td>
+                        <td>{{ dados.metricas.taxa_conclusao }}%</td>
+                        <td>R$ {{ '{:,.2f}'.format(dados.metricas.faturamento).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/relatorios.js') }}"></script>
+{% endblock %}

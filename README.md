@@ -7,6 +7,10 @@ endereco / pedido / item_pedido / pagamento / plano).
 O projeto tem **3 portais separados** (Cliente / Restaurante / Entregador), além de uma
 **landing page** inicial que direciona para cada um.
 
+O relatório administrativo está disponível em `/admin/relatorio` e não exige login.
+Ele exibe dados agregados de pedidos e faturamento de todos os restaurantes; não
+publique essa URL em ambientes que não devam expor essas informações.
+
 ---
 
 ## 🧱 Estrutura (MVC)

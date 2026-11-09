@@ -2,6 +2,10 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from models import models
 from controllers.decorators import login_requerido
 from services import verificacao_email
+from services.periodos_relatorio import (
+    resolver_limite_relatorio,
+    resolver_periodo_relatorio,
+)
 
 entregador_bp = Blueprint("entregador", __name__, url_prefix="/entregador")
 
@@ -37,14 +41,41 @@ def painel():
 @entregador_bp.route("/relatorio")
 @login_requerido("entregador")
 def relatorio():
-    ganhos = models.obter_relatorio_ganhos_entregador(session["user_id"])
-    return render_template("entregador/relatorio.html", ganhos=ganhos)
+    try:
+        periodo = resolver_periodo_relatorio(request.args, "hoje")
+    except ValueError as erro:
+        flash(str(erro), "erro")
+        return redirect(url_for("entregador.relatorio"))
+    limite = 20
+    dados = models.obter_relatorio_entregador(
+        session["user_id"],
+        periodo["data_inicio"],
+        periodo["data_fim"],
+        limite,
+    )
+    return render_template(
+        "entregador/relatorio.html",
+        dados=dados,
+        limite=limite,
+        **periodo,
+    )
 
 
 @entregador_bp.route("/relatorio/dados")
 @login_requerido("entregador")
 def dados_relatorio():
-    return jsonify(models.obter_relatorio_ganhos_entregador(session["user_id"]))
+    try:
+        periodo = resolver_periodo_relatorio(request.args, "hoje")
+        limite = resolver_limite_relatorio(request.args, (5, 10, 15, 20), 20)
+        dados = models.obter_relatorio_entregador(
+            session["user_id"],
+            periodo["data_inicio"],
+            periodo["data_fim"],
+            limite,
+        )
+    except ValueError as erro:
+        return jsonify({"erro": str(erro)}), 400
+    return jsonify(dados)
 
 
 @entregador_bp.route("/disponibilidade", methods=["POST"])

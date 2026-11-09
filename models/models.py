@@ -4,7 +4,7 @@ Cada função representa uma operação no banco (Model, no padrão MVC).
 Nenhuma lógica de rota/HTTP entra aqui - isso fica nos controllers.
 """
 import re
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pymysql.err import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.db import DB
@@ -896,47 +896,37 @@ def listar_pedidos_restaurante(id_restaurante, status=None, tipo_entrega=None):
         return db.cursor.fetchall()
 
 
-def listar_anos_pedidos_restaurante(id_restaurante):
+def _validar_periodo_relatorio(data_inicio, data_fim):
+    if (
+        not isinstance(data_inicio, date)
+        or not isinstance(data_fim, date)
+        or data_inicio > data_fim
+        or data_fim == date.max
+    ):
+        raise ValueError("Período de relatório inválido.")
+    return data_fim + timedelta(days=1)
+
+
+def obter_relatorio_restaurante(id_restaurante, data_inicio, data_fim, limite=20):
+    data_fim_exclusiva = _validar_periodo_relatorio(data_inicio, data_fim)
+    if not isinstance(limite, int) or not 1 <= limite <= 100:
+        raise ValueError("Limite de itens do relatório inválido.")
+
+    parametros = [id_restaurante, data_inicio, data_fim_exclusiva]
     with DB() as db:
         db.cursor.execute(
-            """SELECT DISTINCT YEAR(data_hora) AS ano
-               FROM pedido
-               WHERE id_restaurante=%s
-               ORDER BY ano DESC""",
-            (id_restaurante,),
-        )
-        return [int(row["ano"]) for row in db.cursor.fetchall() if row["ano"]]
-
-
-def obter_relatorio_restaurante(id_restaurante, ano=None, mes=None):
-    if ano is not None and (not isinstance(ano, int) or not 2000 <= ano <= 9999):
-        raise ValueError("Ano de relatório inválido.")
-    if mes is not None and (not isinstance(mes, int) or not 1 <= mes <= 12):
-        raise ValueError("Mês de relatório inválido.")
-
-    filtro_periodo = ""
-    parametros = [id_restaurante]
-    if ano is not None:
-        filtro_periodo += " AND YEAR(p.data_hora)=%s"
-        parametros.append(ano)
-    if mes is not None:
-        filtro_periodo += " AND MONTH(p.data_hora)=%s"
-        parametros.append(mes)
-
-    with DB() as db:
-        db.cursor.execute(
-            f"""SELECT COUNT(*) AS numero_vendas,
+            """SELECT COUNT(*) AS numero_vendas,
                        COALESCE(SUM(p.valor_total), 0) AS faturamento
                 FROM pedido p
                 WHERE p.id_restaurante=%s
                   AND p.status != 'cancelado'
-                  {filtro_periodo}""",
+                  AND p.data_hora >= %s AND p.data_hora < %s""",
             parametros,
         )
         metricas = db.cursor.fetchone()
 
         db.cursor.execute(
-            f"""SELECT pr.id, pr.nome,
+            """SELECT pr.id, pr.nome,
                        SUM(ip.quantidade) AS quantidade,
                        SUM(ip.quantidade * ip.preco_unitario) AS faturamento,
                        SUM(ip.quantidade * ip.preco_unitario)
@@ -946,10 +936,11 @@ def obter_relatorio_restaurante(id_restaurante, ano=None, mes=None):
                 JOIN produto pr ON pr.id = ip.id_produto
                 WHERE p.id_restaurante=%s
                   AND p.status != 'cancelado'
-                  {filtro_periodo}
+                  AND p.data_hora >= %s AND p.data_hora < %s
                 GROUP BY pr.id, pr.nome
-                ORDER BY quantidade DESC, pr.nome ASC""",
-            parametros,
+                ORDER BY quantidade DESC, pr.nome ASC
+                LIMIT %s""",
+            [*parametros, limite],
         )
         itens = db.cursor.fetchall()
 
@@ -969,36 +960,113 @@ def obter_relatorio_restaurante(id_restaurante, ano=None, mes=None):
     }
 
 
-def obter_relatorio_ganhos_entregador(id_entregador):
+def obter_relatorio_entregador(
+    id_entregador, data_inicio, data_fim, limite=20
+):
+    data_fim_exclusiva = _validar_periodo_relatorio(data_inicio, data_fim)
+    if not isinstance(limite, int) or not 1 <= limite <= 100:
+        raise ValueError("Limite de entregas do relatório inválido.")
+
+    periodo = (data_inicio, data_fim_exclusiva)
     with DB() as db:
         db.cursor.execute(
-            """SELECT
-                   COALESCE(SUM(
-                       CASE WHEN COALESCE(p.entregue_em, p.data_hora) >= CURDATE()
-                            THEN p.taxa_entrega_cobrada ELSE 0 END
-                   ), 0) AS ganho_dia,
-                   COALESCE(SUM(
-                       CASE WHEN COALESCE(p.entregue_em, p.data_hora)
-                                     >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-                            THEN p.taxa_entrega_cobrada ELSE 0 END
-                   ), 0) AS ganho_semanal,
-                   COALESCE(SUM(
-                       CASE WHEN COALESCE(p.entregue_em, p.data_hora)
-                                     >= DATE_FORMAT(CURDATE(), '%%Y-%%m-01')
-                            THEN p.taxa_entrega_cobrada ELSE 0 END
-                   ), 0) AS ganho_mensal
-               FROM pedido p
-               WHERE p.id_entregador=%s
-                 AND p.tipo_entrega='parceira'
-                 AND p.status='entregue'
-                 AND COALESCE(p.entregue_em, p.data_hora)
-                     >= DATE_FORMAT(CURDATE(), '%%Y-%%m-01')
-                     - INTERVAL 6 DAY""",
-            (id_entregador,),
+            """SELECT COUNT(*) AS entregas,
+                       COALESCE(SUM(p.taxa_entrega_cobrada), 0) AS ganho
+                FROM pedido p
+                WHERE p.id_entregador=%s
+                  AND p.tipo_entrega='parceira'
+                  AND p.status='entregue'
+                  AND COALESCE(p.entregue_em, p.data_hora) >= %s
+                  AND COALESCE(p.entregue_em, p.data_hora) < %s""",
+            [id_entregador, *periodo],
         )
-        ganhos = db.cursor.fetchone()
+        metricas = db.cursor.fetchone()
 
-    return {periodo: float(valor) for periodo, valor in ganhos.items()}
+        db.cursor.execute(
+            """SELECT p.id, r.nome_fantasia,
+                       COALESCE(p.entregue_em, p.data_hora) AS entregue_em,
+                       p.taxa_entrega_cobrada
+                FROM pedido p
+                JOIN restaurante r ON r.id_usuario = p.id_restaurante
+                WHERE p.id_entregador=%s
+                  AND p.tipo_entrega='parceira'
+                  AND p.status='entregue'
+                  AND COALESCE(p.entregue_em, p.data_hora) >= %s
+                  AND COALESCE(p.entregue_em, p.data_hora) < %s
+                ORDER BY COALESCE(p.entregue_em, p.data_hora) DESC, p.id DESC
+                LIMIT %s""",
+            [id_entregador, *periodo, limite],
+        )
+        historico = db.cursor.fetchall()
+
+    return {
+        "ganho": float(metricas["ganho"]),
+        "entregas": int(metricas["entregas"]),
+        "historico": [
+            {
+                "id": entrega["id"],
+                "restaurante": entrega["nome_fantasia"],
+                "entregue_em": entrega["entregue_em"].strftime("%d/%m/%Y às %H:%M"),
+                "taxa_entrega": float(entrega["taxa_entrega_cobrada"]),
+            }
+            for entrega in historico
+        ],
+    }
+
+
+def obter_relatorio_administrativo(data_inicio, data_fim):
+    data_fim_exclusiva = _validar_periodo_relatorio(data_inicio, data_fim)
+    with DB() as db:
+        db.cursor.execute(
+            """SELECT r.id_usuario, r.nome_fantasia,
+                       COUNT(p.id) AS pedidos_realizados,
+                       COALESCE(SUM(p.status='entregue'), 0) AS pedidos_concluidos,
+                       COALESCE(SUM(p.status='cancelado'), 0) AS pedidos_cancelados,
+                       COALESCE(SUM(
+                           CASE WHEN p.id IS NOT NULL AND p.status != 'cancelado'
+                                THEN p.valor_total ELSE 0 END
+                       ), 0) AS faturamento
+                FROM restaurante r
+                LEFT JOIN pedido p
+                  ON p.id_restaurante=r.id_usuario
+                 AND p.data_hora >= %s AND p.data_hora < %s
+                GROUP BY r.id_usuario, r.nome_fantasia
+                ORDER BY faturamento DESC, r.nome_fantasia ASC""",
+            (data_inicio, data_fim_exclusiva),
+        )
+        restaurantes = db.cursor.fetchall()
+
+    total = {
+        "pedidos_realizados": 0,
+        "pedidos_concluidos": 0,
+        "pedidos_cancelados": 0,
+        "faturamento": 0.0,
+    }
+    ranking = []
+    for restaurante in restaurantes:
+        realizados = int(restaurante["pedidos_realizados"])
+        concluidos = int(restaurante["pedidos_concluidos"])
+        cancelados = int(restaurante["pedidos_cancelados"])
+        faturamento = float(restaurante["faturamento"])
+        total["pedidos_realizados"] += realizados
+        total["pedidos_concluidos"] += concluidos
+        total["pedidos_cancelados"] += cancelados
+        total["faturamento"] += faturamento
+        ranking.append({
+            "id": restaurante["id_usuario"],
+            "nome": restaurante["nome_fantasia"],
+            "pedidos_realizados": realizados,
+            "pedidos_concluidos": concluidos,
+            "pedidos_cancelados": cancelados,
+            "taxa_conclusao": round(concluidos / realizados * 100) if realizados else 0,
+            "faturamento": faturamento,
+        })
+
+    total["taxa_conclusao"] = (
+        round(total["pedidos_concluidos"] / total["pedidos_realizados"] * 100)
+        if total["pedidos_realizados"] else 0
+    )
+    return {"metricas": total, "restaurantes": ranking}
 
 
 def listar_pedidos_disponiveis_para_entrega():

@@ -14,6 +14,7 @@ from controllers.restaurante_ctrl import restaurante_bp
 from controllers.entregador_ctrl import entregador_bp
 from controllers.pedido_ctrl import pedido_bp
 from controllers.geocoding_ctrl import geocoding_bp
+from controllers.admin_ctrl import admin_bp
 
 load_dotenv()
 
@@ -54,6 +55,7 @@ def create_app():
     app.register_blueprint(entregador_bp)   # "/entregador/..."
     app.register_blueprint(pedido_bp)       # "/pedido/..."
     app.register_blueprint(geocoding_bp)
+    app.register_blueprint(admin_bp)       # "/admin/relatorio" (acesso público)
 
     @app.cli.command("db-upgrade")
     def db_upgrade_command():
