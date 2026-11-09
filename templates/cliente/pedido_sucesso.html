@@ -29,6 +29,14 @@
     {% endif %}
 
     <p>Status atual: <strong id="status-pedido" data-id="{{ pedido.id }}" data-status="{{ pedido.status }}">{{ status_labels.get(pedido.status, pedido.status.replace('_', ' ')|title) }}</strong></p>
+    {% if pedido.pagamento_status == 'aprovado' %}
+        <p>Pagamento: <strong>confirmado pela InfinitePay</strong></p>
+    {% elif pedido.status == 'aguardando_pagamento' %}
+        <p class="muted">Aguardando a confirmação do pagamento pela InfinitePay.</p>
+        {% if pedido.checkout_url %}
+            <a href="{{ pedido.checkout_url }}" class="btn btn--primary">Continuar pagamento</a>
+        {% endif %}
+    {% endif %}
     <p>Total: R$ {{ '%.2f' % pedido.valor_total }}</p>
 
     <ul style="text-align:left; max-width:320px; margin: 16px auto;">
@@ -38,7 +46,7 @@
     </ul>
 
     <a href="{{ url_for('cliente.meus_pedidos') }}" class="btn btn--primary">Ver meus pedidos</a>
-    {% if pedido.status == 'pendente' %}
+    {% if pedido.status in ('pendente', 'aguardando_pagamento') %}
     <form method="post" action="{{ url_for('cliente.cancelar_pedido', id_pedido=pedido.id) }}"
           onsubmit="return confirm('Cancelar o pedido #{{ pedido.id }}?');" style="margin-top:12px;">
         <button type="submit" class="btn btn--ghost">Cancelar pedido</button>

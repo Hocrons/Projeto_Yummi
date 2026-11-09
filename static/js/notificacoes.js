@@ -8,6 +8,7 @@
     const STORAGE_KEY = "yummy_status_pedidos";
 
     const INFO_STATUS = {
+        "aguardando_pagamento": { icone: "💳", titulo: "Aguardando pagamento", descricao: "Finalize o pagamento pela InfinitePay para enviar seu pedido ao restaurante." },
         "pendente": { icone: "⏳", titulo: "Pedido aguardando aceite", descricao: "O restaurante ainda não confirmou." },
         "preparando": { icone: "🍳", titulo: "Pedido em preparo", descricao: "O restaurante está preparando seu pedido." },
         "localizando_entregador": { icone: "📡", titulo: "Procurando entregador", descricao: "Estamos buscando alguém para levar seu pedido." },
@@ -18,6 +19,7 @@
     };
 
     const ROTULOS_STATUS = {
+        "aguardando_pagamento": "Aguardando pagamento",
         "pendente": "Pendente",
         "preparando": "Em preparo",
         "localizando_entregador": "Buscando entregador",

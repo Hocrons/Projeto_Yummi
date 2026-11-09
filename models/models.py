@@ -697,7 +697,8 @@ def _obter_codigo_entrega_cliente(db, id_cliente):
 
 def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
                           forma_pagamento, codigo_cupom=None,
-                          tipo_entrega=None, taxa_entrega=0.0):
+                          tipo_entrega=None, taxa_entrega=0.0,
+                          gateway_order_nsu=None):
     """
     Cria o pedido + itens + pagamento + registro de cupom (se houver).
 
@@ -771,13 +772,18 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
             valor_total = 0.0
 
         # -------- 5. Insere o pedido --------
+        status_pedido = (
+            "aguardando_pagamento"
+            if forma_pagamento == "infinitepay"
+            else "pendente"
+        )
         db.cursor.execute(
             """INSERT INTO pedido
                (id_cliente, id_restaurante, id_endereco, status, tipo_entrega,
                 valor_total, id_cupom, valor_desconto, taxa_entrega_cobrada,
                 codigo_entrega)
-               VALUES (%s,%s,%s,'pendente',%s,%s,%s,%s,%s,%s)""",
-            (id_cliente, id_restaurante, id_endereco, tipo_entrega,
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (id_cliente, id_restaurante, id_endereco, status_pedido, tipo_entrega,
              valor_total, id_cupom, valor_desconto, taxa_entrega,
              codigo_entrega),
         )
@@ -794,13 +800,14 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
 
         # -------- 7. Pagamento --------
         db.cursor.execute(
-            """INSERT INTO pagamento (id_pedido, forma_pagamento, valor, status)
-               VALUES (%s,%s,%s,'pendente')""",
-            (id_pedido, forma_pagamento, valor_total),
+            """INSERT INTO pagamento
+               (id_pedido, forma_pagamento, valor, status, gateway_order_nsu)
+               VALUES (%s,%s,%s,'pendente',%s)""",
+            (id_pedido, forma_pagamento, valor_total, gateway_order_nsu),
         )
 
         # -------- 8. Registra uso do cupom --------
-        if id_cupom:
+        if id_cupom and forma_pagamento != "infinitepay":
             db.cursor.execute(
                 """INSERT INTO cupom_uso (id_cupom, id_cliente, id_pedido, valor_desconto)
                    VALUES (%s,%s,%s,%s)""",
@@ -819,11 +826,14 @@ def buscar_pedido(id_pedido):
         db.cursor.execute(
             """SELECT p.*, r.nome_fantasia, r.foto_url AS restaurante_foto_url,
                       uc.nome AS nome_cliente,
-                      ue.nome AS nome_entregador
+                      ue.nome AS nome_entregador,
+                      pag.status AS pagamento_status,
+                      pag.checkout_url
                FROM pedido p
                JOIN restaurante r ON r.id_usuario = p.id_restaurante
                JOIN usuario uc ON uc.id = p.id_cliente
                LEFT JOIN usuario ue ON ue.id = p.id_entregador
+               LEFT JOIN pagamento pag ON pag.id_pedido = p.id
                WHERE p.id=%s""",
             (id_pedido,),
         )
@@ -838,6 +848,112 @@ def buscar_pedido(id_pedido):
         )
         pedido["itens"] = db.cursor.fetchall()
         return pedido
+
+
+def buscar_pagamento_infinitepay(order_nsu):
+    with DB() as db:
+        db.cursor.execute(
+            """SELECT pag.id, pag.id_pedido, pag.status, pag.valor,
+                      pag.gateway_order_nsu
+               FROM pagamento pag
+               WHERE pag.gateway_order_nsu=%s
+                 AND pag.forma_pagamento='infinitepay'""",
+            (order_nsu,),
+        )
+        return db.cursor.fetchone()
+
+
+def salvar_link_checkout_infinitepay(id_pedido, checkout_url):
+    with DB() as db:
+        db.cursor.execute(
+            """UPDATE pagamento
+               SET checkout_url=%s
+               WHERE id_pedido=%s AND forma_pagamento='infinitepay'
+                 AND status='pendente'""",
+            (checkout_url, id_pedido),
+        )
+        return db.cursor.rowcount == 1
+
+
+def cancelar_checkout_infinitepay(id_pedido):
+    with DB() as db:
+        db.cursor.execute(
+            """UPDATE pedido SET status='cancelado'
+               WHERE id=%s AND status='aguardando_pagamento'""",
+            (id_pedido,),
+        )
+        db.cursor.execute(
+            """UPDATE pagamento SET status='falhou'
+               WHERE id_pedido=%s AND forma_pagamento='infinitepay'
+                 AND status='pendente'""",
+            (id_pedido,),
+        )
+
+
+def confirmar_pagamento_infinitepay(order_nsu, transaction_nsu, slug):
+    with DB() as db:
+        db.cursor.execute(
+            """SELECT p.id, p.id_cliente, p.id_cupom, p.status AS pedido_status,
+                      pag.status AS pagamento_status, pag.valor
+               FROM pagamento pag
+               JOIN pedido p ON p.id=pag.id_pedido
+               WHERE pag.gateway_order_nsu=%s
+                 AND pag.forma_pagamento='infinitepay'
+               FOR UPDATE""",
+            (order_nsu,),
+        )
+        pagamento = db.cursor.fetchone()
+        if not pagamento:
+            return "nao_encontrado"
+
+        if pagamento["pagamento_status"] == "aprovado":
+            return "aprovado"
+
+        if pagamento["pedido_status"] == "cancelado":
+            db.cursor.execute(
+                """UPDATE pagamento
+                   SET status='reembolso_pendente',
+                       gateway_transaction_nsu=%s, gateway_slug=%s
+                   WHERE id_pedido=%s""",
+                (transaction_nsu, slug, pagamento["id"]),
+            )
+            return "reembolso_pendente"
+
+        if pagamento["pedido_status"] != "aguardando_pagamento":
+            return "nao_aplicavel"
+
+        db.cursor.execute(
+            """UPDATE pagamento
+               SET status='aprovado', gateway_transaction_nsu=%s, gateway_slug=%s
+               WHERE id_pedido=%s AND status='pendente'""",
+            (transaction_nsu, slug, pagamento["id"]),
+        )
+        if db.cursor.rowcount != 1:
+            return "nao_aplicavel"
+
+        db.cursor.execute(
+            """UPDATE pedido SET status='pendente'
+               WHERE id=%s AND status='aguardando_pagamento'""",
+            (pagamento["id"],),
+        )
+        if db.cursor.rowcount != 1:
+            raise RuntimeError(
+                "Pedido mudou de status durante a confirmação do pagamento."
+            )
+
+        if pagamento["id_cupom"]:
+            db.cursor.execute(
+                """INSERT INTO cupom_uso
+                   (id_cupom, id_cliente, id_pedido, valor_desconto)
+                   SELECT id_cupom, id_cliente, id, valor_desconto
+                   FROM pedido WHERE id=%s""",
+                (pagamento["id"],),
+            )
+            db.cursor.execute(
+                "UPDATE cupom SET usos_atuais=usos_atuais+1 WHERE id=%s",
+                (pagamento["id_cupom"],),
+            )
+        return "aprovado"
 
 
 def listar_pedidos_cliente(id_cliente):
@@ -882,7 +998,8 @@ def listar_status_pedidos_cliente(id_cliente):
 def listar_pedidos_restaurante(id_restaurante, status=None, tipo_entrega=None):
     query = """SELECT p.*, u.nome AS nome_cliente
                FROM pedido p JOIN usuario u ON u.id = p.id_cliente
-               WHERE p.id_restaurante=%s"""
+               WHERE p.id_restaurante=%s
+                 AND p.status<>'aguardando_pagamento'"""
     params = [id_restaurante]
     if status:
         query += " AND p.status=%s"
@@ -920,6 +1037,7 @@ def obter_relatorio_restaurante(id_restaurante, data_inicio, data_fim, limite=20
                 FROM pedido p
                 WHERE p.id_restaurante=%s
                   AND p.status != 'cancelado'
+                  AND p.status != 'aguardando_pagamento'
                   AND p.data_hora >= %s AND p.data_hora < %s""",
             parametros,
         )
@@ -936,6 +1054,7 @@ def obter_relatorio_restaurante(id_restaurante, data_inicio, data_fim, limite=20
                 JOIN produto pr ON pr.id = ip.id_produto
                 WHERE p.id_restaurante=%s
                   AND p.status != 'cancelado'
+                  AND p.status != 'aguardando_pagamento'
                   AND p.data_hora >= %s AND p.data_hora < %s
                 GROUP BY pr.id, pr.nome
                 ORDER BY quantidade DESC, pr.nome ASC
@@ -1029,6 +1148,7 @@ def obter_relatorio_administrativo(data_inicio, data_fim):
                 FROM restaurante r
                 LEFT JOIN pedido p
                   ON p.id_restaurante=r.id_usuario
+                 AND p.status != 'aguardando_pagamento'
                  AND p.data_hora >= %s AND p.data_hora < %s
                 GROUP BY r.id_usuario, r.nome_fantasia
                 ORDER BY faturamento DESC, r.nome_fantasia ASC""",
@@ -1177,7 +1297,8 @@ def cancelar_pedido_cliente(id_pedido, id_cliente):
         db.cursor.execute(
             """UPDATE pedido
                SET status='cancelado'
-               WHERE id=%s AND id_cliente=%s AND status='pendente'""",
+               WHERE id=%s AND id_cliente=%s
+                 AND status IN ('pendente', 'aguardando_pagamento')""",
             (id_pedido, id_cliente),
         )
         if db.cursor.rowcount == 0:

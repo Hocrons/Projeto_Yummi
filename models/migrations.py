@@ -133,10 +133,40 @@ def _add_delivery_completion_timestamp(cursor):
         )
 
 
+def _add_infinitepay_payment_fields(cursor):
+    columns = (
+        ("pagamento", "gateway_order_nsu", "VARCHAR(100) NULL"),
+        ("pagamento", "checkout_url", "VARCHAR(1000) NULL"),
+        ("pagamento", "gateway_transaction_nsu", "VARCHAR(100) NULL"),
+        ("pagamento", "gateway_slug", "VARCHAR(255) NULL"),
+    )
+    for table, column, definition in columns:
+        if not _column_exists(cursor, table, column):
+            cursor.execute(
+                f"ALTER TABLE `{table}` ADD COLUMN `{column}` {definition}"
+            )
+
+    cursor.execute(
+        """
+        SELECT 1
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'pagamento'
+          AND INDEX_NAME = 'uq_pagamento_gateway_order_nsu'
+        """
+    )
+    if not cursor.fetchone():
+        cursor.execute(
+            """ALTER TABLE `pagamento`
+               ADD UNIQUE KEY `uq_pagamento_gateway_order_nsu` (`gateway_order_nsu`)"""
+        )
+
+
 MIGRATIONS = (
     ("001_add_missing_schema_columns", _add_missing_schema_columns),
     ("002_add_delivery_completion_timestamp", _add_delivery_completion_timestamp),
     ("003_role_scoped_contact_uniqueness", _add_role_scoped_contact_uniqueness),
+    ("004_infinitepay_payment_fields", _add_infinitepay_payment_fields),
 )
 
 

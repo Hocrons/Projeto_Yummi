@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const idPedido = elStatus.dataset.id;
     const rotulos = {
+        aguardando_pagamento: "Aguardando pagamento",
         pendente: "Pendente",
         preparando: "Em preparo",
         localizando_entregador: "Buscando entregador",

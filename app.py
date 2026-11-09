@@ -81,6 +81,7 @@ def create_app():
             "user_nome": session.get("user_nome"),
             "qtd_carrinho": qtd_carrinho,
             "status_labels": {
+                "aguardando_pagamento": "Aguardando pagamento",
                 "pendente": "Pendente",
                 "preparando": "Em preparo",
                 "localizando_entregador": "Buscando entregador",

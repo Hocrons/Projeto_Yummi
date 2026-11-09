@@ -210,11 +210,16 @@ CREATE TABLE item_pedido (
 -- pagamento
 -- ---------------------------------------------------------
 CREATE TABLE pagamento (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    id_pedido       INT NOT NULL,
-    forma_pagamento VARCHAR(20) NOT NULL,
-    valor           DECIMAL(10,2) NOT NULL,
-    status          VARCHAR(20) NOT NULL DEFAULT 'pendente',
+    id                       INT AUTO_INCREMENT PRIMARY KEY,
+    id_pedido                INT NOT NULL,
+    forma_pagamento          VARCHAR(20) NOT NULL,
+    valor                    DECIMAL(10,2) NOT NULL,
+    status                   VARCHAR(20) NOT NULL DEFAULT 'pendente',
+    gateway_order_nsu        VARCHAR(100) NULL,
+    checkout_url             VARCHAR(1000) NULL,
+    gateway_transaction_nsu  VARCHAR(100) NULL,
+    gateway_slug             VARCHAR(255) NULL,
+    UNIQUE KEY uq_pagamento_gateway_order_nsu (gateway_order_nsu),
     CONSTRAINT fk_pagamento_pedido
         FOREIGN KEY (id_pedido) REFERENCES pedido(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
