@@ -35,11 +35,13 @@ INSERT INTO plano (nome, descricao, mensalidade, comissao_pct, taxa_cartao_pct, 
 CREATE TABLE usuario (
     id             INT AUTO_INCREMENT PRIMARY KEY,
     nome           VARCHAR(100) NOT NULL,
-    email          VARCHAR(100) NOT NULL UNIQUE,
+    email          VARCHAR(100) NOT NULL,
     senha          VARCHAR(255) NOT NULL,
     telefone       VARCHAR(20),
     tipo           VARCHAR(20)  NOT NULL,   -- 'cliente' | 'restaurante' | 'entregador'
-    data_cadastro  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    data_cadastro  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_usuario_email_tipo (email, tipo),
+    UNIQUE KEY uq_usuario_telefone_tipo (telefone, tipo)
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------

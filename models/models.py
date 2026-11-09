@@ -5,32 +5,58 @@ Nenhuma lógica de rota/HTTP entra aqui - isso fica nos controllers.
 """
 import re
 from datetime import datetime
+from pymysql.err import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.db import DB
 from services import distancia
+from utils import normalizar_telefone
 
 
 def _so_digitos(txt):
     return re.sub(r"\D", "", txt or "")
 
 
+def _normalizar_email(email):
+    return (email or "").strip().lower()
+
+
 # =========================================================
 # USUARIO
 # =========================================================
 def criar_usuario(nome, email, senha, telefone, tipo):
+    email = _normalizar_email(email)
+    if not email or "@" not in email:
+        raise ValueError("Informe um e-mail válido.")
+
+    telefone_raw = (telefone or "").strip()
+    telefone = normalizar_telefone(telefone_raw)
+    if not telefone:
+        raise ValueError("Informe um telefone válido com DDD.")
+
     senha_hash = generate_password_hash(senha)
+    try:
+        with DB() as db:
+            db.cursor.execute(
+                """INSERT INTO usuario (nome, email, senha, telefone, tipo)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (nome, email, senha_hash, telefone, tipo),
+            )
+            return db.cursor.lastrowid
+    except IntegrityError as erro:
+        if erro.args and erro.args[0] == 1062:
+            raise ValueError(
+                "Este e-mail ou celular já está cadastrado em outra conta "
+                f"de {tipo}."
+            ) from erro
+        raise
+
+
+def buscar_usuario_por_email_e_tipo(email, tipo):
     with DB() as db:
         db.cursor.execute(
-            """INSERT INTO usuario (nome, email, senha, telefone, tipo)
-               VALUES (%s, %s, %s, %s, %s)""",
-            (nome, email, senha_hash, telefone, tipo),
+            "SELECT * FROM usuario WHERE email=%s AND tipo=%s",
+            (_normalizar_email(email), tipo),
         )
-        return db.cursor.lastrowid
-
-
-def buscar_usuario_por_email(email):
-    with DB() as db:
-        db.cursor.execute("SELECT * FROM usuario WHERE email=%s", (email,))
         return db.cursor.fetchone()
 
 
@@ -40,16 +66,11 @@ def buscar_usuario_por_id(id_usuario):
         return db.cursor.fetchone()
 
 
-def buscar_usuario_por_telefone(telefone_normalizado):
-    with DB() as db:
-        db.cursor.execute(
-            "SELECT * FROM usuario WHERE telefone=%s",
-            (telefone_normalizado,),
-        )
-        return db.cursor.fetchone()
+def buscar_usuario_por_telefone(telefone, tipo):
+    telefone_normalizado = normalizar_telefone(telefone)
+    if not telefone_normalizado:
+        return None
 
-
-def buscar_usuario_por_telefone_e_tipo(telefone_normalizado, tipo):
     with DB() as db:
         db.cursor.execute(
             "SELECT * FROM usuario WHERE telefone=%s AND tipo=%s",
@@ -58,19 +79,55 @@ def buscar_usuario_por_telefone_e_tipo(telefone_normalizado, tipo):
         return db.cursor.fetchone()
 
 
-def validar_login(email, senha):
-    usuario = buscar_usuario_por_email(email)
+def buscar_usuario_por_telefone_e_tipo(telefone_normalizado, tipo):
+    return buscar_usuario_por_telefone(telefone_normalizado, tipo)
+
+
+def validar_login(email, senha, tipo):
+    usuario = buscar_usuario_por_email_e_tipo(email, tipo)
     if usuario and check_password_hash(usuario["senha"], senha):
         return usuario
     return None
 
 
 def atualizar_usuario(id_usuario, nome, telefone):
-    with DB() as db:
-        db.cursor.execute(
-            "UPDATE usuario SET nome=%s, telefone=%s WHERE id=%s",
-            (nome, telefone, id_usuario),
-        )
+    telefone_raw = (telefone or "").strip()
+    telefone_normalizado = normalizar_telefone(telefone_raw)
+    if not telefone_normalizado:
+        raise ValueError("Informe um telefone válido com DDD.")
+
+    try:
+        with DB() as db:
+            db.cursor.execute(
+                "SELECT tipo FROM usuario WHERE id=%s",
+                (id_usuario,),
+            )
+            usuario = db.cursor.fetchone()
+            if not usuario:
+                raise ValueError("Usuário não encontrado.")
+
+            if telefone_normalizado:
+                db.cursor.execute(
+                    """SELECT id FROM usuario
+                       WHERE telefone=%s AND tipo=%s AND id<>%s""",
+                    (telefone_normalizado, usuario["tipo"], id_usuario),
+                )
+                if db.cursor.fetchone():
+                    raise ValueError(
+                        "Este celular já está cadastrado em outra conta "
+                        f"de {usuario['tipo']}."
+                    )
+
+            db.cursor.execute(
+                "UPDATE usuario SET nome=%s, telefone=%s WHERE id=%s",
+                (nome, telefone_normalizado, id_usuario),
+            )
+    except IntegrityError as erro:
+        if erro.args and erro.args[0] == 1062:
+            raise ValueError(
+                f"Este celular já está cadastrado em outra conta de {usuario['tipo']}."
+            ) from erro
+        raise
 
 
 # =========================================================

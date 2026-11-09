@@ -504,9 +504,13 @@ def api_pedidos_ativos():
 @login_requerido("cliente")
 def editar_perfil():
     if request.method == "POST":
-        models.atualizar_usuario(
-            session["user_id"], request.form["nome"], request.form.get("telefone")
-        )
+        try:
+            models.atualizar_usuario(
+                session["user_id"], request.form["nome"], request.form.get("telefone")
+            )
+        except ValueError as erro:
+            flash(str(erro), "erro")
+            return redirect(url_for("cliente.editar_perfil"))
         models.atualizar_cliente(session["user_id"], request.form.get("apelido"))
 
         codigo_entrega = (request.form.get("codigo_entrega") or "").strip()

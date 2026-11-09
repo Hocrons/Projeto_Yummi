@@ -102,9 +102,16 @@ flask --app app db-upgrade
 ```
 
 Esse comando aplica apenas migrações ainda não executadas. Para bancos criados
-com uma versão anterior do `database.sql`, ele adiciona as colunas ausentes
-sem remover tabelas ou registros. Configure `SESSION_COOKIE_SECURE=true` em
-produção com HTTPS; mantenha `false` apenas no desenvolvimento local por HTTP.
+com uma versão anterior do `database.sql`, ele adiciona colunas ausentes,
+normaliza os contatos e atualiza os índices sem remover tabelas ou registros.
+Configure `SESSION_COOKIE_SECURE=true` em produção com HTTPS; mantenha `false`
+apenas no desenvolvimento local por HTTP.
+
+E-mail e telefone são únicos dentro de cada perfil (cliente, restaurante ou
+entregador), podendo ser reutilizados em perfis de tipos diferentes. A migração
+normaliza os contatos e interrompe com os IDs afetados se encontrar telefones
+inválidos ou duplicidades dentro do mesmo perfil; corrija esses dados antes de
+executar `db-upgrade` novamente. Ela não mescla contas automaticamente.
 
 7. Rodar o servidor Flask
 bash

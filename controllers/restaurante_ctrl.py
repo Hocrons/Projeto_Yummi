@@ -560,11 +560,15 @@ def editar_perfil():
             if nova_lat is not None:
                 lat, lon = nova_lat, nova_lon
 
-        models.atualizar_usuario(
-            session["user_id"],
-            request.form["nome_responsavel"],
-            request.form.get("telefone"),
-        )
+        try:
+            models.atualizar_usuario(
+                session["user_id"],
+                request.form["nome_responsavel"],
+                request.form.get("telefone"),
+            )
+        except ValueError as erro:
+            flash(str(erro), "erro")
+            return redirect(url_for("restaurante.editar_perfil"))
 
         models.atualizar_restaurante(
             session["user_id"],
