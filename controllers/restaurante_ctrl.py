@@ -26,6 +26,11 @@ MESES_RELATORIO = (
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 )
 
+STATUS_PEDIDOS = {
+    "pendente", "preparando", "localizando_entregador",
+    "indo_ao_restaurante", "saiu_para_entrega", "entregue", "cancelado",
+}
+
 
 def _url_valida(url):
     url = (url or "").strip()
@@ -56,13 +61,22 @@ def portal():
 @login_requerido("restaurante")
 def painel():
     status = request.args.get("status")
-    if status not in {
-        "pendente", "preparando", "localizando_entregador",
-        "indo_ao_restaurante", "saiu_para_entrega", "entregue", "cancelado",
-    }:
+    if status not in STATUS_PEDIDOS:
         status = None
     pedidos = models.listar_pedidos_restaurante(session["user_id"], status=status)
     return render_template("restaurante/painel.html", pedidos=pedidos, status_filtro=status)
+
+
+@restaurante_bp.route("/api/painel-pedidos")
+@login_requerido("restaurante")
+def api_pedidos_painel():
+    status = request.args.get("status")
+    if status not in STATUS_PEDIDOS:
+        status = None
+    pedidos = models.listar_pedidos_restaurante(session["user_id"], status=status)
+    return render_template("restaurante/_lista_pedidos.html", pedidos=pedidos), {
+        "Cache-Control": "no-store",
+    }
 
 
 @restaurante_bp.route("/relatorio")

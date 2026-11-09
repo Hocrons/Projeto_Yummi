@@ -479,12 +479,12 @@ def cancelar_pedido(id_pedido):
 
 
 # ---------------------------------------------------------
-# API — PEDIDOS ATIVOS (usado pelo notificacoes.js)
+# API — STATUS DOS PEDIDOS (usado pelas notificações e pela lista de pedidos)
 # ---------------------------------------------------------
-@cliente_bp.route("/api/pedidos-ativos")
+@cliente_bp.route("/api/pedidos-status")
 @login_requerido("cliente")
-def api_pedidos_ativos():
-    pedidos = models.listar_pedidos_ativos_cliente(session["user_id"])
+def api_status_pedidos():
+    pedidos = models.listar_status_pedidos_cliente(session["user_id"])
     return jsonify({
         "pedidos": [
             {

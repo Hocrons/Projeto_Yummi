@@ -866,6 +866,19 @@ def listar_pedidos_ativos_cliente(id_cliente):
         return db.cursor.fetchall()
 
 
+def listar_status_pedidos_cliente(id_cliente):
+    with DB() as db:
+        db.cursor.execute(
+            """SELECT p.id, p.status, r.nome_fantasia
+               FROM pedido p
+               JOIN restaurante r ON r.id_usuario = p.id_restaurante
+               WHERE p.id_cliente=%s
+               ORDER BY p.data_hora DESC""",
+            (id_cliente,),
+        )
+        return db.cursor.fetchall()
+
+
 def listar_pedidos_restaurante(id_restaurante, status=None, tipo_entrega=None):
     query = """SELECT p.*, u.nome AS nome_cliente
                FROM pedido p JOIN usuario u ON u.id = p.id_cliente

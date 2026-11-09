@@ -23,7 +23,7 @@
                 {% endif %}
             </div>
             <div>
-                <span class="status-badge status-badge--{{ p.status }}">{{ status_labels.get(p.status, p.status.replace('_', ' ')|title) }}</span>
+                <span class="status-badge status-badge--{{ p.status }}" data-pedido-status="{{ p.id }}" data-status="{{ p.status }}">{{ status_labels.get(p.status, p.status.replace('_', ' ')|title) }}</span>
                 <p>R$ {{ '%.2f' % p.valor_total }}</p>
                 <a class="btn btn--ghost" href="{{ url_for('cliente.pedido_sucesso', id_pedido=p.id) }}">
                     Acompanhar pedido
