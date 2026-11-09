@@ -8,7 +8,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from io import BytesIO
-from weasyprint import HTML
+from xhtml2pdf import pisa
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -25,7 +25,6 @@ def servico_configurado():
 
 
 def enviar_codigo(email_destino, codigo):
-    """Envia o código de verificação por e-mail."""
     if not servico_configurado():
         return False, "Envio de e-mail não está configurado no servidor."
 
@@ -37,12 +36,10 @@ def enviar_codigo(email_destino, codigo):
         <p style="color: #777;">Esse código expira em 10 minutos. Não compartilhe com ninguém.</p>
     </div>
     """
-
     return _enviar_email(email_destino, f"{codigo} é o seu código de verificação Yummy", corpo_html)
 
 
 def enviar_nota_fiscal(email_destino, html_nota, nome_cliente, id_pedido):
-    """Gera o PDF da nota fiscal e envia como anexo no e-mail."""
     if not servico_configurado():
         return False, "Envio de e-mail não está configurado."
 
@@ -57,9 +54,10 @@ def enviar_nota_fiscal(email_destino, html_nota, nome_cliente, id_pedido):
     </div>
     """
 
-    # Gerar o PDF a partir do HTML
+    # Gerar o PDF a partir do HTML usando xhtml2pdf
     pdf_buffer = BytesIO()
-    HTML(string=html_nota).write_pdf(pdf_buffer)
+    # A xhtml2pdf converte a string HTML diretamente
+    pisa.CreatePDF(html_nota, dest=pdf_buffer)
     pdf_buffer.seek(0)
 
     # Montar o e-mail com o anexo
@@ -67,8 +65,6 @@ def enviar_nota_fiscal(email_destino, html_nota, nome_cliente, id_pedido):
     msg["Subject"] = f"Sua Nota Fiscal - Pedido #{id_pedido} - Yummy"
     msg["From"] = f"{_REMETENTE_NOME} <{_SMTP_USER}>"
     msg["To"] = email_destino
-
-    # Adiciona o corpo do e-mail
     msg.attach(MIMEText(corpo_html, "html"))
 
     # Adiciona o PDF como anexo
