@@ -90,6 +90,11 @@ def alternar_disponibilidade():
 @entregador_bp.route("/pedido/<int:id_pedido>/aceitar", methods=["POST"])
 @login_requerido("entregador")
 def aceitar_pedido(id_pedido):
+    entregador = models.buscar_entregador(session["user_id"])
+    if not entregador or not entregador["disponivel"]:
+        flash("Você está indisponível. Ative sua disponibilidade para aceitar corridas.", "erro")
+        return redirect(url_for("entregador.painel"))
+
     sucesso = models.atribuir_entregador(id_pedido, session["user_id"])
     if sucesso:
         flash(f"Pedido #{id_pedido} aceito! Vá até o restaurante para retirar.", "sucesso")
@@ -143,6 +148,7 @@ def marcar_entregue(id_pedido):
 
     sucesso = models.marcar_pedido_entregue(id_pedido, session["user_id"])
     if sucesso:
+        models.atualizar_status_pagamento(id_pedido, "aprovado")
         flash(f"Pedido #{id_pedido} entregue com sucesso!", "sucesso")
         
         # --- DISPARO DA NOTA FISCAL ---
