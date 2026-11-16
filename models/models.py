@@ -364,8 +364,15 @@ def atualizar_produto(id_produto, nome, descricao, preco, disponivel, foto_url=N
 
 
 def deletar_produto(id_produto):
+    """Exclui o produto. Se ele já aparece em pedidos, apenas o desativa
+    (preserva o histórico). Retorna 'excluido' ou 'desativado'."""
     with DB() as db:
+        db.cursor.execute("SELECT COUNT(*) AS n FROM item_pedido WHERE id_produto=%s", (id_produto,))
+        if db.cursor.fetchone()["n"] > 0:
+            db.cursor.execute("UPDATE produto SET disponivel=0 WHERE id=%s", (id_produto,))
+            return "desativado"
         db.cursor.execute("DELETE FROM produto WHERE id=%s", (id_produto,))
+        return "excluido"
 
 
 def _query_produtos_com_restaurante(where_sql, params, limite=200):
@@ -732,13 +739,17 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
         ids_produto = [i["id_produto"] for i in itens]
         formato = ",".join(["%s"] * len(ids_produto))
         db.cursor.execute(
-            f"SELECT id, id_restaurante, preco FROM produto WHERE id IN ({formato})",
+            f"SELECT id, id_restaurante, preco, disponivel, nome FROM produto WHERE id IN ({formato})",
             ids_produto,
         )
         produtos_encontrados = db.cursor.fetchall()
 
         if len(produtos_encontrados) != len(set(ids_produto)):
             raise ValueError("Um ou mais produtos do pedido não foram encontrados.")
+
+        for p in produtos_encontrados:
+            if not p["disponivel"]:
+                raise ValueError(f"O produto \"{p['nome']}\" está indisponível no momento. Remova-o do carrinho.")
 
         precos_banco = {p["id"]: float(p["preco"]) for p in produtos_encontrados}
         for p in produtos_encontrados:

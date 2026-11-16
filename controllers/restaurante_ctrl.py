@@ -168,6 +168,7 @@ def atualizar_status_pedido(id_pedido):
             return redirect(url_for("restaurante.painel"))
         ok = models.marcar_pedido_entregue_pelo_restaurante(id_pedido, session["user_id"])
         if ok:
+            models.atualizar_status_pagamento(id_pedido, "aprovado")
             flash(f"Pedido #{id_pedido} marcado como entregue!", "sucesso")
             
             # --- DISPARO DA NOTA FISCAL ---
@@ -229,6 +230,20 @@ def trocar_entregador(id_pedido):
 # ---------------------------------------------------------
 # CRUD DE PRODUTOS
 # ---------------------------------------------------------
+def _validar_produto(form):
+    """Retorna (nome, preco, erro). Nome obrigatório e preço numérico > 0."""
+    nome = (form.get("nome") or "").strip()
+    if not nome:
+        return None, None, "Informe o nome do produto."
+    try:
+        preco = round(float(str(form.get("preco", "")).replace(",", ".")), 2)
+    except (TypeError, ValueError):
+        return None, None, "Informe um preço válido (ex.: 25,90)."
+    if not (0 < preco <= 99999999.99):
+        return None, None, "O preço deve ser maior que zero."
+    return nome, preco, None
+
+
 @restaurante_bp.route("/produtos")
 @login_requerido("restaurante")
 def produtos():
@@ -245,11 +260,16 @@ def produto_novo():
             flash("URL da foto inválida. Use http:// ou https://", "erro")
             return render_template("restaurante/produto_novo.html", form=request.form)
 
+        nome, preco, erro = _validar_produto(request.form)
+        if erro:
+            flash(erro, "erro")
+            return render_template("restaurante/produto_novo.html", form=request.form)
+
         models.criar_produto(
             id_restaurante=session["user_id"],
-            nome=request.form["nome"],
+            nome=nome,
             descricao=request.form.get("descricao"),
-            preco=request.form["preco"],
+            preco=preco,
             disponivel=bool(request.form.get("disponivel")),
             foto_url=foto_url,
         )
@@ -272,11 +292,16 @@ def produto_editar(id_produto):
             flash("URL da foto inválida. Use http:// ou https://", "erro")
             return render_template("restaurante/produto_editar.html", produto=produto)
 
+        nome, preco, erro = _validar_produto(request.form)
+        if erro:
+            flash(erro, "erro")
+            return render_template("restaurante/produto_editar.html", produto=produto)
+
         models.atualizar_produto(
             id_produto,
-            nome=request.form["nome"],
+            nome=nome,
             descricao=request.form.get("descricao"),
-            preco=request.form["preco"],
+            preco=preco,
             disponivel=bool(request.form.get("disponivel")),
             foto_url=foto_url,
         )
@@ -291,8 +316,12 @@ def produto_editar(id_produto):
 def produto_excluir(id_produto):
     produto = models.buscar_produto(id_produto)
     if produto and produto["id_restaurante"] == session["user_id"]:
-        models.deletar_produto(id_produto)
-        flash("Produto removido.", "sucesso")
+        resultado = models.deletar_produto(id_produto)
+        if resultado == "desativado":
+            flash("Este produto já aparece em pedidos anteriores, então foi marcado como "
+                  "indisponível em vez de excluído (o histórico é preservado).", "sucesso")
+        else:
+            flash("Produto removido.", "sucesso")
     return redirect(url_for("restaurante.produtos"))
 
 
@@ -438,7 +467,7 @@ def cupom_novo():
                 ativo=dados["ativo"],
             )
         except Exception as e:
-            flash(f"Erro ao criar cupom: {e}", "erro")
+            flash("Não foi possível salvar o cupom. Confira os dados e tente novamente.", "erro")
             return render_template("restaurante/cupom_form.html", cupom=None, form=request.form)
 
         flash(f"Cupom '{dados['codigo']}' criado!", "sucesso")
@@ -483,7 +512,7 @@ def cupom_editar(id_cupom):
                 ativo=dados["ativo"],
             )
         except Exception as e:
-            flash(f"Erro ao atualizar cupom: {e}", "erro")
+            flash("Não foi possível salvar o cupom. Confira os dados e tente novamente.", "erro")
             return render_template("restaurante/cupom_form.html", cupom=cupom, form=request.form)
 
         flash(f"Cupom '{dados['codigo']}' atualizado.", "sucesso")
@@ -541,6 +570,19 @@ def editar_perfil():
             flash("URL da foto inválida. Use http:// ou https://", "erro")
             return redirect(url_for("restaurante.editar_perfil"))
 
+        nome_fantasia = (request.form.get("nome_fantasia") or "").strip()
+        nome_resp = (request.form.get("nome_responsavel") or "").strip()
+        if not nome_fantasia or not nome_resp:
+            flash("Informe o nome fantasia e o nome do responsável.", "erro")
+            return redirect(url_for("restaurante.editar_perfil"))
+        try:
+            taxa = round(float(str(request.form.get("taxa_entrega") or 0).replace(",", ".")), 2)
+        except ValueError:
+            taxa = None
+        if taxa is None or not (0 <= taxa <= 999.99):
+            flash("Informe uma taxa de entrega válida (zero ou maior).", "erro")
+            return redirect(url_for("restaurante.editar_perfil"))
+
         rua = request.form.get("rua") or ""
         numero = request.form.get("numero") or ""
         bairro = request.form.get("bairro") or ""
@@ -561,7 +603,7 @@ def editar_perfil():
         try:
             models.atualizar_usuario(
                 session["user_id"],
-                request.form["nome_responsavel"],
+                nome_resp,
                 request.form.get("telefone"),
             )
         except ValueError as erro:
@@ -570,9 +612,9 @@ def editar_perfil():
 
         models.atualizar_restaurante(
             session["user_id"],
-            nome_fantasia=request.form["nome_fantasia"],
+            nome_fantasia=nome_fantasia,
             categoria=request.form.get("categoria"),
-            taxa_entrega=request.form.get("taxa_entrega") or 0,
+            taxa_entrega=taxa,
             horario_funcionamento=request.form.get("horario_funcionamento"),
             rua=request.form.get("rua"),
             numero=request.form.get("numero"),

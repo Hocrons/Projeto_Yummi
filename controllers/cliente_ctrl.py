@@ -10,6 +10,8 @@ from services import geocoding, infinitepay
 
 cliente_bp = Blueprint("cliente", __name__, url_prefix="/cliente")
 
+QUANTIDADE_MAXIMA_ITEM = 99
+
 
 def _carrinho():
     carrinho = session.get("carrinho")
@@ -168,7 +170,7 @@ def adicionar_ao_carrinho():
     pid = str(produto["id"])
 
     if pid in carrinho["itens"]:
-        carrinho["itens"][pid]["quantidade"] += 1
+        carrinho["itens"][pid]["quantidade"] = min(carrinho["itens"][pid]["quantidade"] + 1, QUANTIDADE_MAXIMA_ITEM)
     else:
         carrinho["itens"][pid] = {
             "nome": produto["nome"],
@@ -193,9 +195,15 @@ def limpar_carrinho():
 @cliente_bp.route("/carrinho/atualizar", methods=["POST"])
 @login_requerido("cliente")
 def atualizar_carrinho():
-    dados = request.get_json()
-    pid = str(dados["id_produto"])
-    quantidade = int(dados["quantidade"])
+    dados = request.get_json(silent=True)
+    if not isinstance(dados, dict):
+        return jsonify({"ok": False, "erro": "Requisição inválida."}), 400
+    try:
+        pid = str(int(dados["id_produto"]))
+        quantidade = int(dados["quantidade"])
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"ok": False, "erro": "Produto ou quantidade inválidos."}), 400
+    quantidade = min(quantidade, QUANTIDADE_MAXIMA_ITEM)
     carrinho = _carrinho()
 
     if pid in carrinho.get("itens", {}):
@@ -400,9 +408,16 @@ def checkout():
         return redirect(url_for("home.index"))
 
     if request.method == "POST":
-        id_endereco = request.form.get("id_endereco")
+        id_endereco = request.form.get("id_endereco", "")
         if not id_endereco:
             flash("Selecione um endereço de entrega.", "erro")
+            return redirect(url_for("cliente.checkout"))
+
+        # o endereço precisa existir, estar ativo e pertencer ao cliente logado
+        endereco = models.buscar_endereco(int(id_endereco)) if id_endereco.isdigit() else None
+        if (not endereco or endereco["id_cliente"] != session["user_id"]
+                or not endereco.get("ativo", 1)):
+            flash("Endereço de entrega inválido. Selecione um dos seus endereços.", "erro")
             return redirect(url_for("cliente.checkout"))
 
         forma_pagamento = request.form.get("forma_pagamento")
@@ -661,9 +676,13 @@ def api_status_pedidos():
 @login_requerido("cliente")
 def editar_perfil():
     if request.method == "POST":
+        nome = (request.form.get("nome") or "").strip()
+        if not nome:
+            flash("O nome não pode ficar vazio.", "erro")
+            return redirect(url_for("cliente.editar_perfil"))
         try:
             models.atualizar_usuario(
-                session["user_id"], request.form["nome"], request.form.get("telefone")
+                session["user_id"], nome, request.form.get("telefone")
             )
         except ValueError as erro:
             flash(str(erro), "erro")
@@ -677,7 +696,7 @@ def editar_perfil():
                 return redirect(url_for("cliente.editar_perfil"))
             models.atualizar_codigo_entrega(session["user_id"], codigo_entrega)
 
-        session["user_nome"] = request.form["nome"]
+        session["user_nome"] = nome
         flash("Perfil atualizado.", "sucesso")
         return redirect(url_for("cliente.editar_perfil"))
 
