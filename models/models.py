@@ -348,6 +348,16 @@ def listar_produtos_por_restaurante(id_restaurante, apenas_disponiveis=False):
         return db.cursor.fetchall()
 
 
+def listar_produtos_restaurante(id_restaurante):
+    """Usada pelo app mobile: retorna todos os produtos do restaurante."""
+    with DB() as db:
+        db.cursor.execute(
+            "SELECT * FROM produto WHERE id_restaurante=%s ORDER BY nome",
+            (id_restaurante,),
+        )
+        return db.cursor.fetchall()
+
+
 def buscar_produto(id_produto):
     with DB() as db:
         db.cursor.execute("SELECT * FROM produto WHERE id=%s", (id_produto,))
@@ -367,9 +377,14 @@ def deletar_produto(id_produto):
     """Exclui o produto. Se ele já aparece em pedidos, apenas o desativa
     (preserva o histórico). Retorna 'excluido' ou 'desativado'."""
     with DB() as db:
-        db.cursor.execute("SELECT COUNT(*) AS n FROM item_pedido WHERE id_produto=%s", (id_produto,))
+        db.cursor.execute(
+            "SELECT COUNT(*) AS n FROM item_pedido WHERE id_produto=%s",
+            (id_produto,),
+        )
         if db.cursor.fetchone()["n"] > 0:
-            db.cursor.execute("UPDATE produto SET disponivel=0 WHERE id=%s", (id_produto,))
+            db.cursor.execute(
+                "UPDATE produto SET disponivel=0 WHERE id=%s", (id_produto,)
+            )
             return "desativado"
         db.cursor.execute("DELETE FROM produto WHERE id=%s", (id_produto,))
         return "excluido"
@@ -441,7 +456,9 @@ def buscar_produtos_por_nome(termo, limite=60):
     for p in candidatos:
         pool.setdefault(p["id_produto"], p)
 
-    ranqueados = fuzzy.ranquear_produtos(termo, list(pool.values()), limiar=fuzzy.LIMIAR_PADRAO, limite=limite)
+    ranqueados = fuzzy.ranquear_produtos(
+        termo, list(pool.values()), limiar=fuzzy.LIMIAR_PADRAO, limite=limite
+    )
 
     if not ranqueados:
         return exatos[:limite]
@@ -465,9 +482,9 @@ def criar_endereco(id_cliente, rua, numero, bairro, cidade, cep, lat=None, lon=N
 def listar_enderecos_cliente(id_cliente):
     with DB() as db:
         db.cursor.execute(
-            """SELECT * FROM endereco 
-               WHERE id_cliente=%s AND (ativo = 1 OR ativo IS NULL) 
-               ORDER BY id DESC""", 
+            """SELECT * FROM endereco
+               WHERE id_cliente=%s AND (ativo = 1 OR ativo IS NULL)
+               ORDER BY id DESC""",
             (id_cliente,)
         )
         return db.cursor.fetchall()
@@ -702,6 +719,7 @@ def _obter_codigo_entrega_cliente(db, id_cliente):
 
     return codigo_entrega
 
+
 def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
                           forma_pagamento, codigo_cupom=None,
                           tipo_entrega=None, taxa_entrega=0.0,
@@ -749,7 +767,9 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
 
         for p in produtos_encontrados:
             if not p["disponivel"]:
-                raise ValueError(f"O produto \"{p['nome']}\" está indisponível no momento. Remova-o do carrinho.")
+                raise ValueError(
+                    f'O produto "{p["nome"]}" está indisponível no momento. Remova-o do carrinho.'
+                )
 
         precos_banco = {p["id"]: float(p["preco"]) for p in produtos_encontrados}
         for p in produtos_encontrados:
@@ -1297,6 +1317,7 @@ def liberar_entregador(id_pedido, id_restaurante):
         )
         return db.cursor.rowcount > 0
 
+
 def cancelar_pedido_cliente(id_pedido, id_cliente):
     """
     Cancela o pedido a pedido do cliente. Só é permitido enquanto o pedido
@@ -1325,6 +1346,7 @@ def cancelar_pedido_cliente(id_pedido, id_cliente):
             (id_pedido,),
         )
         return True
+
 
 def cancelar_pedido_restaurante(id_pedido, id_restaurante):
     with DB() as db:

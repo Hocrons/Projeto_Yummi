@@ -1,6 +1,6 @@
 import os
 from datetime import timedelta
-from flask import Flask, session, render_template
+from flask import Flask, session
 from dotenv import load_dotenv
 
 from extensions import oauth
@@ -14,6 +14,7 @@ from controllers.restaurante_ctrl import restaurante_bp
 from controllers.entregador_ctrl import entregador_bp
 from controllers.pedido_ctrl import pedido_bp
 from controllers.geocoding_ctrl import geocoding_bp
+from controllers.mobile_api import mobile_api_bp
 from controllers.admin_ctrl import admin_bp
 
 load_dotenv()
@@ -55,24 +56,8 @@ def create_app():
     app.register_blueprint(entregador_bp)   # "/entregador/..."
     app.register_blueprint(pedido_bp)       # "/pedido/..."
     app.register_blueprint(geocoding_bp)
-    app.register_blueprint(admin_bp)       # "/admin/relatorio" (acesso público)
-
-    @app.after_request
-    def cabecalhos_seguranca(resposta):
-        resposta.headers.setdefault("X-Content-Type-Options", "nosniff")
-        resposta.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
-        resposta.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-        return resposta
-
-    @app.errorhandler(404)
-    def pagina_nao_encontrada(_erro):
-        return render_template("erro.html", codigo=404, titulo="Página não encontrada",
-                               mensagem="O endereço que você tentou abrir não existe ou foi movido."), 404
-
-    @app.errorhandler(500)
-    def erro_interno(_erro):
-        return render_template("erro.html", codigo=500, titulo="Algo deu errado",
-                               mensagem="Tivemos um problema ao processar seu pedido. Tente novamente em instantes."), 500
+    app.register_blueprint(mobile_api_bp)   # "/api/restaurante/..."
+    app.register_blueprint(admin_bp)        # "/admin/relatorio"
 
     @app.cli.command("db-upgrade")
     def db_upgrade_command():
@@ -98,7 +83,6 @@ def create_app():
             "user_nome": session.get("user_nome"),
             "qtd_carrinho": qtd_carrinho,
             "status_labels": {
-                "aguardando_pagamento": "Aguardando pagamento",
                 "pendente": "Pendente",
                 "preparando": "Em preparo",
                 "localizando_entregador": "Buscando entregador",
@@ -116,4 +100,4 @@ app = create_app()
 
 if __name__ == "__main__":
     debug = os.getenv("FLASK_DEBUG", "1") == "1"
-    app.run(debug=debug, port=5000)
+    app.run(host="0.0.0.0", debug=debug, port=5000)

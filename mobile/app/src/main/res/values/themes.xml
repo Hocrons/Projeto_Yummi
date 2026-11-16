@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Yummi" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/yummi_primary</item>
+        <item name="colorPrimaryDark">@color/yummi_primary_dark</item>
+        <item name="colorAccent">@color/yummi_primary</item>
+        <item name="android:windowBackground">@color/yummi_background</item>
+        <item name="android:statusBarColor">@color/yummi_primary_dark</item>
+
+        <!-- TextInputLayout -->
+        <item name="textInputStyle">@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox</item>
+    </style>
+
+    <style name="Theme.Yummi.Toolbar" parent="Widget.MaterialComponents.Toolbar.Primary">
+        <item name="android:background">@color/yummi_primary</item>
+        <item name="titleTextColor">@color/yummi_white</item>
+    </style>
+</resources>

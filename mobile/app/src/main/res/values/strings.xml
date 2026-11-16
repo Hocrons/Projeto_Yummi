@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Yummi Restaurante</string>
+    <string name="hint_email">E-mail</string>
+    <string name="hint_senha">Senha</string>
+    <string name="btn_entrar">Entrar</string>
+    <string name="label_produtos">Meus Produtos</string>
+    <string name="empty_products">Nenhum produto cadastrado.\nToque em + para adicionar.</string>
+    <string name="hint_nome_produto">Nome do produto</string>
+    <string name="hint_descricao">Descrição (opcional)</string>
+    <string name="hint_preco">Preço (R$)</string>
+    <string name="hint_foto_url">URL da foto (opcional)</string>
+    <string name="label_disponivel">Disponível</string>
+    <string name="btn_salvar">Salvar produto</string>
+</resources>
