@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import secrets
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
@@ -6,6 +7,31 @@ from extensions import oauth
 from models import models
 from services import geocoding, otp, verificacao_email, verificacao_whatsapp_local
 from utils import normalizar_telefone, mascarar_email, mascarar_telefone
+
+
+def _mensagem_erro_cadastro(exc):
+    """Traduz exceções de cadastro em mensagem amigável (sem expor texto técnico do banco)."""
+    texto = str(exc).lower()
+    if "duplicate" in texto or "1062" in texto:
+        if "cpf" in texto:
+            return "Este CPF já está cadastrado."
+        if "email" in texto:
+            return "Este e-mail já está cadastrado."
+        return "Já existe um cadastro com esses dados."
+    return "Não foi possível concluir o cadastro. Confira os dados e tente novamente."
+
+
+def _validar_dados_cadastro(nome, email, senha, cpf):
+    """Validação mínima no servidor. Retorna mensagem de erro ou None."""
+    if not (nome or "").strip():
+        return "Informe seu nome."
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", (email or "").strip()):
+        return "Informe um e-mail válido."
+    if len(senha or "") < 6:
+        return "A senha deve ter pelo menos 6 caracteres."
+    if len(re.sub(r"\D", "", cpf or "")) != 11:
+        return "Informe um CPF válido (11 dígitos)."
+    return None
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -62,6 +88,11 @@ def cadastrar_cliente():
     if request.method == "POST":
         try:
             email = (request.form.get("email") or "").strip().lower()
+            erro_dados = _validar_dados_cadastro(request.form.get("nome"), email,
+                                                 request.form.get("senha"), request.form.get("cpf"))
+            if erro_dados:
+                flash(erro_dados, "erro")
+                return render_template("cliente/cadastrar.html")
             if models.buscar_usuario_por_email_e_tipo(email, "cliente"):
                 flash("Este e-mail já está cadastrado.", "erro")
                 return render_template("cliente/cadastrar.html")
@@ -92,7 +123,7 @@ def cadastrar_cliente():
             flash("Cadastro realizado! Faça login para continuar.", "sucesso")
             return redirect(url_for("auth.login_cliente"))
         except Exception as e:
-            flash(f"Erro ao cadastrar: {e}", "erro")
+            flash(_mensagem_erro_cadastro(e), "erro")
     return render_template("cliente/cadastrar.html")
 
 
@@ -424,7 +455,7 @@ def _finalizar_cadastro_rapido():
             codigo_entrega=_codigo_entrega_padrao(fluxo.get("telefone")),
         )
     except Exception as e:
-        flash(f"Erro ao concluir o cadastro: {e}", "erro")
+        flash(_mensagem_erro_cadastro(e), "erro")
         return redirect(url_for("auth.cadastro_rapido"))
 
     session.pop("fluxo_entrada", None)
@@ -543,7 +574,7 @@ def completar_cadastro_social():
                 codigo_entrega=_codigo_entrega_padrao(telefone_norm),
             )
         except Exception as e:
-            flash(f"Erro ao concluir o cadastro: {e}", "erro")
+            flash(_mensagem_erro_cadastro(e), "erro")
             return render_template("cliente/completar_cadastro_social.html", dados=dados)
 
         session.pop("cadastro_social", None)
@@ -792,7 +823,7 @@ def restaurante_confirmar_local():
                 lon=form.get("lon"),
             )
         except Exception as e:
-            flash(f"Erro ao cadastrar: {e}", "erro")
+            flash(_mensagem_erro_cadastro(e), "erro")
             return redirect(url_for("auth.restaurante_confirmar_local"))
 
         session.pop("fluxo_restaurante", None)
@@ -871,7 +902,7 @@ def cadastrar_entregador():
             flash("Cadastro realizado! Faça login para continuar.", "sucesso")
             return redirect(url_for("auth.login_entregador"))
         except Exception as e:
-            flash(f"Erro ao cadastrar: {e}", "erro")
+            flash(_mensagem_erro_cadastro(e), "erro")
     return render_template("entregador/cadastrar.html")
 
 
