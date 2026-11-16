@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }} - Yummy{% endblock %}
+{% block content %}
+<main style="max-width:520px;margin:64px auto;padding:0 16px;text-align:center;">
+    <p style="font-size:56px;font-weight:800;margin:0;">{{ codigo }}</p>
+    <h1 style="margin:8px 0 12px;">{{ titulo }}</h1>
+    <p style="margin:0 0 24px;">{{ mensagem }}</p>
+    <a href="/" class="btn btn--primary">Voltar ao início</a>
+</main>
+{% endblock %}

@@ -1,6 +1,6 @@
 import os
 from datetime import timedelta
-from flask import Flask, session
+from flask import Flask, session, render_template
 from dotenv import load_dotenv
 
 from extensions import oauth
@@ -56,6 +56,23 @@ def create_app():
     app.register_blueprint(pedido_bp)       # "/pedido/..."
     app.register_blueprint(geocoding_bp)
     app.register_blueprint(admin_bp)       # "/admin/relatorio" (acesso público)
+
+    @app.after_request
+    def cabecalhos_seguranca(resposta):
+        resposta.headers.setdefault("X-Content-Type-Options", "nosniff")
+        resposta.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        resposta.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        return resposta
+
+    @app.errorhandler(404)
+    def pagina_nao_encontrada(_erro):
+        return render_template("erro.html", codigo=404, titulo="Página não encontrada",
+                               mensagem="O endereço que você tentou abrir não existe ou foi movido."), 404
+
+    @app.errorhandler(500)
+    def erro_interno(_erro):
+        return render_template("erro.html", codigo=500, titulo="Algo deu errado",
+                               mensagem="Tivemos um problema ao processar seu pedido. Tente novamente em instantes."), 500
 
     @app.cli.command("db-upgrade")
     def db_upgrade_command():
