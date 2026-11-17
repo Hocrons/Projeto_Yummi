@@ -4,33 +4,59 @@ Cada função representa uma operação no banco (Model, no padrão MVC).
 Nenhuma lógica de rota/HTTP entra aqui - isso fica nos controllers.
 """
 import re
-from datetime import datetime
+from datetime import date, datetime, timedelta
+from pymysql.err import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.db import DB
 from services import distancia
+from utils import normalizar_telefone
 
 
 def _so_digitos(txt):
     return re.sub(r"\D", "", txt or "")
 
 
+def _normalizar_email(email):
+    return (email or "").strip().lower()
+
+
 # =========================================================
 # USUARIO
 # =========================================================
 def criar_usuario(nome, email, senha, telefone, tipo):
+    email = _normalizar_email(email)
+    if not email or "@" not in email:
+        raise ValueError("Informe um e-mail válido.")
+
+    telefone_raw = (telefone or "").strip()
+    telefone = normalizar_telefone(telefone_raw)
+    if not telefone:
+        raise ValueError("Informe um telefone válido com DDD.")
+
     senha_hash = generate_password_hash(senha)
+    try:
+        with DB() as db:
+            db.cursor.execute(
+                """INSERT INTO usuario (nome, email, senha, telefone, tipo)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (nome, email, senha_hash, telefone, tipo),
+            )
+            return db.cursor.lastrowid
+    except IntegrityError as erro:
+        if erro.args and erro.args[0] == 1062:
+            raise ValueError(
+                "Este e-mail ou celular já está cadastrado em outra conta "
+                f"de {tipo}."
+            ) from erro
+        raise
+
+
+def buscar_usuario_por_email_e_tipo(email, tipo):
     with DB() as db:
         db.cursor.execute(
-            """INSERT INTO usuario (nome, email, senha, telefone, tipo)
-               VALUES (%s, %s, %s, %s, %s)""",
-            (nome, email, senha_hash, telefone, tipo),
+            "SELECT * FROM usuario WHERE email=%s AND tipo=%s",
+            (_normalizar_email(email), tipo),
         )
-        return db.cursor.lastrowid
-
-
-def buscar_usuario_por_email(email):
-    with DB() as db:
-        db.cursor.execute("SELECT * FROM usuario WHERE email=%s", (email,))
         return db.cursor.fetchone()
 
 
@@ -40,16 +66,11 @@ def buscar_usuario_por_id(id_usuario):
         return db.cursor.fetchone()
 
 
-def buscar_usuario_por_telefone(telefone_normalizado):
-    with DB() as db:
-        db.cursor.execute(
-            "SELECT * FROM usuario WHERE telefone=%s",
-            (telefone_normalizado,),
-        )
-        return db.cursor.fetchone()
+def buscar_usuario_por_telefone(telefone, tipo):
+    telefone_normalizado = normalizar_telefone(telefone)
+    if not telefone_normalizado:
+        return None
 
-
-def buscar_usuario_por_telefone_e_tipo(telefone_normalizado, tipo):
     with DB() as db:
         db.cursor.execute(
             "SELECT * FROM usuario WHERE telefone=%s AND tipo=%s",
@@ -58,19 +79,55 @@ def buscar_usuario_por_telefone_e_tipo(telefone_normalizado, tipo):
         return db.cursor.fetchone()
 
 
-def validar_login(email, senha):
-    usuario = buscar_usuario_por_email(email)
+def buscar_usuario_por_telefone_e_tipo(telefone_normalizado, tipo):
+    return buscar_usuario_por_telefone(telefone_normalizado, tipo)
+
+
+def validar_login(email, senha, tipo):
+    usuario = buscar_usuario_por_email_e_tipo(email, tipo)
     if usuario and check_password_hash(usuario["senha"], senha):
         return usuario
     return None
 
 
 def atualizar_usuario(id_usuario, nome, telefone):
-    with DB() as db:
-        db.cursor.execute(
-            "UPDATE usuario SET nome=%s, telefone=%s WHERE id=%s",
-            (nome, telefone, id_usuario),
-        )
+    telefone_raw = (telefone or "").strip()
+    telefone_normalizado = normalizar_telefone(telefone_raw)
+    if not telefone_normalizado:
+        raise ValueError("Informe um telefone válido com DDD.")
+
+    try:
+        with DB() as db:
+            db.cursor.execute(
+                "SELECT tipo FROM usuario WHERE id=%s",
+                (id_usuario,),
+            )
+            usuario = db.cursor.fetchone()
+            if not usuario:
+                raise ValueError("Usuário não encontrado.")
+
+            if telefone_normalizado:
+                db.cursor.execute(
+                    """SELECT id FROM usuario
+                       WHERE telefone=%s AND tipo=%s AND id<>%s""",
+                    (telefone_normalizado, usuario["tipo"], id_usuario),
+                )
+                if db.cursor.fetchone():
+                    raise ValueError(
+                        "Este celular já está cadastrado em outra conta "
+                        f"de {usuario['tipo']}."
+                    )
+
+            db.cursor.execute(
+                "UPDATE usuario SET nome=%s, telefone=%s WHERE id=%s",
+                (nome, telefone_normalizado, id_usuario),
+            )
+    except IntegrityError as erro:
+        if erro.args and erro.args[0] == 1062:
+            raise ValueError(
+                f"Este celular já está cadastrado em outra conta de {usuario['tipo']}."
+            ) from erro
+        raise
 
 
 # =========================================================
@@ -291,6 +348,16 @@ def listar_produtos_por_restaurante(id_restaurante, apenas_disponiveis=False):
         return db.cursor.fetchall()
 
 
+def listar_produtos_restaurante(id_restaurante):
+    """Usada pelo app mobile: retorna todos os produtos do restaurante."""
+    with DB() as db:
+        db.cursor.execute(
+            "SELECT * FROM produto WHERE id_restaurante=%s ORDER BY nome",
+            (id_restaurante,),
+        )
+        return db.cursor.fetchall()
+
+
 def buscar_produto(id_produto):
     with DB() as db:
         db.cursor.execute("SELECT * FROM produto WHERE id=%s", (id_produto,))
@@ -307,8 +374,20 @@ def atualizar_produto(id_produto, nome, descricao, preco, disponivel, foto_url=N
 
 
 def deletar_produto(id_produto):
+    """Exclui o produto. Se ele já aparece em pedidos, apenas o desativa
+    (preserva o histórico). Retorna 'excluido' ou 'desativado'."""
     with DB() as db:
+        db.cursor.execute(
+            "SELECT COUNT(*) AS n FROM item_pedido WHERE id_produto=%s",
+            (id_produto,),
+        )
+        if db.cursor.fetchone()["n"] > 0:
+            db.cursor.execute(
+                "UPDATE produto SET disponivel=0 WHERE id=%s", (id_produto,)
+            )
+            return "desativado"
         db.cursor.execute("DELETE FROM produto WHERE id=%s", (id_produto,))
+        return "excluido"
 
 
 def _query_produtos_com_restaurante(where_sql, params, limite=200):
@@ -377,7 +456,9 @@ def buscar_produtos_por_nome(termo, limite=60):
     for p in candidatos:
         pool.setdefault(p["id_produto"], p)
 
-    ranqueados = fuzzy.ranquear_produtos(termo, list(pool.values()), limiar=fuzzy.LIMIAR_PADRAO, limite=limite)
+    ranqueados = fuzzy.ranquear_produtos(
+        termo, list(pool.values()), limiar=fuzzy.LIMIAR_PADRAO, limite=limite
+    )
 
     if not ranqueados:
         return exatos[:limite]
@@ -401,9 +482,9 @@ def criar_endereco(id_cliente, rua, numero, bairro, cidade, cep, lat=None, lon=N
 def listar_enderecos_cliente(id_cliente):
     with DB() as db:
         db.cursor.execute(
-            """SELECT * FROM endereco 
-               WHERE id_cliente=%s AND (ativo = 1 OR ativo IS NULL) 
-               ORDER BY id DESC""", 
+            """SELECT * FROM endereco
+               WHERE id_cliente=%s AND (ativo = 1 OR ativo IS NULL)
+               ORDER BY id DESC""",
             (id_cliente,)
         )
         return db.cursor.fetchall()
@@ -613,9 +694,36 @@ def registrar_uso_cupom(id_cupom, id_cliente, id_pedido, valor_desconto):
 # =========================================================
 # PEDIDO / ITEM_PEDIDO / PAGAMENTO
 # =========================================================
+
+def _obter_codigo_entrega_cliente(db, id_cliente):
+    """
+    Busca o código de entrega (PIN de 4 dígitos) do cliente para informar
+    ao entregador parceiro. Usa o código cadastrado no perfil do cliente;
+    se ele não tiver um definido, cai para os últimos 4 dígitos do telefone.
+    """
+    db.cursor.execute(
+        "SELECT codigo_entrega FROM cliente WHERE id_usuario=%s",
+        (id_cliente,),
+    )
+    cli = db.cursor.fetchone()
+    codigo_entrega = (cli or {}).get("codigo_entrega") if cli else None
+
+    if not codigo_entrega:
+        db.cursor.execute(
+            "SELECT telefone FROM usuario WHERE id=%s",
+            (id_cliente,),
+        )
+        u = db.cursor.fetchone()
+        tel = _so_digitos((u or {}).get("telefone") or "")
+        codigo_entrega = tel[-4:] if len(tel) >= 4 else None
+
+    return codigo_entrega
+
+
 def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
                           forma_pagamento, codigo_cupom=None,
-                          tipo_entrega=None, taxa_entrega=0.0):
+                          tipo_entrega=None, taxa_entrega=0.0,
+                          gateway_order_nsu=None):
     """
     Cria o pedido + itens + pagamento + registro de cupom (se houver).
 
@@ -643,33 +751,25 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
         # -------- 1. Código de entrega (só faz sentido pra entrega parceira) --------
         codigo_entrega = None
         if tipo_entrega == "parceira":
-            db.cursor.execute(
-                "SELECT codigo_entrega FROM cliente WHERE id_usuario=%s",
-                (id_cliente,),
-            )
-            cli = db.cursor.fetchone()
-            codigo_entrega = (cli or {}).get("codigo_entrega") if cli else None
-
-            if not codigo_entrega:
-                db.cursor.execute(
-                    "SELECT telefone FROM usuario WHERE id=%s",
-                    (id_cliente,),
-                )
-                u = db.cursor.fetchone()
-                tel = _so_digitos((u or {}).get("telefone") or "")
-                codigo_entrega = tel[-4:] if len(tel) >= 4 else None
+            codigo_entrega = _obter_codigo_entrega_cliente(db, id_cliente)
 
         # -------- 2. Revalida produtos E PREÇOS no banco --------
         ids_produto = [i["id_produto"] for i in itens]
         formato = ",".join(["%s"] * len(ids_produto))
         db.cursor.execute(
-            f"SELECT id, id_restaurante, preco FROM produto WHERE id IN ({formato})",
+            f"SELECT id, id_restaurante, preco, disponivel, nome FROM produto WHERE id IN ({formato})",
             ids_produto,
         )
         produtos_encontrados = db.cursor.fetchall()
 
         if len(produtos_encontrados) != len(set(ids_produto)):
             raise ValueError("Um ou mais produtos do pedido não foram encontrados.")
+
+        for p in produtos_encontrados:
+            if not p["disponivel"]:
+                raise ValueError(
+                    f'O produto "{p["nome"]}" está indisponível no momento. Remova-o do carrinho.'
+                )
 
         precos_banco = {p["id"]: float(p["preco"]) for p in produtos_encontrados}
         for p in produtos_encontrados:
@@ -703,13 +803,18 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
             valor_total = 0.0
 
         # -------- 5. Insere o pedido --------
+        status_pedido = (
+            "aguardando_pagamento"
+            if forma_pagamento == "infinitepay"
+            else "pendente"
+        )
         db.cursor.execute(
             """INSERT INTO pedido
                (id_cliente, id_restaurante, id_endereco, status, tipo_entrega,
                 valor_total, id_cupom, valor_desconto, taxa_entrega_cobrada,
                 codigo_entrega)
-               VALUES (%s,%s,%s,'pendente',%s,%s,%s,%s,%s,%s)""",
-            (id_cliente, id_restaurante, id_endereco, tipo_entrega,
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (id_cliente, id_restaurante, id_endereco, status_pedido, tipo_entrega,
              valor_total, id_cupom, valor_desconto, taxa_entrega,
              codigo_entrega),
         )
@@ -726,13 +831,14 @@ def criar_pedido_completo(id_cliente, id_restaurante, id_endereco, itens,
 
         # -------- 7. Pagamento --------
         db.cursor.execute(
-            """INSERT INTO pagamento (id_pedido, forma_pagamento, valor, status)
-               VALUES (%s,%s,%s,'pendente')""",
-            (id_pedido, forma_pagamento, valor_total),
+            """INSERT INTO pagamento
+               (id_pedido, forma_pagamento, valor, status, gateway_order_nsu)
+               VALUES (%s,%s,%s,'pendente',%s)""",
+            (id_pedido, forma_pagamento, valor_total, gateway_order_nsu),
         )
 
         # -------- 8. Registra uso do cupom --------
-        if id_cupom:
+        if id_cupom and forma_pagamento != "infinitepay":
             db.cursor.execute(
                 """INSERT INTO cupom_uso (id_cupom, id_cliente, id_pedido, valor_desconto)
                    VALUES (%s,%s,%s,%s)""",
@@ -751,11 +857,14 @@ def buscar_pedido(id_pedido):
         db.cursor.execute(
             """SELECT p.*, r.nome_fantasia, r.foto_url AS restaurante_foto_url,
                       uc.nome AS nome_cliente,
-                      ue.nome AS nome_entregador
+                      ue.nome AS nome_entregador,
+                      pag.status AS pagamento_status,
+                      pag.checkout_url
                FROM pedido p
                JOIN restaurante r ON r.id_usuario = p.id_restaurante
                JOIN usuario uc ON uc.id = p.id_cliente
                LEFT JOIN usuario ue ON ue.id = p.id_entregador
+               LEFT JOIN pagamento pag ON pag.id_pedido = p.id
                WHERE p.id=%s""",
             (id_pedido,),
         )
@@ -770,6 +879,112 @@ def buscar_pedido(id_pedido):
         )
         pedido["itens"] = db.cursor.fetchall()
         return pedido
+
+
+def buscar_pagamento_infinitepay(order_nsu):
+    with DB() as db:
+        db.cursor.execute(
+            """SELECT pag.id, pag.id_pedido, pag.status, pag.valor,
+                      pag.gateway_order_nsu
+               FROM pagamento pag
+               WHERE pag.gateway_order_nsu=%s
+                 AND pag.forma_pagamento='infinitepay'""",
+            (order_nsu,),
+        )
+        return db.cursor.fetchone()
+
+
+def salvar_link_checkout_infinitepay(id_pedido, checkout_url):
+    with DB() as db:
+        db.cursor.execute(
+            """UPDATE pagamento
+               SET checkout_url=%s
+               WHERE id_pedido=%s AND forma_pagamento='infinitepay'
+                 AND status='pendente'""",
+            (checkout_url, id_pedido),
+        )
+        return db.cursor.rowcount == 1
+
+
+def cancelar_checkout_infinitepay(id_pedido):
+    with DB() as db:
+        db.cursor.execute(
+            """UPDATE pedido SET status='cancelado'
+               WHERE id=%s AND status='aguardando_pagamento'""",
+            (id_pedido,),
+        )
+        db.cursor.execute(
+            """UPDATE pagamento SET status='falhou'
+               WHERE id_pedido=%s AND forma_pagamento='infinitepay'
+                 AND status='pendente'""",
+            (id_pedido,),
+        )
+
+
+def confirmar_pagamento_infinitepay(order_nsu, transaction_nsu, slug):
+    with DB() as db:
+        db.cursor.execute(
+            """SELECT p.id, p.id_cliente, p.id_cupom, p.status AS pedido_status,
+                      pag.status AS pagamento_status, pag.valor
+               FROM pagamento pag
+               JOIN pedido p ON p.id=pag.id_pedido
+               WHERE pag.gateway_order_nsu=%s
+                 AND pag.forma_pagamento='infinitepay'
+               FOR UPDATE""",
+            (order_nsu,),
+        )
+        pagamento = db.cursor.fetchone()
+        if not pagamento:
+            return "nao_encontrado"
+
+        if pagamento["pagamento_status"] == "aprovado":
+            return "aprovado"
+
+        if pagamento["pedido_status"] == "cancelado":
+            db.cursor.execute(
+                """UPDATE pagamento
+                   SET status='reembolso_pendente',
+                       gateway_transaction_nsu=%s, gateway_slug=%s
+                   WHERE id_pedido=%s""",
+                (transaction_nsu, slug, pagamento["id"]),
+            )
+            return "reembolso_pendente"
+
+        if pagamento["pedido_status"] != "aguardando_pagamento":
+            return "nao_aplicavel"
+
+        db.cursor.execute(
+            """UPDATE pagamento
+               SET status='aprovado', gateway_transaction_nsu=%s, gateway_slug=%s
+               WHERE id_pedido=%s AND status='pendente'""",
+            (transaction_nsu, slug, pagamento["id"]),
+        )
+        if db.cursor.rowcount != 1:
+            return "nao_aplicavel"
+
+        db.cursor.execute(
+            """UPDATE pedido SET status='pendente'
+               WHERE id=%s AND status='aguardando_pagamento'""",
+            (pagamento["id"],),
+        )
+        if db.cursor.rowcount != 1:
+            raise RuntimeError(
+                "Pedido mudou de status durante a confirmação do pagamento."
+            )
+
+        if pagamento["id_cupom"]:
+            db.cursor.execute(
+                """INSERT INTO cupom_uso
+                   (id_cupom, id_cliente, id_pedido, valor_desconto)
+                   SELECT id_cupom, id_cliente, id, valor_desconto
+                   FROM pedido WHERE id=%s""",
+                (pagamento["id"],),
+            )
+            db.cursor.execute(
+                "UPDATE cupom SET usos_atuais=usos_atuais+1 WHERE id=%s",
+                (pagamento["id_cupom"],),
+            )
+        return "aprovado"
 
 
 def listar_pedidos_cliente(id_cliente):
@@ -798,10 +1013,24 @@ def listar_pedidos_ativos_cliente(id_cliente):
         return db.cursor.fetchall()
 
 
+def listar_status_pedidos_cliente(id_cliente):
+    with DB() as db:
+        db.cursor.execute(
+            """SELECT p.id, p.status, r.nome_fantasia
+               FROM pedido p
+               JOIN restaurante r ON r.id_usuario = p.id_restaurante
+               WHERE p.id_cliente=%s
+               ORDER BY p.data_hora DESC""",
+            (id_cliente,),
+        )
+        return db.cursor.fetchall()
+
+
 def listar_pedidos_restaurante(id_restaurante, status=None, tipo_entrega=None):
     query = """SELECT p.*, u.nome AS nome_cliente
                FROM pedido p JOIN usuario u ON u.id = p.id_cliente
-               WHERE p.id_restaurante=%s"""
+               WHERE p.id_restaurante=%s
+                 AND p.status<>'aguardando_pagamento'"""
     params = [id_restaurante]
     if status:
         query += " AND p.status=%s"
@@ -815,47 +1044,38 @@ def listar_pedidos_restaurante(id_restaurante, status=None, tipo_entrega=None):
         return db.cursor.fetchall()
 
 
-def listar_anos_pedidos_restaurante(id_restaurante):
+def _validar_periodo_relatorio(data_inicio, data_fim):
+    if (
+        not isinstance(data_inicio, date)
+        or not isinstance(data_fim, date)
+        or data_inicio > data_fim
+        or data_fim == date.max
+    ):
+        raise ValueError("Período de relatório inválido.")
+    return data_fim + timedelta(days=1)
+
+
+def obter_relatorio_restaurante(id_restaurante, data_inicio, data_fim, limite=20):
+    data_fim_exclusiva = _validar_periodo_relatorio(data_inicio, data_fim)
+    if not isinstance(limite, int) or not 1 <= limite <= 100:
+        raise ValueError("Limite de itens do relatório inválido.")
+
+    parametros = [id_restaurante, data_inicio, data_fim_exclusiva]
     with DB() as db:
         db.cursor.execute(
-            """SELECT DISTINCT YEAR(data_hora) AS ano
-               FROM pedido
-               WHERE id_restaurante=%s
-               ORDER BY ano DESC""",
-            (id_restaurante,),
-        )
-        return [int(row["ano"]) for row in db.cursor.fetchall() if row["ano"]]
-
-
-def obter_relatorio_restaurante(id_restaurante, ano=None, mes=None):
-    if ano is not None and (not isinstance(ano, int) or not 2000 <= ano <= 9999):
-        raise ValueError("Ano de relatório inválido.")
-    if mes is not None and (not isinstance(mes, int) or not 1 <= mes <= 12):
-        raise ValueError("Mês de relatório inválido.")
-
-    filtro_periodo = ""
-    parametros = [id_restaurante]
-    if ano is not None:
-        filtro_periodo += " AND YEAR(p.data_hora)=%s"
-        parametros.append(ano)
-    if mes is not None:
-        filtro_periodo += " AND MONTH(p.data_hora)=%s"
-        parametros.append(mes)
-
-    with DB() as db:
-        db.cursor.execute(
-            f"""SELECT COUNT(*) AS numero_vendas,
+            """SELECT COUNT(*) AS numero_vendas,
                        COALESCE(SUM(p.valor_total), 0) AS faturamento
                 FROM pedido p
                 WHERE p.id_restaurante=%s
                   AND p.status != 'cancelado'
-                  {filtro_periodo}""",
+                  AND p.status != 'aguardando_pagamento'
+                  AND p.data_hora >= %s AND p.data_hora < %s""",
             parametros,
         )
         metricas = db.cursor.fetchone()
 
         db.cursor.execute(
-            f"""SELECT pr.id, pr.nome,
+            """SELECT pr.id, pr.nome,
                        SUM(ip.quantidade) AS quantidade,
                        SUM(ip.quantidade * ip.preco_unitario) AS faturamento,
                        SUM(ip.quantidade * ip.preco_unitario)
@@ -865,10 +1085,12 @@ def obter_relatorio_restaurante(id_restaurante, ano=None, mes=None):
                 JOIN produto pr ON pr.id = ip.id_produto
                 WHERE p.id_restaurante=%s
                   AND p.status != 'cancelado'
-                  {filtro_periodo}
+                  AND p.status != 'aguardando_pagamento'
+                  AND p.data_hora >= %s AND p.data_hora < %s
                 GROUP BY pr.id, pr.nome
-                ORDER BY quantidade DESC, pr.nome ASC""",
-            parametros,
+                ORDER BY quantidade DESC, pr.nome ASC
+                LIMIT %s""",
+            [*parametros, limite],
         )
         itens = db.cursor.fetchall()
 
@@ -888,36 +1110,114 @@ def obter_relatorio_restaurante(id_restaurante, ano=None, mes=None):
     }
 
 
-def obter_relatorio_ganhos_entregador(id_entregador):
+def obter_relatorio_entregador(
+    id_entregador, data_inicio, data_fim, limite=20
+):
+    data_fim_exclusiva = _validar_periodo_relatorio(data_inicio, data_fim)
+    if not isinstance(limite, int) or not 1 <= limite <= 100:
+        raise ValueError("Limite de entregas do relatório inválido.")
+
+    periodo = (data_inicio, data_fim_exclusiva)
     with DB() as db:
         db.cursor.execute(
-            """SELECT
-                   COALESCE(SUM(
-                       CASE WHEN COALESCE(p.entregue_em, p.data_hora) >= CURDATE()
-                            THEN p.taxa_entrega_cobrada ELSE 0 END
-                   ), 0) AS ganho_dia,
-                   COALESCE(SUM(
-                       CASE WHEN COALESCE(p.entregue_em, p.data_hora)
-                                     >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-                            THEN p.taxa_entrega_cobrada ELSE 0 END
-                   ), 0) AS ganho_semanal,
-                   COALESCE(SUM(
-                       CASE WHEN COALESCE(p.entregue_em, p.data_hora)
-                                     >= DATE_FORMAT(CURDATE(), '%%Y-%%m-01')
-                            THEN p.taxa_entrega_cobrada ELSE 0 END
-                   ), 0) AS ganho_mensal
-               FROM pedido p
-               WHERE p.id_entregador=%s
-                 AND p.tipo_entrega='parceira'
-                 AND p.status='entregue'
-                 AND COALESCE(p.entregue_em, p.data_hora)
-                     >= DATE_FORMAT(CURDATE(), '%%Y-%%m-01')
-                     - INTERVAL 6 DAY""",
-            (id_entregador,),
+            """SELECT COUNT(*) AS entregas,
+                       COALESCE(SUM(p.taxa_entrega_cobrada), 0) AS ganho
+                FROM pedido p
+                WHERE p.id_entregador=%s
+                  AND p.tipo_entrega='parceira'
+                  AND p.status='entregue'
+                  AND COALESCE(p.entregue_em, p.data_hora) >= %s
+                  AND COALESCE(p.entregue_em, p.data_hora) < %s""",
+            [id_entregador, *periodo],
         )
-        ganhos = db.cursor.fetchone()
+        metricas = db.cursor.fetchone()
 
-    return {periodo: float(valor) for periodo, valor in ganhos.items()}
+        db.cursor.execute(
+            """SELECT p.id, r.nome_fantasia,
+                       COALESCE(p.entregue_em, p.data_hora) AS entregue_em,
+                       p.taxa_entrega_cobrada
+                FROM pedido p
+                JOIN restaurante r ON r.id_usuario = p.id_restaurante
+                WHERE p.id_entregador=%s
+                  AND p.tipo_entrega='parceira'
+                  AND p.status='entregue'
+                  AND COALESCE(p.entregue_em, p.data_hora) >= %s
+                  AND COALESCE(p.entregue_em, p.data_hora) < %s
+                ORDER BY COALESCE(p.entregue_em, p.data_hora) DESC, p.id DESC
+                LIMIT %s""",
+            [id_entregador, *periodo, limite],
+        )
+        historico = db.cursor.fetchall()
+
+    return {
+        "ganho": float(metricas["ganho"]),
+        "entregas": int(metricas["entregas"]),
+        "historico": [
+            {
+                "id": entrega["id"],
+                "restaurante": entrega["nome_fantasia"],
+                "entregue_em": entrega["entregue_em"].strftime("%d/%m/%Y às %H:%M"),
+                "taxa_entrega": float(entrega["taxa_entrega_cobrada"]),
+            }
+            for entrega in historico
+        ],
+    }
+
+
+def obter_relatorio_administrativo(data_inicio, data_fim):
+    data_fim_exclusiva = _validar_periodo_relatorio(data_inicio, data_fim)
+    with DB() as db:
+        db.cursor.execute(
+            """SELECT r.id_usuario, r.nome_fantasia,
+                       COUNT(p.id) AS pedidos_realizados,
+                       COALESCE(SUM(p.status='entregue'), 0) AS pedidos_concluidos,
+                       COALESCE(SUM(p.status='cancelado'), 0) AS pedidos_cancelados,
+                       COALESCE(SUM(
+                           CASE WHEN p.id IS NOT NULL AND p.status != 'cancelado'
+                                THEN p.valor_total ELSE 0 END
+                       ), 0) AS faturamento
+                FROM restaurante r
+                LEFT JOIN pedido p
+                  ON p.id_restaurante=r.id_usuario
+                 AND p.status != 'aguardando_pagamento'
+                 AND p.data_hora >= %s AND p.data_hora < %s
+                GROUP BY r.id_usuario, r.nome_fantasia
+                ORDER BY faturamento DESC, r.nome_fantasia ASC""",
+            (data_inicio, data_fim_exclusiva),
+        )
+        restaurantes = db.cursor.fetchall()
+
+    total = {
+        "pedidos_realizados": 0,
+        "pedidos_concluidos": 0,
+        "pedidos_cancelados": 0,
+        "faturamento": 0.0,
+    }
+    ranking = []
+    for restaurante in restaurantes:
+        realizados = int(restaurante["pedidos_realizados"])
+        concluidos = int(restaurante["pedidos_concluidos"])
+        cancelados = int(restaurante["pedidos_cancelados"])
+        faturamento = float(restaurante["faturamento"])
+        total["pedidos_realizados"] += realizados
+        total["pedidos_concluidos"] += concluidos
+        total["pedidos_cancelados"] += cancelados
+        total["faturamento"] += faturamento
+        ranking.append({
+            "id": restaurante["id_usuario"],
+            "nome": restaurante["nome_fantasia"],
+            "pedidos_realizados": realizados,
+            "pedidos_concluidos": concluidos,
+            "pedidos_cancelados": cancelados,
+            "taxa_conclusao": round(concluidos / realizados * 100) if realizados else 0,
+            "faturamento": faturamento,
+        })
+
+    total["taxa_conclusao"] = (
+        round(total["pedidos_concluidos"] / total["pedidos_realizados"] * 100)
+        if total["pedidos_realizados"] else 0
+    )
+    return {"metricas": total, "restaurantes": ranking}
 
 
 def listar_pedidos_disponiveis_para_entrega():
@@ -1018,6 +1318,36 @@ def liberar_entregador(id_pedido, id_restaurante):
         return db.cursor.rowcount > 0
 
 
+def cancelar_pedido_cliente(id_pedido, id_cliente):
+    """
+    Cancela o pedido a pedido do cliente. Só é permitido enquanto o pedido
+    ainda está 'pendente' (restaurante ainda não aceitou). O UPDATE já
+    confere o status, então não há risco de cancelar um pedido que o
+    restaurante aceitou no meio tempo.
+    """
+    with DB() as db:
+        db.cursor.execute(
+            """UPDATE pedido
+               SET status='cancelado'
+               WHERE id=%s AND id_cliente=%s
+                 AND status IN ('pendente', 'aguardando_pagamento')""",
+            (id_pedido, id_cliente),
+        )
+        if db.cursor.rowcount == 0:
+            return False
+
+        db.cursor.execute(
+            """UPDATE pagamento
+               SET status=CASE
+                   WHEN status='aprovado' THEN 'reembolso_pendente'
+                   ELSE 'cancelado'
+               END
+               WHERE id_pedido=%s""",
+            (id_pedido,),
+        )
+        return True
+
+
 def cancelar_pedido_restaurante(id_pedido, id_restaurante):
     with DB() as db:
         db.cursor.execute(
@@ -1064,14 +1394,27 @@ def atualizar_status_e_tipo_entrega(id_pedido, status, tipo_entrega, id_restaura
     Usada quando o restaurante aceita o pedido e escolhe o tipo de entrega
     de uma vez: 'pendente' -> 'preparando' + tipo_entrega.
     Só atualiza se o pedido ainda estiver 'pendente' e sem tipo definido.
+
+    Quando o tipo escolhido é 'parceira', também gera o código de entrega
+    nesse momento: ele não é gerado na criação do pedido porque o tipo de
+    entrega só é definido aqui, quando o restaurante aceita.
     """
     with DB() as db:
+        codigo_entrega = None
+        if tipo_entrega == "parceira":
+            db.cursor.execute(
+                "SELECT id_cliente FROM pedido WHERE id=%s", (id_pedido,)
+            )
+            ped = db.cursor.fetchone()
+            if ped:
+                codigo_entrega = _obter_codigo_entrega_cliente(db, ped["id_cliente"])
+
         db.cursor.execute(
-            """UPDATE pedido SET status=%s, tipo_entrega=%s
+            """UPDATE pedido SET status=%s, tipo_entrega=%s, codigo_entrega=%s
                WHERE id=%s AND id_restaurante=%s
                  AND status='pendente'
                  AND tipo_entrega IS NULL""",
-            (status, tipo_entrega, id_pedido, id_restaurante),
+            (status, tipo_entrega, codigo_entrega, id_pedido, id_restaurante),
         )
         return db.cursor.rowcount > 0
 

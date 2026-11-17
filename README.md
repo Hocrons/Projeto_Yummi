@@ -7,6 +7,10 @@ endereco / pedido / item_pedido / pagamento / plano).
 O projeto tem **3 portais separados** (Cliente / Restaurante / Entregador), além de uma
 **landing page** inicial que direciona para cada um.
 
+O relatório administrativo está disponível em `/admin/relatorio` e não exige login.
+Ele exibe dados agregados de pedidos e faturamento de todos os restaurantes; não
+publique essa URL em ambientes que não devam expor essas informações.
+
 ---
 
 ## 🧱 Estrutura (MVC)
@@ -90,7 +94,10 @@ Credenciais do MySQL (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
 
 SECRET_KEY (qualquer string aleatória)
 
-BASE_URL (http://localhost:5000)
+BASE_URL (http://localhost:5000 no desenvolvimento; HTTPS público em produção)
+
+InfinitePay (INFINITEPAY_HANDLE): sua InfiniteTag/handle, sem o prefixo `$`.
+O checkout hospedado aceita Pix e cartão; não é necessário criar API Key.
 
 Credenciais dos OAuths (Google / Facebook) — se for usar
 
@@ -102,9 +109,30 @@ flask --app app db-upgrade
 ```
 
 Esse comando aplica apenas migrações ainda não executadas. Para bancos criados
-com uma versão anterior do `database.sql`, ele adiciona as colunas ausentes
-sem remover tabelas ou registros. Configure `SESSION_COOKIE_SECURE=true` em
-produção com HTTPS; mantenha `false` apenas no desenvolvimento local por HTTP.
+com uma versão anterior do `database.sql`, ele adiciona colunas ausentes,
+normaliza os contatos e atualiza os índices sem remover tabelas ou registros.
+Configure `SESSION_COOKIE_SECURE=true` em produção com HTTPS; mantenha `false`
+apenas no desenvolvimento local por HTTP.
+
+E-mail e telefone são únicos dentro de cada perfil (cliente, restaurante ou
+entregador), podendo ser reutilizados em perfis de tipos diferentes. A migração
+normaliza os contatos e interrompe com os IDs afetados se encontrar telefones
+inválidos ou duplicidades dentro do mesmo perfil; corrija esses dados antes de
+executar `db-upgrade` novamente. Ela não mescla contas automaticamente.
+
+### Checkout InfinitePay
+
+No `.env`, preencha `INFINITEPAY_HANDLE` com a InfiniteTag da conta que receberá
+os pagamentos. Em produção, configure também `BASE_URL` com a URL HTTPS pública
+do site; ela é usada para o retorno do cliente e para o webhook de confirmação.
+Não coloque API Key, senha ou credenciais da conta no código.
+
+Após configurar, aplique a migração (`flask --app app db-upgrade`) e reinicie o
+Flask. No checkout, o cliente será direcionado para a página hospedada pela
+InfinitePay, onde poderá escolher Pix ou cartão. O restaurante só recebe o
+pedido depois que a confirmação é validada pela API da InfinitePay. Em
+desenvolvimento local, o retorno do navegador funciona em `localhost`, mas o
+webhook exige que o servidor esteja acessível publicamente.
 
 7. Rodar o servidor Flask
 bash

@@ -1,9 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Relatório de vendas{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/relatorios.css') }}">
+{% endblock %}
 {% block content %}
 <section class="relatorio"
          data-report-type="restaurante"
-         data-refresh-url="{{ url_for('restaurante.dados_relatorio', ano=ano if ano is not none else '', mes=mes if mes is not none else '') }}">
+         data-refresh-url="{{ url_for('restaurante.dados_relatorio', periodo=periodo, data_inicio=data_inicio_input, data_fim=data_fim_input, limite=20) }}">
     <div class="relatorio__cabecalho">
         <div>
             <p class="relatorio__sobretitulo">YUMMY · DESEMPENHO</p>
@@ -11,20 +14,21 @@
             <p class="muted">Acompanhe os pedidos e os itens mais vendidos do seu restaurante.</p>
         </div>
         <form class="relatorio__filtros" method="get" action="{{ url_for('restaurante.relatorio') }}">
-            <label for="relatorio-ano">Ano</label>
-            <select id="relatorio-ano" name="ano">
-                <option value="" {% if ano is none %}selected{% endif %}>Todos os anos</option>
-                {% for opcao_ano in anos %}
-                <option value="{{ opcao_ano }}" {% if ano == opcao_ano %}selected{% endif %}>{{ opcao_ano }}</option>
-                {% endfor %}
+            <label for="relatorio-periodo">Período</label>
+            <select id="relatorio-periodo" name="periodo" data-period-select>
+                <option value="hoje" {% if periodo == 'hoje' %}selected{% endif %}>Hoje</option>
+                <option value="semana" {% if periodo == 'semana' %}selected{% endif %}>Semana</option>
+                <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Mês</option>
+                <option value="periodo" {% if periodo == 'periodo' %}selected{% endif %}>Período personalizado</option>
             </select>
-            <label for="relatorio-mes">Mês</label>
-            <select id="relatorio-mes" name="mes">
-                <option value="" {% if mes is none %}selected{% endif %}>Todos os meses</option>
-                {% for indice in range(12) %}
-                <option value="{{ indice + 1 }}" {% if mes == indice + 1 %}selected{% endif %}>{{ meses[indice] }}</option>
-                {% endfor %}
-            </select>
+            <div class="relatorio__datas" data-period-dates {% if periodo != 'periodo' %}hidden{% endif %}>
+                <label for="relatorio-data-inicio">De</label>
+                <input id="relatorio-data-inicio" type="date" name="data_inicio"
+                       value="{{ data_inicio_input }}" {% if periodo != 'periodo' %}disabled{% endif %}>
+                <label for="relatorio-data-fim">Até</label>
+                <input id="relatorio-data-fim" type="date" name="data_fim"
+                       value="{{ data_fim_input }}" {% if periodo != 'periodo' %}disabled{% endif %}>
+            </div>
             <button type="submit" class="btn btn--primary">Filtrar</button>
         </form>
     </div>
@@ -50,7 +54,17 @@
                 <h2>Itens vendidos</h2>
                 <p class="muted">Ordenados por quantidade vendida, da maior para a menor.</p>
             </div>
-            <span class="relatorio__atualizacao" data-report-refresh-status aria-live="polite">Atualizado agora</span>
+            <div class="relatorio__acoes">
+                <div class="relatorio__limites" aria-label="Quantidade de itens exibidos">
+                    {% for opcao in (5, 10, 20) %}
+                    <button type="button" class="relatorio__limite{% if opcao == 5 %} ativo{% endif %}"
+                            data-report-limit="{{ opcao }}" aria-pressed="{{ 'true' if opcao == 5 else 'false' }}">
+                        Top {{ opcao }}
+                    </button>
+                    {% endfor %}
+                </div>
+                <span class="relatorio__atualizacao" data-report-refresh-status aria-live="polite">Atualizado agora</span>
+            </div>
         </div>
         <div class="relatorio__tabela-wrap">
             <table class="tabela relatorio__tabela">
@@ -64,7 +78,7 @@
                 </thead>
                 <tbody id="relatorio-itens">
                     {% for item in dados.itens %}
-                    <tr>
+                    <tr data-item-row>
                         <td><strong>{{ item.nome }}</strong></td>
                         <td>{{ item.quantidade }}</td>
                         <td>R$ {{ '{:,.2f}'.format(item.preco_unitario).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>

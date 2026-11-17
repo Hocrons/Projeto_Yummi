@@ -1,0 +1,18 @@
+[
+    {
+        "merged": "com.yummi.restaurante.app-mergeDebugResources-37:/layout/activity_product_list.xml",
+        "source": "com.yummi.restaurante.app-main-40:/layout/activity_product_list.xml"
+    },
+    {
+        "merged": "com.yummi.restaurante.app-mergeDebugResources-37:/layout/item_product.xml",
+        "source": "com.yummi.restaurante.app-main-40:/layout/item_product.xml"
+    },
+    {
+        "merged": "com.yummi.restaurante.app-mergeDebugResources-37:/layout/activity_product_form.xml",
+        "source": "com.yummi.restaurante.app-main-40:/layout/activity_product_form.xml"
+    },
+    {
+        "merged": "com.yummi.restaurante.app-mergeDebugResources-37:/layout/activity_login.xml",
+        "source": "com.yummi.restaurante.app-main-40:/layout/activity_login.xml"
+    }
+]

@@ -5,3 +5,4 @@ Werkzeug==3.0.4
 Authlib==1.7.2
 requests==2.32.3
 rapidfuzz==3.10.1
+xhtml2pdf==0.2.28

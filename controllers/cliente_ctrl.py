@@ -1,9 +1,16 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+import uuid
+
+from flask import (
+    Blueprint, current_app, render_template, request, redirect, url_for,
+    session, flash, jsonify,
+)
 from models import models
 from controllers.decorators import login_requerido
-from services import geocoding
+from services import geocoding, infinitepay
 
 cliente_bp = Blueprint("cliente", __name__, url_prefix="/cliente")
+
+QUANTIDADE_MAXIMA_ITEM = 99
 
 
 def _carrinho():
@@ -58,6 +65,31 @@ def _lat_lon_do_form(form):
         uf=form.get("estado") or form.get("uf"),
     )
     return lat, lon
+
+
+def _confirmar_retorno_infinitepay(order_nsu, transaction_nsu, slug):
+    if not all(
+        isinstance(value, str) and value.strip()
+        for value in (order_nsu, transaction_nsu, slug)
+    ):
+        return "dados_invalidos"
+
+    pagamento = models.buscar_pagamento_infinitepay(order_nsu)
+    if not pagamento:
+        return "nao_encontrado"
+
+    dados = infinitepay.verificar_pagamento(
+        infinitepay.obter_handle(),
+        order_nsu,
+        transaction_nsu,
+        slug,
+    )
+    if dados.get("paid") is not True:
+        return "aguardando_pagamento"
+
+    return models.confirmar_pagamento_infinitepay(
+        order_nsu, transaction_nsu, slug
+    )
 
 
 # ---------------------------------------------------------
@@ -138,7 +170,7 @@ def adicionar_ao_carrinho():
     pid = str(produto["id"])
 
     if pid in carrinho["itens"]:
-        carrinho["itens"][pid]["quantidade"] += 1
+        carrinho["itens"][pid]["quantidade"] = min(carrinho["itens"][pid]["quantidade"] + 1, QUANTIDADE_MAXIMA_ITEM)
     else:
         carrinho["itens"][pid] = {
             "nome": produto["nome"],
@@ -163,9 +195,15 @@ def limpar_carrinho():
 @cliente_bp.route("/carrinho/atualizar", methods=["POST"])
 @login_requerido("cliente")
 def atualizar_carrinho():
-    dados = request.get_json()
-    pid = str(dados["id_produto"])
-    quantidade = int(dados["quantidade"])
+    dados = request.get_json(silent=True)
+    if not isinstance(dados, dict):
+        return jsonify({"ok": False, "erro": "Requisição inválida."}), 400
+    try:
+        pid = str(int(dados["id_produto"]))
+        quantidade = int(dados["quantidade"])
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"ok": False, "erro": "Produto ou quantidade inválidos."}), 400
+    quantidade = min(quantidade, QUANTIDADE_MAXIMA_ITEM)
     carrinho = _carrinho()
 
     if pid in carrinho.get("itens", {}):
@@ -370,10 +408,32 @@ def checkout():
         return redirect(url_for("home.index"))
 
     if request.method == "POST":
-        id_endereco = request.form.get("id_endereco")
+        id_endereco = request.form.get("id_endereco", "")
         if not id_endereco:
             flash("Selecione um endereço de entrega.", "erro")
             return redirect(url_for("cliente.checkout"))
+
+        # o endereço precisa existir, estar ativo e pertencer ao cliente logado
+        endereco = models.buscar_endereco(int(id_endereco)) if id_endereco.isdigit() else None
+        if (not endereco or endereco["id_cliente"] != session["user_id"]
+                or not endereco.get("ativo", 1)):
+            flash("Endereço de entrega inválido. Selecione um dos seus endereços.", "erro")
+            return redirect(url_for("cliente.checkout"))
+
+        forma_pagamento = request.form.get("forma_pagamento")
+        if forma_pagamento not in {"infinitepay", "dinheiro"}:
+            flash("Selecione uma forma de pagamento válida.", "erro")
+            return redirect(url_for("cliente.checkout"))
+
+        order_nsu = None
+        if forma_pagamento == "infinitepay":
+            try:
+                infinitepay.obter_handle()
+                base_url = infinitepay.obter_base_url_publica()
+            except infinitepay.InfinitePayError as erro:
+                flash(str(erro), "erro")
+                return redirect(url_for("cliente.checkout"))
+            order_nsu = f"yummy-{uuid.uuid4().hex}"
 
         taxa, dist_km, km_extra = models.calcular_taxa_entrega_pedido(
             carrinho["id_restaurante"], int(id_endereco)
@@ -390,17 +450,54 @@ def checkout():
                 id_restaurante=carrinho["id_restaurante"],
                 id_endereco=id_endereco,
                 itens=itens,
-                forma_pagamento=request.form["forma_pagamento"],
+                forma_pagamento=forma_pagamento,
                 codigo_cupom=session.get("cupom"),
                 taxa_entrega=taxa,
+                gateway_order_nsu=order_nsu,
             )
         except ValueError as e:
             flash(str(e), "erro")
             return redirect(url_for("cliente.ver_carrinho"))
 
+        if forma_pagamento == "infinitepay":
+            try:
+                pedido = models.buscar_pedido(id_pedido)
+                if not pedido:
+                    raise infinitepay.InfinitePayError(
+                        "Não foi possível recuperar o pedido para iniciar o pagamento."
+                    )
+
+                redirect_url = (
+                    f"{base_url}{url_for('cliente.pagamento_retorno', order_nsu=order_nsu)}"
+                )
+                webhook_url = f"{base_url}{url_for('cliente.webhook_infinitepay')}"
+                checkout_url = infinitepay.criar_link_pagamento(
+                    handle=infinitepay.obter_handle(),
+                    order_nsu=order_nsu,
+                    valor_centavos=round(float(pedido["valor_total"]) * 100),
+                    descricao=f"Pedido Yummy #{id_pedido}",
+                    redirect_url=redirect_url,
+                    webhook_url=webhook_url,
+                )
+                if not models.salvar_link_checkout_infinitepay(id_pedido, checkout_url):
+                    raise infinitepay.InfinitePayError(
+                        "Não foi possível salvar o link de pagamento."
+                    )
+            except infinitepay.InfinitePayError as erro:
+                models.cancelar_checkout_infinitepay(id_pedido)
+                current_app.logger.warning(
+                    "Falha ao iniciar pagamento InfinitePay para o pedido %s: %s",
+                    id_pedido,
+                    erro,
+                )
+                flash(str(erro), "erro")
+                return redirect(url_for("cliente.checkout"))
+
         session["carrinho"] = {"id_restaurante": None, "itens": {}}
         session.pop("cupom", None)
         session.modified = True
+        if forma_pagamento == "infinitepay":
+            return redirect(checkout_url)
         return redirect(url_for("cliente.pedido_sucesso", id_pedido=id_pedido))
 
     # ---------- GET ----------
@@ -445,6 +542,81 @@ def checkout():
     )
 
 
+@cliente_bp.route("/pagamento/retorno")
+@login_requerido("cliente")
+def pagamento_retorno():
+    order_nsu = request.args.get("order_nsu", "")
+    pagamento = models.buscar_pagamento_infinitepay(order_nsu)
+    pedido = (
+        models.buscar_pedido(pagamento["id_pedido"])
+        if pagamento else None
+    )
+    if not pedido or pedido["id_cliente"] != session["user_id"]:
+        flash("Pedido não encontrado.", "erro")
+        return redirect(url_for("cliente.meus_pedidos"))
+
+    try:
+        status = _confirmar_retorno_infinitepay(
+            order_nsu,
+            request.args.get("transaction_nsu", ""),
+            request.args.get("slug", ""),
+        )
+    except infinitepay.InfinitePayError as erro:
+        current_app.logger.warning(
+            "Falha ao confirmar pagamento InfinitePay do pedido %s: %s",
+            pedido["id"],
+            erro,
+        )
+        flash(
+            "Ainda não foi possível confirmar o pagamento. "
+            "O pedido será atualizado assim que a InfinitePay confirmar.",
+            "erro",
+        )
+        return redirect(url_for("cliente.pedido_sucesso", id_pedido=pedido["id"]))
+
+    if status == "aprovado":
+        flash("Pagamento confirmado pela InfinitePay.", "sucesso")
+    elif status == "reembolso_pendente":
+        flash(
+            "O pagamento foi confirmado após o cancelamento. "
+            "O reembolso precisa ser processado manualmente.",
+            "erro",
+        )
+    else:
+        flash(
+            "Pagamento ainda não confirmado. Se você já pagou, aguarde a atualização.",
+            "erro",
+        )
+    return redirect(url_for("cliente.pedido_sucesso", id_pedido=pedido["id"]))
+
+
+@cliente_bp.route("/pagamento/webhook/infinitepay", methods=["POST"])
+def webhook_infinitepay():
+    dados = request.get_json(silent=True)
+    if not isinstance(dados, dict):
+        return jsonify({"erro": "Corpo JSON inválido."}), 400
+
+    try:
+        status = _confirmar_retorno_infinitepay(
+            dados.get("order_nsu"),
+            dados.get("transaction_nsu"),
+            dados.get("slug"),
+        )
+    except infinitepay.InfinitePayError as erro:
+        current_app.logger.warning("Falha ao processar webhook InfinitePay: %s", erro)
+        return jsonify({"erro": "Não foi possível verificar o pagamento."}), 502
+
+    if status == "nao_encontrado":
+        return jsonify({"erro": "Pagamento não encontrado."}), 404
+    if status == "dados_invalidos":
+        return jsonify({"erro": "Dados de confirmação inválidos."}), 400
+    if status == "aguardando_pagamento":
+        return jsonify({"status": status}), 202
+    if status in {"aprovado", "reembolso_pendente"}:
+        return jsonify({"status": status}), 200
+    return jsonify({"erro": "Estado do pagamento não aplicável."}), 409
+
+
 @cliente_bp.route("/pedido/<int:id_pedido>/sucesso")
 @login_requerido("cliente")
 def pedido_sucesso(id_pedido):
@@ -464,14 +636,27 @@ def meus_pedidos():
     pedidos = models.listar_pedidos_cliente(session["user_id"])
     return render_template("cliente/meus_pedidos.html", pedidos=pedidos)
 
+@cliente_bp.route("/pedido/<int:id_pedido>/cancelar", methods=["POST"])
+@login_requerido("cliente")
+def cancelar_pedido(id_pedido):
+    if models.cancelar_pedido_cliente(id_pedido, session["user_id"]):
+        flash(f"Pedido #{id_pedido} cancelado.", "sucesso")
+    else:
+        flash(
+            "Não foi possível cancelar: o pedido já foi aceito pelo restaurante "
+            "ou não está mais disponível.",
+            "erro",
+        )
+    return redirect(url_for("cliente.meus_pedidos"))
+
 
 # ---------------------------------------------------------
-# API — PEDIDOS ATIVOS (usado pelo notificacoes.js)
+# API — STATUS DOS PEDIDOS (usado pelas notificações e pela lista de pedidos)
 # ---------------------------------------------------------
-@cliente_bp.route("/api/pedidos-ativos")
+@cliente_bp.route("/api/pedidos-status")
 @login_requerido("cliente")
-def api_pedidos_ativos():
-    pedidos = models.listar_pedidos_ativos_cliente(session["user_id"])
+def api_status_pedidos():
+    pedidos = models.listar_status_pedidos_cliente(session["user_id"])
     return jsonify({
         "pedidos": [
             {
@@ -491,9 +676,17 @@ def api_pedidos_ativos():
 @login_requerido("cliente")
 def editar_perfil():
     if request.method == "POST":
-        models.atualizar_usuario(
-            session["user_id"], request.form["nome"], request.form.get("telefone")
-        )
+        nome = (request.form.get("nome") or "").strip()
+        if not nome:
+            flash("O nome não pode ficar vazio.", "erro")
+            return redirect(url_for("cliente.editar_perfil"))
+        try:
+            models.atualizar_usuario(
+                session["user_id"], nome, request.form.get("telefone")
+            )
+        except ValueError as erro:
+            flash(str(erro), "erro")
+            return redirect(url_for("cliente.editar_perfil"))
         models.atualizar_cliente(session["user_id"], request.form.get("apelido"))
 
         codigo_entrega = (request.form.get("codigo_entrega") or "").strip()
@@ -503,7 +696,7 @@ def editar_perfil():
                 return redirect(url_for("cliente.editar_perfil"))
             models.atualizar_codigo_entrega(session["user_id"], codigo_entrega)
 
-        session["user_nome"] = request.form["nome"]
+        session["user_nome"] = nome
         flash("Perfil atualizado.", "sucesso")
         return redirect(url_for("cliente.editar_perfil"))
 

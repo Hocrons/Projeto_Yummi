@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import secrets
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
@@ -6,6 +7,31 @@ from extensions import oauth
 from models import models
 from services import geocoding, otp, verificacao_email, verificacao_whatsapp_local
 from utils import normalizar_telefone, mascarar_email, mascarar_telefone
+
+
+def _mensagem_erro_cadastro(exc):
+    """Traduz exceções de cadastro em mensagem amigável (sem expor texto técnico do banco)."""
+    texto = str(exc).lower()
+    if "duplicate" in texto or "1062" in texto:
+        if "cpf" in texto:
+            return "Este CPF já está cadastrado."
+        if "email" in texto:
+            return "Este e-mail já está cadastrado."
+        return "Já existe um cadastro com esses dados."
+    return "Não foi possível concluir o cadastro. Confira os dados e tente novamente."
+
+
+def _validar_dados_cadastro(nome, email, senha, cpf):
+    """Validação mínima no servidor. Retorna mensagem de erro ou None."""
+    if not (nome or "").strip():
+        return "Informe seu nome."
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", (email or "").strip()):
+        return "Informe um e-mail válido."
+    if len(senha or "") < 6:
+        return "A senha deve ter pelo menos 6 caracteres."
+    if len(re.sub(r"\D", "", cpf or "")) != 11:
+        return "Informe um CPF válido (11 dígitos)."
+    return None
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -61,24 +87,31 @@ def _codigo_entrega_padrao(telefone_normalizado):
 def cadastrar_cliente():
     if request.method == "POST":
         try:
-            if models.buscar_usuario_por_email(request.form["email"]):
+            email = (request.form.get("email") or "").strip().lower()
+            erro_dados = _validar_dados_cadastro(request.form.get("nome"), email,
+                                                 request.form.get("senha"), request.form.get("cpf"))
+            if erro_dados:
+                flash(erro_dados, "erro")
+                return render_template("cliente/cadastrar.html")
+            if models.buscar_usuario_por_email_e_tipo(email, "cliente"):
                 flash("Este e-mail já está cadastrado.", "erro")
                 return render_template("cliente/cadastrar.html")
 
             telefone_raw = request.form.get("telefone")
             telefone_norm = normalizar_telefone(telefone_raw)
+            if not telefone_norm:
+                flash("Informe um celular válido com DDD.", "erro")
+                return render_template("cliente/cadastrar.html")
 
-            # Regra: 1 cliente por telefone (mas o mesmo telefone pode estar
-            # em contas de restaurante/entregador).
-            if telefone_norm and models.buscar_usuario_por_telefone_e_tipo(telefone_norm, "cliente"):
+            if models.buscar_usuario_por_telefone_e_tipo(telefone_norm, "cliente"):
                 flash("Este celular já está cadastrado em outra conta de cliente.", "erro")
                 return render_template("cliente/cadastrar.html")
 
             id_usuario = models.criar_usuario(
                 nome=request.form["nome"],
-                email=request.form["email"],
+                email=email,
                 senha=request.form["senha"],
-                telefone=telefone_raw,
+                telefone=telefone_norm,
                 tipo="cliente",
             )
             models.criar_cliente(
@@ -90,15 +123,17 @@ def cadastrar_cliente():
             flash("Cadastro realizado! Faça login para continuar.", "sucesso")
             return redirect(url_for("auth.login_cliente"))
         except Exception as e:
-            flash(f"Erro ao cadastrar: {e}", "erro")
+            flash(_mensagem_erro_cadastro(e), "erro")
     return render_template("cliente/cadastrar.html")
 
 
 @auth_bp.route("/cliente/login", methods=["GET", "POST"])
 def login_cliente():
     if request.method == "POST":
-        usuario = models.validar_login(request.form["email"], request.form["senha"])
-        if usuario and usuario["tipo"] == "cliente":
+        usuario = models.validar_login(
+            request.form["email"], request.form["senha"], "cliente"
+        )
+        if usuario:
             session.permanent = True
             session["user_id"] = usuario["id"]
             session["user_tipo"] = "cliente"
@@ -166,16 +201,9 @@ def entrada_celular_codigo():
         elif not codigo_digitado or codigo_digitado != fluxo.get("codigo_esperado"):
             flash("Código inválido. Confira e tente de novo.", "erro")
         else:
-            usuario = models.buscar_usuario_por_telefone(fluxo["telefone"])
-
-            if usuario and usuario["tipo"] != "cliente":
-                flash(
-                    f"Esse celular pertence a uma conta de {usuario['tipo']}. "
-                    f"Para entrar como cliente com esse número, cadastre-se primeiro.",
-                    "erro",
-                )
-                session.pop("fluxo_entrada", None)
-                return redirect(url_for("auth.entrar"))
+            usuario = models.buscar_usuario_por_telefone(
+                fluxo["telefone"], "cliente"
+            )
 
             if usuario:
                 fluxo["id_usuario_existente"] = usuario["id"]
@@ -254,12 +282,9 @@ def entrada_email_codigo():
             flash("Código inválido. Confira e tente de novo.", "erro")
         else:
             fluxo["email_verificado"] = True
-            usuario = models.buscar_usuario_por_email(fluxo["email"])
-
-            if usuario and usuario["tipo"] != "cliente":
-                flash(f"Esse e-mail já está associado a uma conta de {usuario['tipo']}.", "erro")
-                session.pop("fluxo_entrada", None)
-                return redirect(url_for("auth.entrar"))
+            usuario = models.buscar_usuario_por_email_e_tipo(
+                fluxo["email"], "cliente"
+            )
 
             if usuario and usuario.get("telefone"):
                 fluxo["id_usuario_existente"] = usuario["id"]
@@ -356,7 +381,7 @@ def cadastro_rapido():
             if not email or "@" not in email:
                 flash("Informe um e-mail válido.", "erro")
                 return render_template("cliente/cadastro_rapido.html", fluxo=fluxo, veio_do_celular=veio_do_celular)
-            if models.buscar_usuario_por_email(email):
+            if models.buscar_usuario_por_email_e_tipo(email, "cliente"):
                 flash("Este e-mail já está cadastrado em outra conta.", "erro")
                 return render_template("cliente/cadastro_rapido.html", fluxo=fluxo, veio_do_celular=veio_do_celular)
 
@@ -430,7 +455,7 @@ def _finalizar_cadastro_rapido():
             codigo_entrega=_codigo_entrega_padrao(fluxo.get("telefone")),
         )
     except Exception as e:
-        flash(f"Erro ao concluir o cadastro: {e}", "erro")
+        flash(_mensagem_erro_cadastro(e), "erro")
         return redirect(url_for("auth.cadastro_rapido"))
 
     session.pop("fluxo_entrada", None)
@@ -444,17 +469,10 @@ def _finalizar_cadastro_rapido():
 # LOGIN SOCIAL
 # ---------------------------------------------------------
 def _login_ou_cadastrar_social(email, nome, provider):
-    usuario = models.buscar_usuario_por_email(email)
+    email = (email or "").strip().lower()
+    usuario = models.buscar_usuario_por_email_e_tipo(email, "cliente")
 
     if usuario:
-        if usuario["tipo"] != "cliente":
-            flash(
-                f"Este e-mail já está cadastrado como conta de {usuario['tipo']}. "
-                f"Use a tela de login de {usuario['tipo']} ou outro e-mail.",
-                "erro",
-            )
-            return redirect(url_for("auth.login_cliente"))
-
         _logar_usuario_cliente(usuario)
         flash(f"Login com {provider.capitalize()} realizado!", "sucesso")
         return redirect(url_for("home.index"))
@@ -530,15 +548,23 @@ def completar_cadastro_social():
             telefone_raw = request.form.get("telefone")
             telefone_norm = normalizar_telefone(telefone_raw)
 
-            if telefone_norm and models.buscar_usuario_por_telefone_e_tipo(telefone_norm, "cliente"):
+            if not telefone_norm:
+                flash("Informe um celular válido com DDD.", "erro")
+                return render_template("cliente/completar_cadastro_social.html", dados=dados)
+
+            if models.buscar_usuario_por_telefone_e_tipo(telefone_norm, "cliente"):
                 flash("Este celular já está cadastrado em outra conta de cliente.", "erro")
                 return render_template("cliente/completar_cadastro_social.html", dados=dados)
 
+            if models.buscar_usuario_por_email_e_tipo(dados["email"], "cliente"):
+                flash("Este e-mail já está cadastrado em uma conta de cliente.", "erro")
+                return redirect(url_for("auth.login_cliente"))
+
             id_usuario = models.criar_usuario(
                 nome=nome_final,
-                email=dados["email"],
+                email=dados["email"].strip().lower(),
                 senha=senha_aleatoria,
-                telefone=telefone_raw,
+                telefone=telefone_norm,
                 tipo="cliente",
             )
             models.criar_cliente(
@@ -548,7 +574,7 @@ def completar_cadastro_social():
                 codigo_entrega=_codigo_entrega_padrao(telefone_norm),
             )
         except Exception as e:
-            flash(f"Erro ao concluir o cadastro: {e}", "erro")
+            flash(_mensagem_erro_cadastro(e), "erro")
             return render_template("cliente/completar_cadastro_social.html", dados=dados)
 
         session.pop("cadastro_social", None)
@@ -572,7 +598,7 @@ def cadastrar_restaurante():
             flash("Informe um e-mail válido.", "erro")
             return render_template("restaurante/cadastrar_email.html")
 
-        if models.buscar_usuario_por_email(email):
+        if models.buscar_usuario_por_email_e_tipo(email, "restaurante"):
             flash("Este e-mail já está cadastrado.", "erro")
             return render_template("restaurante/cadastrar_email.html")
 
@@ -797,7 +823,7 @@ def restaurante_confirmar_local():
                 lon=form.get("lon"),
             )
         except Exception as e:
-            flash(f"Erro ao cadastrar: {e}", "erro")
+            flash(_mensagem_erro_cadastro(e), "erro")
             return redirect(url_for("auth.restaurante_confirmar_local"))
 
         session.pop("fluxo_restaurante", None)
@@ -825,8 +851,10 @@ def restaurante_confirmar_local():
 @auth_bp.route("/restaurante/login", methods=["GET", "POST"])
 def login_restaurante():
     if request.method == "POST":
-        usuario = models.validar_login(request.form["email"], request.form["senha"])
-        if usuario and usuario["tipo"] == "restaurante":
+        usuario = models.validar_login(
+            request.form["email"], request.form["senha"], "restaurante"
+        )
+        if usuario:
             session.permanent = True
             session["user_id"] = usuario["id"]
             session["user_tipo"] = "restaurante"
@@ -843,22 +871,26 @@ def login_restaurante():
 def cadastrar_entregador():
     if request.method == "POST":
         try:
-            if models.buscar_usuario_por_email(request.form["email"]):
+            email = (request.form.get("email") or "").strip().lower()
+            if models.buscar_usuario_por_email_e_tipo(email, "entregador"):
                 flash("Este e-mail já está cadastrado.", "erro")
                 return render_template("entregador/cadastrar.html")
 
             telefone_raw = request.form.get("telefone")
             telefone_norm = normalizar_telefone(telefone_raw)
+            if not telefone_norm:
+                flash("Informe um celular válido com DDD.", "erro")
+                return render_template("entregador/cadastrar.html")
 
-            if telefone_norm and models.buscar_usuario_por_telefone_e_tipo(telefone_norm, "entregador"):
+            if models.buscar_usuario_por_telefone_e_tipo(telefone_norm, "entregador"):
                 flash("Este celular já está cadastrado em outra conta de entregador.", "erro")
                 return render_template("entregador/cadastrar.html")
 
             id_usuario = models.criar_usuario(
                 nome=request.form["nome"],
-                email=request.form["email"],
+                email=email,
                 senha=request.form["senha"],
-                telefone=telefone_raw,
+                telefone=telefone_norm,
                 tipo="entregador",
             )
             models.criar_entregador(
@@ -870,15 +902,17 @@ def cadastrar_entregador():
             flash("Cadastro realizado! Faça login para continuar.", "sucesso")
             return redirect(url_for("auth.login_entregador"))
         except Exception as e:
-            flash(f"Erro ao cadastrar: {e}", "erro")
+            flash(_mensagem_erro_cadastro(e), "erro")
     return render_template("entregador/cadastrar.html")
 
 
 @auth_bp.route("/entregador/login", methods=["GET", "POST"])
 def login_entregador():
     if request.method == "POST":
-        usuario = models.validar_login(request.form["email"], request.form["senha"])
-        if usuario and usuario["tipo"] == "entregador":
+        usuario = models.validar_login(
+            request.form["email"], request.form["senha"], "entregador"
+        )
+        if usuario:
             session.permanent = True
             session["user_id"] = usuario["id"]
             session["user_tipo"] = "entregador"

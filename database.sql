@@ -35,11 +35,13 @@ INSERT INTO plano (nome, descricao, mensalidade, comissao_pct, taxa_cartao_pct, 
 CREATE TABLE usuario (
     id             INT AUTO_INCREMENT PRIMARY KEY,
     nome           VARCHAR(100) NOT NULL,
-    email          VARCHAR(100) NOT NULL UNIQUE,
+    email          VARCHAR(100) NOT NULL,
     senha          VARCHAR(255) NOT NULL,
     telefone       VARCHAR(20),
     tipo           VARCHAR(20)  NOT NULL,   -- 'cliente' | 'restaurante' | 'entregador'
-    data_cadastro  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    data_cadastro  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_usuario_email_tipo (email, tipo),
+    UNIQUE KEY uq_usuario_telefone_tipo (telefone, tipo)
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------
@@ -208,11 +210,16 @@ CREATE TABLE item_pedido (
 -- pagamento
 -- ---------------------------------------------------------
 CREATE TABLE pagamento (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    id_pedido       INT NOT NULL,
-    forma_pagamento VARCHAR(20) NOT NULL,
-    valor           DECIMAL(10,2) NOT NULL,
-    status          VARCHAR(20) NOT NULL DEFAULT 'pendente',
+    id                       INT AUTO_INCREMENT PRIMARY KEY,
+    id_pedido                INT NOT NULL,
+    forma_pagamento          VARCHAR(20) NOT NULL,
+    valor                    DECIMAL(10,2) NOT NULL,
+    status                   VARCHAR(20) NOT NULL DEFAULT 'pendente',
+    gateway_order_nsu        VARCHAR(100) NULL,
+    checkout_url             VARCHAR(1000) NULL,
+    gateway_transaction_nsu  VARCHAR(100) NULL,
+    gateway_slug             VARCHAR(255) NULL,
+    UNIQUE KEY uq_pagamento_gateway_order_nsu (gateway_order_nsu),
     CONSTRAINT fk_pagamento_pedido
         FOREIGN KEY (id_pedido) REFERENCES pedido(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

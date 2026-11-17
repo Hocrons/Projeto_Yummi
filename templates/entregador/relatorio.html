@@ -1,38 +1,90 @@
 {% extends "base.html" %}
 {% block title %}Meus ganhos{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/relatorios.css') }}">
+{% endblock %}
 {% block content %}
 <section class="relatorio relatorio--entregador"
          data-report-type="entregador"
-         data-refresh-url="{{ url_for('entregador.dados_relatorio') }}">
+         data-refresh-url="{{ url_for('entregador.dados_relatorio', periodo=periodo, data_inicio=data_inicio_input, data_fim=data_fim_input, limite=20) }}">
     <div class="relatorio__cabecalho">
         <div>
             <p class="relatorio__sobretitulo">YUMMY · SUAS ENTREGAS</p>
             <h1>Meus ganhos</h1>
             <p class="muted">Cada entrega concluída conta. Continue no seu ritmo!</p>
         </div>
-        <span class="relatorio__atualizacao" data-report-refresh-status aria-live="polite">Atualizado agora</span>
+        <form class="relatorio__filtros" method="get" action="{{ url_for('entregador.relatorio') }}">
+            <label for="relatorio-periodo">Período</label>
+            <select id="relatorio-periodo" name="periodo" data-period-select>
+                <option value="hoje" {% if periodo == 'hoje' %}selected{% endif %}>Hoje</option>
+                <option value="semana" {% if periodo == 'semana' %}selected{% endif %}>Semana</option>
+                <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Mês</option>
+                <option value="periodo" {% if periodo == 'periodo' %}selected{% endif %}>Período personalizado</option>
+            </select>
+            <div class="relatorio__datas" data-period-dates {% if periodo != 'periodo' %}hidden{% endif %}>
+                <label for="relatorio-data-inicio">De</label>
+                <input id="relatorio-data-inicio" type="date" name="data_inicio"
+                       value="{{ data_inicio_input }}" {% if periodo != 'periodo' %}disabled{% endif %}>
+                <label for="relatorio-data-fim">Até</label>
+                <input id="relatorio-data-fim" type="date" name="data_fim"
+                       value="{{ data_fim_input }}" {% if periodo != 'periodo' %}disabled{% endif %}>
+            </div>
+            <button type="submit" class="btn btn--primary">Filtrar</button>
+        </form>
     </div>
 
     <div class="relatorio__metricas relatorio__metricas--entregador">
         <article class="relatorio-card relatorio-card--dia">
-            <span class="relatorio-card__icone" aria-hidden="true">☀️</span>
-            <p>Ganho do dia</p>
-            <strong data-ganho="ganho_dia">R$ {{ '{:,.2f}'.format(ganhos.ganho_dia).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong>
-            <span class="relatorio-card__periodo">Hoje, desde 00:00</span>
+            <span class="relatorio-card__icone" aria-hidden="true">⚡</span>
+            <p>Ganho no período</p>
+            <strong data-ganho>{{ 'R$ {:,.2f}'.format(dados.ganho).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong>
+            <span class="relatorio-card__periodo">{{ periodo_label }}</span>
         </article>
         <article class="relatorio-card relatorio-card--semana">
-            <span class="relatorio-card__icone" aria-hidden="true">🗓️</span>
-            <p>Ganho semanal</p>
-            <strong data-ganho="ganho_semanal">R$ {{ '{:,.2f}'.format(ganhos.ganho_semanal).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong>
-            <span class="relatorio-card__periodo">Últimos 7 dias, incluindo hoje</span>
-        </article>
-        <article class="relatorio-card relatorio-card--mes">
-            <span class="relatorio-card__icone" aria-hidden="true">🏆</span>
-            <p>Ganho mensal</p>
-            <strong data-ganho="ganho_mensal">R$ {{ '{:,.2f}'.format(ganhos.ganho_mensal).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong>
-            <span class="relatorio-card__periodo">Desde o primeiro dia do mês</span>
+            <span class="relatorio-card__icone" aria-hidden="true">📦</span>
+            <p>Entregas realizadas</p>
+            <strong data-entregas>{{ dados.entregas }}</strong>
+            <span class="relatorio-card__periodo">Entregas concluídas no período</span>
         </article>
     </div>
+
+    <section class="relatorio__itens">
+        <div class="relatorio__secao-cabecalho">
+            <div>
+                <h2>Histórico de entregas</h2>
+                <p class="muted">Entregas concluídas no período selecionado.</p>
+            </div>
+            <div class="relatorio__acoes">
+                <div class="relatorio__limites" aria-label="Quantidade de entregas exibidas">
+                    {% for opcao in (5, 10, 15, 20) %}
+                    <button type="button" class="relatorio__limite{% if opcao == 5 %} ativo{% endif %}"
+                            data-report-limit="{{ opcao }}" aria-pressed="{{ 'true' if opcao == 5 else 'false' }}">
+                        {{ opcao }}
+                    </button>
+                    {% endfor %}
+                </div>
+                <span class="relatorio__atualizacao" data-report-refresh-status aria-live="polite">Atualizado agora</span>
+            </div>
+        </div>
+        <div class="relatorio__historico" id="relatorio-entregas">
+            {% for entrega in dados.historico %}
+            <article class="relatorio__entrega" data-entrega-row>
+                <strong>#{{ '%04d'|format(entrega.id) }}</strong>
+                <div>
+                    <strong>{{ entrega.restaurante }}</strong>
+                    <span>{{ entrega.entregue_em }}</span>
+                </div>
+                <div class="relatorio__valor-entrega">
+                    <strong>R$ {{ '{:,.2f}'.format(entrega.taxa_entrega).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong>
+                    <span>taxa de entrega</span>
+                </div>
+                <span class="relatorio__status-entrega">Concluída</span>
+            </article>
+            {% else %}
+            <p class="relatorio__vazio" data-historico-vazio>Nenhuma entrega concluída neste período.</p>
+            {% endfor %}
+        </div>
+    </section>
 
     <p class="relatorio__nota">
         Os ganhos consideram a taxa de entrega de corridas concluídas. Gorjetas ainda não são registradas pelo sistema.

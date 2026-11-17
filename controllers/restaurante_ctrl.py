@@ -3,6 +3,10 @@ from datetime import datetime
 from models import models
 from controllers.decorators import login_requerido
 from services import geocoding, verificacao_email
+from services.periodos_relatorio import (
+    resolver_limite_relatorio,
+    resolver_periodo_relatorio,
+)
 
 restaurante_bp = Blueprint("restaurante", __name__, url_prefix="/restaurante")
 
@@ -21,10 +25,10 @@ TRANSICOES_PERMITIDAS = {
     },
 }
 
-MESES_RELATORIO = (
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-)
+STATUS_PEDIDOS = {
+    "pendente", "preparando", "localizando_entregador",
+    "indo_ao_restaurante", "saiu_para_entrega", "entregue", "cancelado",
+}
 
 
 def _url_valida(url):
@@ -56,56 +60,45 @@ def portal():
 @login_requerido("restaurante")
 def painel():
     status = request.args.get("status")
-    if status not in {
-        "pendente", "preparando", "localizando_entregador",
-        "indo_ao_restaurante", "saiu_para_entrega", "entregue", "cancelado",
-    }:
+    if status not in STATUS_PEDIDOS:
         status = None
     pedidos = models.listar_pedidos_restaurante(session["user_id"], status=status)
     return render_template("restaurante/painel.html", pedidos=pedidos, status_filtro=status)
 
 
+@restaurante_bp.route("/api/painel-pedidos")
+@login_requerido("restaurante")
+def api_pedidos_painel():
+    status = request.args.get("status")
+    if status not in STATUS_PEDIDOS:
+        status = None
+    pedidos = models.listar_pedidos_restaurante(session["user_id"], status=status)
+    return render_template("restaurante/_lista_pedidos.html", pedidos=pedidos), {
+        "Cache-Control": "no-store",
+    }
+
+
 @restaurante_bp.route("/relatorio")
 @login_requerido("restaurante")
 def relatorio():
-    ano_atual = datetime.now().year
     try:
-        ano_solicitado = request.args.get("ano", str(ano_atual))
-        ano = int(ano_solicitado) if ano_solicitado else None
-        if ano is not None and not 2000 <= ano <= ano_atual:
-            ano = ano_atual
-    except (TypeError, ValueError):
-        ano = ano_atual
+        periodo = resolver_periodo_relatorio(request.args, "mes")
+    except ValueError as erro:
+        flash(str(erro), "erro")
+        return redirect(url_for("restaurante.relatorio"))
 
-    try:
-        mes_solicitado = request.args.get("mes", str(datetime.now().month))
-        mes = int(mes_solicitado) if mes_solicitado else None
-        if mes is not None and not 1 <= mes <= 12:
-            mes = None
-    except (TypeError, ValueError):
-        mes = None
-
-    anos = sorted(
-        set(models.listar_anos_pedidos_restaurante(session["user_id"]) + [ano_atual]),
-        reverse=True,
+    limite = 20
+    dados = models.obter_relatorio_restaurante(
+        session["user_id"],
+        periodo["data_inicio"],
+        periodo["data_fim"],
+        limite,
     )
-    dados = models.obter_relatorio_restaurante(session["user_id"], ano, mes)
-    if ano is None and mes is None:
-        periodo_label = "Todo o histórico"
-    elif ano is None:
-        periodo_label = f"Todos os anos · {MESES_RELATORIO[mes - 1]}"
-    elif mes is None:
-        periodo_label = f"Ano de {ano}"
-    else:
-        periodo_label = f"{MESES_RELATORIO[mes - 1]} de {ano}"
     return render_template(
         "restaurante/relatorio.html",
         dados=dados,
-        ano=ano,
-        mes=mes,
-        anos=anos,
-        meses=MESES_RELATORIO,
-        periodo_label=periodo_label,
+        limite=limite,
+        **periodo,
     )
 
 
@@ -113,11 +106,16 @@ def relatorio():
 @login_requerido("restaurante")
 def dados_relatorio():
     try:
-        ano = int(request.args["ano"]) if request.args.get("ano") else None
-        mes = int(request.args["mes"]) if request.args.get("mes") else None
-        dados = models.obter_relatorio_restaurante(session["user_id"], ano, mes)
-    except (TypeError, ValueError):
-        return jsonify({"erro": "Filtros de ano ou mês inválidos."}), 400
+        periodo = resolver_periodo_relatorio(request.args, "mes")
+        limite = resolver_limite_relatorio(request.args, (5, 10, 20), 20)
+        dados = models.obter_relatorio_restaurante(
+            session["user_id"],
+            periodo["data_inicio"],
+            periodo["data_fim"],
+            limite,
+        )
+    except ValueError as erro:
+        return jsonify({"erro": str(erro)}), 400
     return jsonify(dados)
 
 
@@ -170,6 +168,7 @@ def atualizar_status_pedido(id_pedido):
             return redirect(url_for("restaurante.painel"))
         ok = models.marcar_pedido_entregue_pelo_restaurante(id_pedido, session["user_id"])
         if ok:
+            models.atualizar_status_pagamento(id_pedido, "aprovado")
             flash(f"Pedido #{id_pedido} marcado como entregue!", "sucesso")
             
             # --- DISPARO DA NOTA FISCAL ---
@@ -231,6 +230,20 @@ def trocar_entregador(id_pedido):
 # ---------------------------------------------------------
 # CRUD DE PRODUTOS
 # ---------------------------------------------------------
+def _validar_produto(form):
+    """Retorna (nome, preco, erro). Nome obrigatório e preço numérico > 0."""
+    nome = (form.get("nome") or "").strip()
+    if not nome:
+        return None, None, "Informe o nome do produto."
+    try:
+        preco = round(float(str(form.get("preco", "")).replace(",", ".")), 2)
+    except (TypeError, ValueError):
+        return None, None, "Informe um preço válido (ex.: 25,90)."
+    if not (0 < preco <= 99999999.99):
+        return None, None, "O preço deve ser maior que zero."
+    return nome, preco, None
+
+
 @restaurante_bp.route("/produtos")
 @login_requerido("restaurante")
 def produtos():
@@ -247,11 +260,16 @@ def produto_novo():
             flash("URL da foto inválida. Use http:// ou https://", "erro")
             return render_template("restaurante/produto_novo.html", form=request.form)
 
+        nome, preco, erro = _validar_produto(request.form)
+        if erro:
+            flash(erro, "erro")
+            return render_template("restaurante/produto_novo.html", form=request.form)
+
         models.criar_produto(
             id_restaurante=session["user_id"],
-            nome=request.form["nome"],
+            nome=nome,
             descricao=request.form.get("descricao"),
-            preco=request.form["preco"],
+            preco=preco,
             disponivel=bool(request.form.get("disponivel")),
             foto_url=foto_url,
         )
@@ -274,11 +292,16 @@ def produto_editar(id_produto):
             flash("URL da foto inválida. Use http:// ou https://", "erro")
             return render_template("restaurante/produto_editar.html", produto=produto)
 
+        nome, preco, erro = _validar_produto(request.form)
+        if erro:
+            flash(erro, "erro")
+            return render_template("restaurante/produto_editar.html", produto=produto)
+
         models.atualizar_produto(
             id_produto,
-            nome=request.form["nome"],
+            nome=nome,
             descricao=request.form.get("descricao"),
-            preco=request.form["preco"],
+            preco=preco,
             disponivel=bool(request.form.get("disponivel")),
             foto_url=foto_url,
         )
@@ -293,8 +316,12 @@ def produto_editar(id_produto):
 def produto_excluir(id_produto):
     produto = models.buscar_produto(id_produto)
     if produto and produto["id_restaurante"] == session["user_id"]:
-        models.deletar_produto(id_produto)
-        flash("Produto removido.", "sucesso")
+        resultado = models.deletar_produto(id_produto)
+        if resultado == "desativado":
+            flash("Este produto já aparece em pedidos anteriores, então foi marcado como "
+                  "indisponível em vez de excluído (o histórico é preservado).", "sucesso")
+        else:
+            flash("Produto removido.", "sucesso")
     return redirect(url_for("restaurante.produtos"))
 
 
@@ -440,7 +467,7 @@ def cupom_novo():
                 ativo=dados["ativo"],
             )
         except Exception as e:
-            flash(f"Erro ao criar cupom: {e}", "erro")
+            flash("Não foi possível salvar o cupom. Confira os dados e tente novamente.", "erro")
             return render_template("restaurante/cupom_form.html", cupom=None, form=request.form)
 
         flash(f"Cupom '{dados['codigo']}' criado!", "sucesso")
@@ -485,7 +512,7 @@ def cupom_editar(id_cupom):
                 ativo=dados["ativo"],
             )
         except Exception as e:
-            flash(f"Erro ao atualizar cupom: {e}", "erro")
+            flash("Não foi possível salvar o cupom. Confira os dados e tente novamente.", "erro")
             return render_template("restaurante/cupom_form.html", cupom=cupom, form=request.form)
 
         flash(f"Cupom '{dados['codigo']}' atualizado.", "sucesso")
@@ -543,6 +570,19 @@ def editar_perfil():
             flash("URL da foto inválida. Use http:// ou https://", "erro")
             return redirect(url_for("restaurante.editar_perfil"))
 
+        nome_fantasia = (request.form.get("nome_fantasia") or "").strip()
+        nome_resp = (request.form.get("nome_responsavel") or "").strip()
+        if not nome_fantasia or not nome_resp:
+            flash("Informe o nome fantasia e o nome do responsável.", "erro")
+            return redirect(url_for("restaurante.editar_perfil"))
+        try:
+            taxa = round(float(str(request.form.get("taxa_entrega") or 0).replace(",", ".")), 2)
+        except ValueError:
+            taxa = None
+        if taxa is None or not (0 <= taxa <= 999.99):
+            flash("Informe uma taxa de entrega válida (zero ou maior).", "erro")
+            return redirect(url_for("restaurante.editar_perfil"))
+
         rua = request.form.get("rua") or ""
         numero = request.form.get("numero") or ""
         bairro = request.form.get("bairro") or ""
@@ -560,17 +600,21 @@ def editar_perfil():
             if nova_lat is not None:
                 lat, lon = nova_lat, nova_lon
 
-        models.atualizar_usuario(
-            session["user_id"],
-            request.form["nome_responsavel"],
-            request.form.get("telefone"),
-        )
+        try:
+            models.atualizar_usuario(
+                session["user_id"],
+                nome_resp,
+                request.form.get("telefone"),
+            )
+        except ValueError as erro:
+            flash(str(erro), "erro")
+            return redirect(url_for("restaurante.editar_perfil"))
 
         models.atualizar_restaurante(
             session["user_id"],
-            nome_fantasia=request.form["nome_fantasia"],
+            nome_fantasia=nome_fantasia,
             categoria=request.form.get("categoria"),
-            taxa_entrega=request.form.get("taxa_entrega") or 0,
+            taxa_entrega=taxa,
             horario_funcionamento=request.form.get("horario_funcionamento"),
             rua=request.form.get("rua"),
             numero=request.form.get("numero"),

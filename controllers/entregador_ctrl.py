@@ -2,6 +2,10 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from models import models
 from controllers.decorators import login_requerido
 from services import verificacao_email
+from services.periodos_relatorio import (
+    resolver_limite_relatorio,
+    resolver_periodo_relatorio,
+)
 
 entregador_bp = Blueprint("entregador", __name__, url_prefix="/entregador")
 
@@ -37,14 +41,41 @@ def painel():
 @entregador_bp.route("/relatorio")
 @login_requerido("entregador")
 def relatorio():
-    ganhos = models.obter_relatorio_ganhos_entregador(session["user_id"])
-    return render_template("entregador/relatorio.html", ganhos=ganhos)
+    try:
+        periodo = resolver_periodo_relatorio(request.args, "hoje")
+    except ValueError as erro:
+        flash(str(erro), "erro")
+        return redirect(url_for("entregador.relatorio"))
+    limite = 20
+    dados = models.obter_relatorio_entregador(
+        session["user_id"],
+        periodo["data_inicio"],
+        periodo["data_fim"],
+        limite,
+    )
+    return render_template(
+        "entregador/relatorio.html",
+        dados=dados,
+        limite=limite,
+        **periodo,
+    )
 
 
 @entregador_bp.route("/relatorio/dados")
 @login_requerido("entregador")
 def dados_relatorio():
-    return jsonify(models.obter_relatorio_ganhos_entregador(session["user_id"]))
+    try:
+        periodo = resolver_periodo_relatorio(request.args, "hoje")
+        limite = resolver_limite_relatorio(request.args, (5, 10, 15, 20), 20)
+        dados = models.obter_relatorio_entregador(
+            session["user_id"],
+            periodo["data_inicio"],
+            periodo["data_fim"],
+            limite,
+        )
+    except ValueError as erro:
+        return jsonify({"erro": str(erro)}), 400
+    return jsonify(dados)
 
 
 @entregador_bp.route("/disponibilidade", methods=["POST"])
@@ -59,6 +90,11 @@ def alternar_disponibilidade():
 @entregador_bp.route("/pedido/<int:id_pedido>/aceitar", methods=["POST"])
 @login_requerido("entregador")
 def aceitar_pedido(id_pedido):
+    entregador = models.buscar_entregador(session["user_id"])
+    if not entregador or not entregador["disponivel"]:
+        flash("Você está indisponível. Ative sua disponibilidade para aceitar corridas.", "erro")
+        return redirect(url_for("entregador.painel"))
+
     sucesso = models.atribuir_entregador(id_pedido, session["user_id"])
     if sucesso:
         flash(f"Pedido #{id_pedido} aceito! Vá até o restaurante para retirar.", "sucesso")
@@ -112,6 +148,7 @@ def marcar_entregue(id_pedido):
 
     sucesso = models.marcar_pedido_entregue(id_pedido, session["user_id"])
     if sucesso:
+        models.atualizar_status_pagamento(id_pedido, "aprovado")
         flash(f"Pedido #{id_pedido} entregue com sucesso!", "sucesso")
         
         # --- DISPARO DA NOTA FISCAL ---

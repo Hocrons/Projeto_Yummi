@@ -4,10 +4,11 @@
 (function () {
     "use strict";
 
-    const INTERVALO_MS = 10000;
+    const INTERVALO_MS = 5000;
     const STORAGE_KEY = "yummy_status_pedidos";
 
     const INFO_STATUS = {
+        "aguardando_pagamento": { icone: "💳", titulo: "Aguardando pagamento", descricao: "Finalize o pagamento pela InfinitePay para enviar seu pedido ao restaurante." },
         "pendente": { icone: "⏳", titulo: "Pedido aguardando aceite", descricao: "O restaurante ainda não confirmou." },
         "preparando": { icone: "🍳", titulo: "Pedido em preparo", descricao: "O restaurante está preparando seu pedido." },
         "localizando_entregador": { icone: "📡", titulo: "Procurando entregador", descricao: "Estamos buscando alguém para levar seu pedido." },
@@ -15,6 +16,17 @@
         "saiu_para_entrega": { icone: "🚀", titulo: "Pedido saiu para entrega", descricao: "Logo chega aí!" },
         "entregue": { icone: "✅", titulo: "Pedido entregue", descricao: "Bom apetite!" },
         "cancelado": { icone: "❌", titulo: "Pedido cancelado", descricao: "O pedido foi cancelado." },
+    };
+
+    const ROTULOS_STATUS = {
+        "aguardando_pagamento": "Aguardando pagamento",
+        "pendente": "Pendente",
+        "preparando": "Em preparo",
+        "localizando_entregador": "Buscando entregador",
+        "indo_ao_restaurante": "Entregador a caminho do restaurante",
+        "saiu_para_entrega": "Saiu para entrega",
+        "entregue": "Entregue",
+        "cancelado": "Cancelado",
     };
 
     function carregarUltimoEstado() {
@@ -110,11 +122,14 @@
 
     async function verificarPedidos() {
         try {
-            const resposta = await fetch("/cliente/api/pedidos-ativos", {
+            const resposta = await fetch("/cliente/api/pedidos-status", {
                 headers: { "Accept": "application/json" },
                 cache: "no-store",
             });
-            if (!resposta.ok) return;
+            if (resposta.redirected) return;
+            if (!resposta.ok) {
+                throw new Error(`Consulta de status falhou (${resposta.status}).`);
+            }
 
             const dados = await resposta.json();
             const pedidos = dados.pedidos || [];
@@ -128,11 +143,21 @@
                 if (estadoAnterior[id] && estadoAnterior[id] !== p.status) {
                     mostrarBanner(p, p.status);
                 }
+
+                const badge = document.querySelector(`[data-pedido-status="${id}"]`);
+                if (badge && badge.dataset.status !== p.status) {
+                    if (badge.dataset.status) {
+                        badge.classList.remove(`status-badge--${badge.dataset.status}`);
+                    }
+                    badge.dataset.status = p.status;
+                    badge.classList.add(`status-badge--${p.status}`);
+                    badge.textContent = ROTULOS_STATUS[p.status] || p.status.replace(/_/g, " ");
+                }
             });
 
             salvarUltimoEstado(novoEstado);
         } catch (erro) {
-            console.debug("Notificações: falha ao consultar pedidos", erro);
+            console.error("Notificações: falha ao consultar pedidos", erro);
         }
     }
 

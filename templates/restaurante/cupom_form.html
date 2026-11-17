@@ -100,13 +100,13 @@
                 <label>Válido a partir de
                     <input type="datetime-local"
                            name="data_inicio"
-                           value="{{ v.data_inicio.strftime('%Y-%m-%dT%H:%M') if v.data_inicio else '' }}">
+                           value="{{ (v.data_inicio if v.data_inicio is string else v.data_inicio.strftime('%Y-%m-%dT%H:%M')) if v.data_inicio else '' }}">
                 </label>
 
                 <label>Válido até
                     <input type="datetime-local"
                            name="data_fim"
-                           value="{{ v.data_fim.strftime('%Y-%m-%dT%H:%M') if v.data_fim else '' }}">
+                           value="{{ (v.data_fim if v.data_fim is string else v.data_fim.strftime('%Y-%m-%dT%H:%M')) if v.data_fim else '' }}">
                 </label>
 
                 <label>Limite total de usos
