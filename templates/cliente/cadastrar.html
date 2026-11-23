@@ -5,19 +5,11 @@
     <h2>Criar conta de cliente</h2>
 
     <form method="post" id="form-cadastro-cliente" novalidate>
-        <label>Nome completo
-            <input type="text" name="nome" required>
-        </label>
-        <label>Apelido (como quer ser chamado)
-            <input type="text" name="apelido">
-        </label>
-        <label>CPF (somente números)
-            <input type="text" name="cpf" maxlength="11" pattern="\d{11}" required>
-        </label>
+        {% if not contato %}
+        <p class="muted">Primeiro, informe seu e-mail e celular. Depois verificaremos se já existe uma conta.</p>
         <label>E-mail
-            <input type="email" name="email" required>
+            <input type="email" name="email" value="{{ email or '' }}" required autofocus>
         </label>
-
         <label>Celular (com DDD)
             <div class="campo-telefone">
                 <span class="prefixo-pais">
@@ -29,6 +21,7 @@
                        name="telefone"
                        id="campo-telefone-input"
                        placeholder="(11) 99999-9999"
+                       value="{{ telefone or '' }}"
                        inputmode="numeric"
                        autocomplete="tel-national"
                        maxlength="15"
@@ -38,14 +31,28 @@
         <p class="campo-telefone__ajuda" id="campo-telefone-ajuda">
             Digite DDD + número. Ex: <strong>(11) 99999-9999</strong>
         </p>
-
+        {% else %}
+        <p class="muted">E-mail e celular disponíveis. Agora complete seus dados.</p>
+        <label>Nome completo
+            <input type="text" name="nome" required autofocus>
+        </label>
+        <label>Apelido (como quer ser chamado)
+            <input type="text" name="apelido">
+        </label>
+        <label>CPF (somente números)
+            <input type="text" name="cpf" maxlength="11" pattern="\d{11}" required>
+        </label>
         <label>Senha
             <input type="password" name="senha" minlength="6" required>
         </label>
+        {% endif %}
 
-        <button type="submit" class="btn btn--primary btn--full">Cadastrar</button>
+        <button type="submit" class="btn btn--primary btn--full">
+            {% if contato %}Cadastrar{% else %}Continuar{% endif %}
+        </button>
     </form>
 
+    {% if not contato %}
     <div class="divisor-social"><span>ou cadastre-se com</span></div>
 
     <div class="botoes-social">
@@ -58,6 +65,7 @@
             Cadastrar com Facebook
         </a>
     </div>
+    {% endif %}
 
     <p class="muted">Já tem conta? <a href="{{ url_for('auth.login_cliente') }}">Entrar</a></p>
 </div>

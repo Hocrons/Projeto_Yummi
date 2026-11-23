@@ -2,48 +2,56 @@
 {% block title %}Complete seu cadastro{% endblock %}
 {% block content %}
 <div class="form-card">
-    <h2 class="entrada-titulo-sm">Só mais um passo!</h2>
+    <h2 class="entrada-titulo-sm">
+        {% if etapa_identidade %}Vamos confirmar seus dados{% else %}Só mais um passo!{% endif %}
+    </h2>
     <p class="muted">
-        {% if veio_do_celular %}
-            Confirmamos seu celular. Complete os dados abaixo para criar sua conta.
+        {% if etapa_identidade == "email" %}
+            Informe seu e-mail. Vamos verificar se ele já está associado a uma conta.
+        {% elif etapa_identidade == "telefone" %}
+            Informe seu celular. Vamos verificar se ele já está associado a uma conta.
+        {% elif veio_do_celular %}
+            Celular confirmado e e-mail disponível. Complete os dados abaixo para criar sua conta.
         {% else %}
-            Confirmamos seu e-mail. Complete os dados abaixo para criar sua conta.
+            E-mail e celular confirmados. Complete os dados abaixo para criar sua conta.
         {% endif %}
     </p>
 
     <form method="post">
+        {% if etapa_identidade == "email" %}
+        <label>E-mail
+            <input type="email" name="email" value="{{ contato or '' }}" placeholder="Informe seu e-mail" required autofocus>
+        </label>
+        {% elif etapa_identidade == "telefone" %}
+        <label>Celular (com DDD)
+            <div class="campo-telefone">
+                <span class="prefixo-pais">
+                    <span class="prefixo-pais__flag">🇧🇷</span>
+                    <span class="prefixo-pais__codigo">+55</span>
+                </span>
+                <span class="campo-telefone__divisor"></span>
+                <input type="tel"
+                       name="telefone"
+                       placeholder="(11) 99999-9999"
+                       value="{{ contato or '' }}"
+                       inputmode="numeric"
+                       autocomplete="tel-national"
+                       maxlength="15"
+                       required autofocus>
+            </div>
+        </label>
+        {% else %}
         <label>Nome completo
             <input type="text" name="nome" value="{{ fluxo.nome or '' }}" required autofocus>
         </label>
         <label>CPF (somente números)
             <input type="text" name="cpf" maxlength="11" pattern="\d{11}" value="{{ fluxo.cpf or '' }}" required>
         </label>
-
-        {% if veio_do_celular %}
-            <label>E-mail
-                <input type="email" name="email" placeholder="Informe seu e-mail" required>
-            </label>
-        {% else %}
-            <label>Celular (com DDD)
-                <div class="campo-telefone">
-                    <span class="prefixo-pais">
-                        <span class="prefixo-pais__flag">🇧🇷</span>
-                        <span class="prefixo-pais__codigo">+55</span>
-                    </span>
-                    <span class="campo-telefone__divisor"></span>
-                    <input type="tel"
-                           name="telefone"
-                           placeholder="(11) 99999-9999"
-                           inputmode="numeric"
-                           autocomplete="tel-national"
-                           maxlength="15"
-                           required>
-                </div>
-            </label>
-            <p class="muted">Enviaremos um código por WhatsApp para confirmar esse número.</p>
         {% endif %}
 
-        <button type="submit" class="btn btn--primary btn--full" style="margin-top: 10px;">Continuar</button>
+        <button type="submit" class="btn btn--primary btn--full" style="margin-top: 10px;">
+            {% if etapa_identidade %}Continuar{% else %}Criar conta{% endif %}
+        </button>
     </form>
 </div>
 {% endblock %}

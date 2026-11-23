@@ -13,6 +13,7 @@ let conectado = false;
 const client = new Client({
   authStrategy: new LocalAuth({ dataPath: "./sessao" }),
   puppeteer: {
+    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     headless: true,
     args: [
       "--no-sandbox",
