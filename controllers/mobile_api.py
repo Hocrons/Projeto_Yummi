@@ -39,16 +39,12 @@ def token_required(f):
             return jsonify({"success": False, "message": "Token ausente."}), 401
         try:
             token_str = auth_header[7:]
-            print(f"[DEBUG] Token recebido: {token_str[:30]}...")
-            print(f"[DEBUG] SECRET_KEY usada: {current_app.secret_key[:10]}...")
             payload = _decode_token(token_str)
             user_id = int(payload["sub"])  # converte de volta para int
         except jwt.ExpiredSignatureError:
-            print("[DEBUG] Erro: token expirado")
             return jsonify({"success": False, "message": "Sessão expirada."}), 401
-        except Exception as e:
-            print(f"[DEBUG] Erro ao decodificar token: {type(e).__name__}: {e}")
-            return jsonify({"success": False, "message": f"Token inválido: {e}"}), 401
+        except (jwt.InvalidTokenError, KeyError, TypeError, ValueError):
+            return jsonify({"success": False, "message": "Token inválido."}), 401
         return f(user_id, *args, **kwargs)
     return decorated
 

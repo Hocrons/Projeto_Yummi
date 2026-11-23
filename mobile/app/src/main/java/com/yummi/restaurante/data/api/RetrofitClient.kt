@@ -8,13 +8,10 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    // ⚠️ Altere para o IP/URL do seu servidor Flask
-    // Emulador Android acessando localhost: use 10.0.2.2
-    // Dispositivo físico: use o IP da máquina na rede local (ex: 192.168.x.x)
-    private const val BASE_URL = "http://192.168.15.8:5000/"
+    private const val BASE_URL = "https://yummy-demo.duckdns.org/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        level = HttpLoggingInterceptor.Level.NONE
     }
 
     private val okHttpClient = OkHttpClient.Builder()

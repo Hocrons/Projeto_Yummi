@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Yummi Restaurante</string>
+    <string name="action_logout">Sair</string>
     <string name="hint_email">E-mail</string>
     <string name="hint_senha">Senha</string>
     <string name="btn_entrar">Entrar</string>

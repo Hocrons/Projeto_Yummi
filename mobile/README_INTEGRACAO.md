@@ -2,39 +2,37 @@
 
 ## 1. Configurar o Backend Flask
 
-### 1.1 Instalar dependência JWT
+### 1.1 Instalar dependências do backend
 ```bash
-pip install PyJWT
+pip install -r requirements.txt
 ```
 
-### 1.2 Adicionar os endpoints REST
-Copie o arquivo `FLASK_API_ENDPOINTS.py` para `controllers/mobile_api.py` no projeto Flask.
+`PyJWT` já está declarado em `requirements.txt`. O blueprint mobile já está
+implementado em `controllers/mobile_api.py` e registrado em `app.py`; não copie
+os arquivos de integração por cima desses arquivos.
 
-### 1.3 Registrar o blueprint no app.py
-```python
-from controllers.mobile_api import mobile_api_bp
-app.register_blueprint(mobile_api_bp)
-```
-
-### 1.4 Adicionar funções ao models/models.py
-Copie as funções de `MODELS_ADDITIONS.py` para o final de `models/models.py`.
+Configure uma `SECRET_KEY` fixa no `.env` da VPS e mantenha o mesmo valor entre
+reinicializações. Os tokens de login do app dependem dessa chave.
 
 ---
 
 ## 2. Configurar o App Android
 
 ### 2.1 URL do servidor
-Edite `RetrofitClient.kt` e altere `BASE_URL`:
+O app aponta para a VPS em `https://yummy-demo.duckdns.org/`, com certificado TLS
+válido. Não use o IP diretamente: a VPS redireciona HTTP para HTTPS, e o TLS deve
+ser acessado pelo domínio coberto pelo certificado. Não desative a validação de
+certificado no app.
 
 | Situação | URL |
 |----------|-----|
 | Emulador Android (localhost) | `http://10.0.2.2:5000/` |
 | Dispositivo físico (rede local) | `http://192.168.X.X:5000/` |
-| Produção | `https://seu-dominio.com/` |
+| Produção (VPS) | `https://yummy-demo.duckdns.org/` |
 
 ### 2.2 Importar no Android Studio
 1. Abra o Android Studio
-2. **File → Open** → selecione a pasta `YummiApp/`
+2. **File → Open** → selecione a pasta `mobile/`
 3. Aguarde o Gradle sync
 4. Execute no emulador ou dispositivo
 
@@ -84,6 +82,7 @@ ProductListActivity
   ↓ [FAB +] → ProductFormActivity (novo)
   ↓ [✏️ edit] → ProductFormActivity (editar)
   ↓ [🗑️ delete] → DELETE /api/restaurante/produtos/:id
+  ↓ [Sair] → limpa a sessão e retorna ao login
 ProductFormActivity
   ↓ POST ou PUT /api/restaurante/produtos
   ↓ RESULT_OK → volta e recarrega lista
