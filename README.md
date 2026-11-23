@@ -218,6 +218,7 @@ curl -X POST http://localhost:3001/enviar \
 Erro	Solução
 Cannot find module 'whatsapp-web.js'	Rode npm install na pasta whatsapp-service
 QR Code não aparece	Espere 10-30s (Chromium está iniciando). Se persistir, apague a pasta sessao/ e rode de novo
+Cannot read properties of null (reading 'Socket')	Na pasta whatsapp-service, rode npm install para atualizar whatsapp-web.js para 1.34.8 ou superior e reinicie o serviço
 ProtocolError / Evaluation failed	Apague whatsapp-service/sessao/ e escaneie o QR de novo
 Flask retorna 503 Service Unavailable	O Node não está rodando ou está em outra porta. Confira o terminal do Node
 WhatsApp ainda não conectado	Espere aparecer o "✅ conectado" no terminal do Node antes de testar
