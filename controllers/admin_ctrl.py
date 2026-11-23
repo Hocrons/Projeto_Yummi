@@ -7,7 +7,7 @@ from services.periodos_relatorio import resolver_periodo_relatorio
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
-@admin_bp.route("/relatorio")
+@admin_bp.route("/relatorio", strict_slashes=False)
 def relatorio():
     try:
         periodo = resolver_periodo_relatorio(request.args, "mes")
@@ -20,7 +20,7 @@ def relatorio():
     return render_template("admin/relatorio.html", dados=dados, **periodo)
 
 
-@admin_bp.route("/relatorio/dados")
+@admin_bp.route("/relatorio/dados", strict_slashes=False)
 def dados_relatorio():
     try:
         periodo = resolver_periodo_relatorio(request.args, "mes")
