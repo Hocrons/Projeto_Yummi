@@ -17,7 +17,23 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@color/yummi_primary"
             app:titleTextColor="@color/yummi_white"
-            app:subtitleTextColor="@color/yummi_primary_soft"/>
+            app:subtitleTextColor="@color/yummi_primary_soft">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|center_vertical"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="40dp"
+                android:text="@string/action_logout"
+                android:textColor="@color/yummi_white"
+                app:backgroundTint="@color/yummi_primary_dark"
+                app:cornerRadius="8dp"
+                app:icon="@android:drawable/ic_lock_power_off"
+                app:iconTint="@color/yummi_white"/>
+        </androidx.appcompat.widget.Toolbar>
     </com.google.android.material.appbar.AppBarLayout>
 
     <ProgressBar

@@ -7,7 +7,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.yummi.restaurante.R
 import com.yummi.restaurante.data.model.Product
 import com.yummi.restaurante.databinding.ActivityProductListBinding
 import com.yummi.restaurante.util.SessionManager
@@ -49,13 +48,7 @@ class ProductListActivity : AppCompatActivity() {
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.title = session.getNome() ?: "Meu Restaurante"
-        binding.toolbar.inflateMenu(R.menu.menu_product_list)
-        binding.toolbar.setOnMenuItemClickListener { item ->
-            if (item.itemId == R.id.action_logout) {
-                confirmLogout()
-                true
-            } else false
-        }
+        binding.btnLogout.setOnClickListener { confirmLogout() }
     }
 
     private fun setupRecyclerView() {

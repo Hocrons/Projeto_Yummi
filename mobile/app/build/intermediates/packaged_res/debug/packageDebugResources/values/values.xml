@@ -14,6 +14,7 @@
     <color name="yummi_success">#4CAF7A</color>
     <color name="yummi_text">#4A2C40</color>
     <color name="yummi_white">#FFFFFF</color>
+    <string name="action_logout">Sair</string>
     <string name="app_name">Yummi Restaurante</string>
     <string name="btn_entrar">Entrar</string>
     <string name="btn_salvar">Salvar produto</string>

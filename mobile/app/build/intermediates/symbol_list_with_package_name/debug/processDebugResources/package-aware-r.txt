@@ -3170,7 +3170,6 @@ id action_container
 id action_context_bar
 id action_divider
 id action_image
-id action_logout
 id action_menu_divider
 id action_menu_presenter
 id action_mode_bar
@@ -3210,6 +3209,7 @@ id bounceStart
 id btnDelete
 id btnEdit
 id btnLogin
+id btnLogout
 id btnSalvar
 id buttonPanel
 id cache_measures
@@ -3834,7 +3834,6 @@ layout select_dialog_item_material
 layout select_dialog_multichoice_material
 layout select_dialog_singlechoice_material
 layout support_simple_spinner_dropdown_item
-menu menu_product_list
 mipmap ic_launcher
 mipmap ic_launcher_round
 plurals mtrl_badge_content_description
@@ -3865,6 +3864,7 @@ string abc_searchview_description_voice
 string abc_shareactionprovider_share_with
 string abc_shareactionprovider_share_with_application
 string abc_toolbar_collapse_description
+string action_logout
 string androidx_startup
 string app_name
 string appbar_scrolling_view_behavior

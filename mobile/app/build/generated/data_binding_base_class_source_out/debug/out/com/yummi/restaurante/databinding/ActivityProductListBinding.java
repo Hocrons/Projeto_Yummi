@@ -13,6 +13,7 @@ import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.yummi.restaurante.R;
 import java.lang.NullPointerException;
@@ -22,6 +23,9 @@ import java.lang.String;
 public final class ActivityProductListBinding implements ViewBinding {
   @NonNull
   private final CoordinatorLayout rootView;
+
+  @NonNull
+  public final MaterialButton btnLogout;
 
   @NonNull
   public final FloatingActionButton fabAdd;
@@ -39,9 +43,11 @@ public final class ActivityProductListBinding implements ViewBinding {
   public final TextView tvEmpty;
 
   private ActivityProductListBinding(@NonNull CoordinatorLayout rootView,
-      @NonNull FloatingActionButton fabAdd, @NonNull ProgressBar progressBar,
-      @NonNull RecyclerView rvProducts, @NonNull Toolbar toolbar, @NonNull TextView tvEmpty) {
+      @NonNull MaterialButton btnLogout, @NonNull FloatingActionButton fabAdd,
+      @NonNull ProgressBar progressBar, @NonNull RecyclerView rvProducts, @NonNull Toolbar toolbar,
+      @NonNull TextView tvEmpty) {
     this.rootView = rootView;
+    this.btnLogout = btnLogout;
     this.fabAdd = fabAdd;
     this.progressBar = progressBar;
     this.rvProducts = rvProducts;
@@ -76,6 +82,12 @@ public final class ActivityProductListBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.btnLogout;
+      MaterialButton btnLogout = ViewBindings.findChildViewById(rootView, id);
+      if (btnLogout == null) {
+        break missingId;
+      }
+
       id = R.id.fabAdd;
       FloatingActionButton fabAdd = ViewBindings.findChildViewById(rootView, id);
       if (fabAdd == null) {
@@ -106,8 +118,8 @@ public final class ActivityProductListBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityProductListBinding((CoordinatorLayout) rootView, fabAdd, progressBar,
-          rvProducts, toolbar, tvEmpty);
+      return new ActivityProductListBinding((CoordinatorLayout) rootView, btnLogout, fabAdd,
+          progressBar, rvProducts, toolbar, tvEmpty);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));
