@@ -1,6 +1,6 @@
 import os
 from datetime import timedelta
-from flask import Flask, session
+from flask import Flask, jsonify, request, session
 from dotenv import load_dotenv
 
 from extensions import oauth
@@ -22,6 +22,9 @@ load_dotenv()
 
 def create_app():
     app = Flask(__name__)
+    cors_allowed_origin = os.getenv(
+        "CORS_ALLOWED_ORIGIN", "https://seu-projeto.vercel.app"
+    ).strip().rstrip("/")
 
     secret_key = os.getenv("SECRET_KEY")
     if not secret_key or secret_key == "troque-esta-chave-em-producao":
@@ -58,6 +61,23 @@ def create_app():
     app.register_blueprint(geocoding_bp)
     app.register_blueprint(mobile_api_bp)   # "/api/restaurante/..."
     app.register_blueprint(admin_bp)        # "/admin/relatorio"
+
+    @app.get("/health")
+    def health():
+        return jsonify(status="ok")
+
+    @app.after_request
+    def add_cors_headers(response):
+        if request.headers.get("Origin") == cors_allowed_origin:
+            response.headers["Access-Control-Allow-Origin"] = cors_allowed_origin
+            response.headers["Access-Control-Allow-Methods"] = (
+                "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            )
+            response.headers["Access-Control-Allow-Headers"] = (
+                "Content-Type, Authorization"
+            )
+            response.vary.add("Origin")
+        return response
 
     @app.cli.command("db-upgrade")
     def db_upgrade_command():
@@ -100,4 +120,7 @@ app = create_app()
 
 if __name__ == "__main__":
     debug = os.getenv("FLASK_DEBUG", "1") == "1"
-    app.run(host="0.0.0.0", debug=debug, port=5000)
+    run_options = {"host": "0.0.0.0", "debug": debug}
+    if os.getenv("PORT") is not None:
+        run_options["port"] = int(os.environ["PORT"])
+    app.run(**run_options)
